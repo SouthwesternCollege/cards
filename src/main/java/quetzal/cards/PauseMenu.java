@@ -46,7 +46,6 @@ public class PauseMenu extends FXGLMenu {
         shape.fillProperty().bind(
                 Bindings.when(shape.pressedProperty()).then(Color.BLUE).otherwise(Color.color(0.1, 0.05, 0.0, 0.75))
         );
-
         shape.setOnMouseClicked(e -> fireResume());
 
         shape2.setStrokeWidth(3);
@@ -87,6 +86,7 @@ public class PauseMenu extends FXGLMenu {
         textOptions.setMouseTransparent(true);
 
         getContentRoot().getChildren().addAll(shape, shape2, shape3, textResume, textExit, textOptions);
+
 
         getContentRoot().setScaleX(0);
         getContentRoot().setScaleY(0);

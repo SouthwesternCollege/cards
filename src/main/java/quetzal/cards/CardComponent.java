@@ -10,24 +10,24 @@ public class CardComponent extends Component {
 
     private Texture baseTexture;
     private Texture overlayTexture;
-    private int rank;
+    private Card card;
 
+    public CardComponent(Card card) {
+        this.card = card;
+        this.card.setEntity(entity);  // Associate the entity with the card
 
-    public CardComponent(int frameIndex) {
-        this.rank = frameIndex;
         Image image = FXGL.image("deck.png");
         int frameWidth = 71;
         int frameHeight = 95;
 
         int framesPerRow = (int) (image.getWidth() / frameWidth);
 
-        int xIndex = frameIndex % framesPerRow;
-        int yIndex = frameIndex / framesPerRow;
+        int xIndex = card.getCardIndex() % framesPerRow;
+        int yIndex = card.getCardIndex() / framesPerRow;
 
-        // Load the sprite-sheet and select tile
         // Base
         overlayTexture = FXGL.texture("deck.png")
-                .subTexture(new Rectangle2D(xIndex * frameWidth, yIndex * frameHeight,frameWidth, frameHeight));
+                .subTexture(new Rectangle2D(xIndex * frameWidth, yIndex * frameHeight, frameWidth, frameHeight));
         overlayTexture.setScaleX(2.0);
         overlayTexture.setScaleY(2.0);
         // Overlay
@@ -35,18 +35,15 @@ public class CardComponent extends Component {
                 .subTexture(new Rectangle2D(frameWidth, 0, frameWidth, frameHeight));
         baseTexture.setScaleX(2.0);
         baseTexture.setScaleY(2.0);
-
     }
 
-    public int getRank() {
-        return rank;
+    protected Card getCard() {
+        return card;
     }
 
     @Override
     public void onAdded() {
-        // Add the static texture to the entity's view
         entity.getViewComponent().addChild(baseTexture);
         entity.getViewComponent().addChild(overlayTexture);
     }
-
 }

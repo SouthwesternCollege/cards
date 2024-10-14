@@ -10,6 +10,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 
 public class CardFactory implements EntityFactory {
+
     @Spawns("Background")
     public Entity spawnBackground(SpawnData data) {
         return FXGL.entityBuilder(data)
@@ -18,13 +19,19 @@ public class CardFactory implements EntityFactory {
                 .zIndex(-100)
                 .build();
     }
+
     @Spawns("Card")
     public Entity spawnCard(SpawnData data) {
-        return FXGL.entityBuilder(data)
+        Card card = data.get("card");
+        Entity cardEntity = FXGL.entityBuilder(data)
                 .type(EntityType.CARD)
-                .with(new CardComponent(data.<Integer>get("card-index")))
-                .with(new CardAnimationComponent(data.get("hand"), data.get("selected")))
-                .zIndex(data.get("zIndex"))
+                .with(new CardComponent(card))  // Pass the Card object
+                .with(new CardAnimationComponent(data.get("hand")))
+                .zIndex(data.get("z-index"))
                 .build();
+        card.setEntity(cardEntity);
+
+        return cardEntity;
     }
+
 }
