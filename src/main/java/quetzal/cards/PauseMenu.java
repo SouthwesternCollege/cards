@@ -9,6 +9,8 @@ import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.ui.FontType;
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Point2D;
+import javafx.scene.control.Slider;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
@@ -85,7 +87,25 @@ public class PauseMenu extends FXGLMenu {
         textOptions.setTranslateY(195);
         textOptions.setMouseTransparent(true);
 
-        getContentRoot().getChildren().addAll(shape, shape2, shape3, textResume, textExit, textOptions);
+        // Create volume control slider
+        Slider volumeSlider = new Slider(0, 1, FXGL.getSettings().getGlobalMusicVolume()); // range from 0 to 1
+        volumeSlider.setShowTickLabels(true);
+        volumeSlider.setShowTickMarks(true);
+
+        // Update volume when the slider is moved
+        volumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+            FXGL.getSettings().setGlobalMusicVolume(newVal.doubleValue());
+        });
+
+        Text volumeText = FXGL.getUIFactoryService().newText("MUSIC VOLUME", Color.WHITE, FontType.GAME, 24.0);
+
+        VBox volumeControlBox = new VBox(10, volumeText, volumeSlider);
+        volumeControlBox.setTranslateX(50);
+        volumeControlBox.setTranslateY(250);
+
+
+
+        getContentRoot().getChildren().addAll(shape, shape2, shape3, textResume, textExit, textOptions, volumeControlBox);
 
 
         getContentRoot().setScaleX(0);

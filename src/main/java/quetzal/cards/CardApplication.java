@@ -48,11 +48,11 @@ public class CardApplication extends GameApplication {
 
     @Override
     protected void initGame() {
-
         Text title = new Text("LA KIKA");
         title.setFont(Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 100));
         title.setStyle("-fx-fill: white;");
-        // Dropshadow effect on text
+
+// Drop shadow effect on text
         DropShadow textShadow = new DropShadow();
         textShadow.setRadius(1);
         textShadow.setOffsetY(10.0);
@@ -66,37 +66,29 @@ public class CardApplication extends GameApplication {
         // Add the text to the game scene
         FXGL.getGameScene().addUINode(title);
 
-
-        // Animate the text by moving it to the right
+        // Animate the text by moving it to the target position
         FXGL.animationBuilder()
                 .duration(Duration.seconds(4))
-                .onFinished(() -> FXGL.getGameScene().removeUINode(title))
-                .autoReverse(true) // Moves back after reaching the end
+                .autoReverse(true)
                 .interpolator(Interpolators.SINE.EASE_IN_OUT())
                 .translate(title)
                 .from(new Point2D(WIDTH / 2 - 200, -200)) // Starting position
                 .to(new Point2D(WIDTH / 2 - 200, 300)) // Target position
                 .buildAndPlay();
 
+        // Add a delay to keep the title visible for 3 more seconds after the animation ends
+        FXGL.animationBuilder()
+                .delay(Duration.seconds(4))
+                .duration(Duration.seconds(3))
+                .fadeOut(title) // Apply fade-out effect
+                .buildAndPlay(); // Build and play the animation
+
+        FXGL.runOnce(() -> {
+            FXGL.getGameScene().removeUINode(title); // Remove title after delay
+        }, Duration.seconds(7));
+
         // Background music
         FXGL.loopBGM("theme.mp3");
-
-        // Create volume control slider
-        Slider volumeSlider = new Slider(0, 1, FXGL.getSettings().getGlobalMusicVolume()); // range from 0 to 1
-        volumeSlider.setShowTickLabels(true);
-        volumeSlider.setShowTickMarks(true);
-
-        // Update volume when the slider is moved
-        volumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
-            FXGL.getSettings().setGlobalMusicVolume(newVal.doubleValue());
-        });
-
-        VBox volumeControlBox = new VBox(10, new Text("Music Volume"), volumeSlider);
-        volumeControlBox.setTranslateX(50);
-        volumeControlBox.setTranslateY(50);
-
-        FXGL.getGameScene().addUINode(volumeControlBox);
-
 
         FXGL.getGameWorld().addEntityFactory(new CardFactory());
         FXGL.spawn("Background", new SpawnData(0, 0).put("width", WIDTH).put("height", HEIGHT));
@@ -117,41 +109,50 @@ public class CardApplication extends GameApplication {
     @Override
     protected void initUI() {
         // Create a 'Play' button
-        Text buttonText = new Text("Play Hand");
-        Button playButton = new Button();
 
-        buttonText.setFont(Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 24));
-        buttonText.setStyle("-fx-fill: #ffffff;");
-        playButton.setStyle("-fx-background-color: #ff0000;");
-        playButton.setPadding(new Insets(24));
+        Button playButton = gameButton(WIDTH / 2 - 200, HEIGHT - 100, new Text("Play Hand"), Color.color(0.8, 0, 0));
+        Button discardButton = gameButton(WIDTH / 2 + 200, HEIGHT - 100, new Text("Discard"), Color.color(0, 0.4, 0.8));
+
+
+        // Add the button to the game's UI
+        FXGL.getGameScene().addUINode(playButton);
+        FXGL.getGameScene().addUINode(discardButton);
+    }
+
+    private Button gameButton(double x, double y, Text text, Color color) {
+        Button button = new Button();
+
+
+        text.setFont(Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 24));
+        text.setStyle("-fx-fill: #ffffff;");
+        button.setStyle(String.format("-fx-background-color: #%s ;", color.toString().substring(2, 8)));
+        button.setPadding(new Insets(24));
 
         // Dropshadow effect on text
         DropShadow textShadow = new DropShadow();
         textShadow.setRadius(1);
         textShadow.setOffsetY(2.0);
-        textShadow.setColor(Color.color(.6, 0, 0));
-        buttonText.setEffect(textShadow);
+        textShadow.setColor(color.darker().darker());
+        text.setEffect(textShadow);
 
         //Dropshadow effect on button
         DropShadow buttonShadow = new DropShadow();
         buttonShadow.setRadius(1);
         buttonShadow.setOffsetY(6.0);
         buttonShadow.setColor(Color.color(0.1, 0.1, 0.1));
-        playButton.setEffect(buttonShadow);
+        button.setEffect(buttonShadow);
 
-        playButton.setGraphic(buttonText);
+        button.setGraphic(text);
 
         // Set button position on the screen
-        playButton.setTranslateX(WIDTH / 2);  // Adjust X position
-        playButton.setTranslateY(HEIGHT - 100);  // Adjust Y position
+        button.setTranslateX(x);  // Adjust X position
+        button.setTranslateY(y);  // Adjust Y position
 
         // Attach the playSelectedCards() method to the button's action
-        playButton.setOnAction(event -> {
+        button.setOnAction(event -> {
             hand.playSelectedCards();
         });
-
-        // Add the button to the game's UI
-        FXGL.getGameScene().addUINode(playButton);
+        return button;
     }
 
 }
