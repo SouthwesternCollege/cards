@@ -10,9 +10,8 @@ import com.almasb.fxgl.entity.SpawnData;
 import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
 import javafx.scene.control.Button;
-import javafx.scene.control.Slider;
 import javafx.scene.effect.DropShadow;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
@@ -52,7 +51,7 @@ public class CardApplication extends GameApplication {
         title.setFont(Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 100));
         title.setStyle("-fx-fill: white;");
 
-// Drop shadow effect on text
+        // Drop shadow effect on text
         DropShadow textShadow = new DropShadow();
         textShadow.setRadius(1);
         textShadow.setOffsetY(10.0);
@@ -109,17 +108,31 @@ public class CardApplication extends GameApplication {
     @Override
     protected void initUI() {
         // Create a 'Play' button
+        Button playButton = gameButton(new Text("Play Hand"), Color.color(0.9, 0, 0));
 
-        Button playButton = gameButton(WIDTH / 2 - 200, HEIGHT - 100, new Text("Play Hand"), Color.color(0.8, 0, 0));
-        Button discardButton = gameButton(WIDTH / 2 + 200, HEIGHT - 100, new Text("Discard"), Color.color(0, 0.4, 0.8));
+        // Attach the playSelectedCards() method to the button's action
+        playButton.setOnAction(event -> hand.playSelectedCards());
+
+        Button discardButton = gameButton(new Text("Discard"), Color.color(0, 0.3, 0.9));
+        Button sortRankButton = gameButton(new Text("Rank"), Color.color(0.8, 0.7, 0));
+        Button sortSuitButton = gameButton(new Text("Suit"), Color.color(0.8, 0.7, 0));
+
+
+        HBox buttons = new HBox();
+        buttons.getChildren().add(playButton);
+        buttons.getChildren().add(discardButton);
+        buttons.getChildren().add(sortSuitButton);
+        buttons.getChildren().add(sortRankButton);
+        buttons.setSpacing(10);
+        buttons.setTranslateX(WIDTH/2-100);
+        buttons.setTranslateY(HEIGHT-100);
 
 
         // Add the button to the game's UI
-        FXGL.getGameScene().addUINode(playButton);
-        FXGL.getGameScene().addUINode(discardButton);
+        FXGL.getGameScene().addUINode(buttons);
     }
 
-    private Button gameButton(double x, double y, Text text, Color color) {
+    private Button gameButton(Text text, Color color) {
         Button button = new Button();
 
 
@@ -144,14 +157,6 @@ public class CardApplication extends GameApplication {
 
         button.setGraphic(text);
 
-        // Set button position on the screen
-        button.setTranslateX(x);  // Adjust X position
-        button.setTranslateY(y);  // Adjust Y position
-
-        // Attach the playSelectedCards() method to the button's action
-        button.setOnAction(event -> {
-            hand.playSelectedCards();
-        });
         return button;
     }
 
