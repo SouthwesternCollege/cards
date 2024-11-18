@@ -118,12 +118,7 @@ public class CardApplication extends GameApplication {
         Button sortSuitButton = gameButton(new Text("Suit"), Color.color(0.8, 0.7, 0));
 
 
-        HBox buttons = new HBox();
-        buttons.getChildren().add(playButton);
-        buttons.getChildren().add(discardButton);
-        buttons.getChildren().add(sortSuitButton);
-        buttons.getChildren().add(sortRankButton);
-        buttons.setSpacing(10);
+        HBox buttons = new HBox(10, playButton, discardButton, sortSuitButton, sortRankButton);
         buttons.setTranslateX(WIDTH/2-100);
         buttons.setTranslateY(HEIGHT-100);
 
