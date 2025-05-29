@@ -22,10 +22,12 @@ public class Card {
     }
 
     // Make sure that only selectable cards can be added to the selected list
-    public void select() {
+    public Card select() {
         if (selectable) {
+            return this;
             // Add to selectedCards in Hand
         }
+        return null;
     }
 
     // Getter and setter for rank

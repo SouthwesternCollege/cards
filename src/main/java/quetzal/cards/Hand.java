@@ -104,24 +104,6 @@ public class Hand extends CardCollection {
                     .to(collapseTarget)  // Collapse to the calculated position
                     .buildAndPlay();
 
-//            // Optionally, scale the card slightly larger during the expansion, then back to normal
-//            FXGL.animationBuilder()
-//                    .duration(expansionDuration)
-//                    .interpolator(Interpolators.SMOOTH.EASE_OUT())
-//                    .scale(cardEntity)
-//                    .from(new Point2D(1, 1))  // Normal size
-//                    .to(new Point2D(1.2, 1.2))  // Slightly larger (20% increase)
-//                    .buildAndPlay();
-//
-//            // After the delay, shrink back to normal size during the collapse
-//            FXGL.animationBuilder()
-//                    .delay(expansionDuration)
-//                    .duration(collapseDuration)
-//                    .interpolator(Interpolators.SMOOTH.EASE_IN())
-//                    .scale(cardEntity)
-//                    .to(new Point2D(1, 1))  // Back to normal size
-//                    .buildAndPlay();
-
             // Disable selection for this card after it is played
             card.setSelectable(false);
 

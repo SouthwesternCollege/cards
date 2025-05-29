@@ -96,11 +96,11 @@ public class PokerHandEvaluator {
         }
 
         HandRank handRank = evaluateHand(hand);
-        String handDescription = "Hand is: " + handRank;
+        String handDescription = "" + handRank;
 
         if (handRank == HandRank.HIGH_CARD) {
             int highestCard = Arrays.stream(hand).map(PokerHandEvaluator::getRank).max().getAsInt();
-            handDescription += ", highest card: " + RANKS[highestCard];
+            handDescription += ": " + RANKS[highestCard];
         }
 
         return handDescription;

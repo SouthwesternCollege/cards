@@ -1,12 +1,14 @@
 package quetzal.cards;
 
 import com.almasb.fxgl.animation.Interpolators;
+import com.almasb.fxgl.app.CursorInfo;
 import com.almasb.fxgl.app.GameApplication;
 import com.almasb.fxgl.app.GameSettings;
 import com.almasb.fxgl.app.scene.FXGLMenu;
 import com.almasb.fxgl.app.scene.SceneFactory;
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.SpawnData;
+
 import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
 import javafx.scene.control.Button;
@@ -16,6 +18,12 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.util.Duration;
+
+import com.almasb.fxgl.texture.*;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class CardApplication extends GameApplication {
     private static final int WIDTH = 1920;
@@ -37,6 +45,7 @@ public class CardApplication extends GameApplication {
         gameSettings.setFullScreenFromStart(true);       // Set the app to start in full-screen mode
         gameSettings.setWidth(WIDTH);
         gameSettings.setHeight(HEIGHT);
+        gameSettings.setDefaultCursor(new CursorInfo("cursor.png", 0, 0));
         gameSettings.setSceneFactory(new SceneFactory() {
             @Override
             public FXGLMenu newGameMenu() {
@@ -48,7 +57,7 @@ public class CardApplication extends GameApplication {
     @Override
     protected void initGame() {
         Text title = new Text("LA KIKA");
-        title.setFont(Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 100));
+        title.setFont(font);
         title.setStyle("-fx-fill: white;");
 
         // Drop shadow effect on text
@@ -103,6 +112,17 @@ public class CardApplication extends GameApplication {
         int handSize = 13;
         hand.populateHand(handSize);
 
+//        try {
+//            System.out.println(getClass().getResource("../../assets/shaders/crt.glsl"));
+//            String shader = Files.readString(Paths.get(getClass().getResource("../../assets/shaders/crt.glsl").toURI()));
+//            ImageView view = new ImageView();
+//
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        } catch (URISyntaxException e) {
+//            throw new RuntimeException(e);
+//        }
+
     }
 
     @Override
@@ -117,14 +137,18 @@ public class CardApplication extends GameApplication {
         Button sortRankButton = gameButton(new Text("Rank"), Color.color(0.8, 0.7, 0));
         Button sortSuitButton = gameButton(new Text("Suit"), Color.color(0.8, 0.7, 0));
 
-
+        // Add the buttons to the game's UI
         HBox buttons = new HBox(10, playButton, discardButton, sortSuitButton, sortRankButton);
         buttons.setTranslateX(WIDTH/2-100);
         buttons.setTranslateY(HEIGHT-100);
 
 
-        // Add the button to the game's UI
+        // Can't get these fuckin shaders to work
         FXGL.getGameScene().addUINode(buttons);
+
+
+
+
     }
 
     private Button gameButton(Text text, Color color) {

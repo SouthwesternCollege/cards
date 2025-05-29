@@ -7,6 +7,9 @@ import com.almasb.fxgl.entity.component.Component;
 import javafx.geometry.Point2D;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.Text;
 import javafx.util.Duration;
 import java.util.List;
 
@@ -125,6 +128,14 @@ public class CardAnimationComponent extends Component {
                     selectedRank[i] = hand.getSelectedCards().get(i).getCardIndex();
                 }
                 System.out.println(PokerHandEvaluator.rankHand(selectedRank));
+                Text uiText = new Text(PokerHandEvaluator.rankHand(selectedRank));
+                uiText.setFont(Font.font(100));
+                uiText.setFill(Color.WHITE);
+                // Position the Text on the screen
+                uiText.setTranslateX(100); // X position
+                uiText.setTranslateY(50);  // Y position
+                FXGL.getGameScene().addUINode(uiText);
+
             }
         }
     }
