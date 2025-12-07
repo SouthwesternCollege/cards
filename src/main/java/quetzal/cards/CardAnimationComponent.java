@@ -115,6 +115,8 @@ public class CardAnimationComponent extends Component {
             hand.removeSelected(entity.getComponent(CardComponent.class).getCard()); // Remove from selected
             lowerCard();                  // Lower the card
             isRaised = false;             // Update the state
+
+
         } else {
             if (hand.getSelectedCards().size() < 5) {
                 hand.addSelected(entity.getComponent(CardComponent.class).getCard()); // Add to selected
@@ -127,14 +129,15 @@ public class CardAnimationComponent extends Component {
                 for (int i = 0; i < hand.getSelectedCards().size(); i++) {
                     selectedRank[i] = hand.getSelectedCards().get(i).getCardIndex();
                 }
+
                 System.out.println(PokerHandEvaluator.rankHand(selectedRank));
-                Text uiText = new Text(PokerHandEvaluator.rankHand(selectedRank));
-                uiText.setFont(Font.font(100));
-                uiText.setFill(Color.WHITE);
+                Text handRank = new Text(PokerHandEvaluator.rankHand(selectedRank));
+                handRank.setFont(Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 24));
+                handRank.setFill(Color.WHITE);
                 // Position the Text on the screen
-                uiText.setTranslateX(100); // X position
-                uiText.setTranslateY(50);  // Y position
-                FXGL.getGameScene().addUINode(uiText);
+                handRank.setTranslateX(100); // X position
+                handRank.setTranslateY(50);  // Y position
+                FXGL.getGameScene().addUINode(handRank);
 
             }
         }

@@ -7,6 +7,7 @@ import com.almasb.fxgl.app.GameSettings;
 import com.almasb.fxgl.app.scene.FXGLMenu;
 import com.almasb.fxgl.app.scene.SceneFactory;
 import com.almasb.fxgl.dsl.FXGL;
+import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.SpawnData;
 
 import javafx.geometry.Insets;
@@ -19,17 +20,18 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.util.Duration;
 
-import com.almasb.fxgl.texture.*;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+//import com.almasb.fxgl.texture.*;
+//import java.io.IOException;
+//import java.net.URISyntaxException;
+//import java.nio.file.Files;
+//import java.nio.file.Paths;
 
 public class CardApplication extends GameApplication {
     private static final int WIDTH = 1920;
     private static final int HEIGHT = 1080;
     private Hand hand;
     private final Font font = Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 36);
+    protected static Entity handRank = null;
 
 
     public static void main(String[] args) {
@@ -68,7 +70,7 @@ public class CardApplication extends GameApplication {
         title.setEffect(textShadow);
 
         // Set initial position
-        title.setTranslateX(WIDTH / 2);
+        title.setTranslateX((double) WIDTH / 2);
         title.setTranslateY(0);
 
         // Add the text to the game scene
@@ -80,8 +82,8 @@ public class CardApplication extends GameApplication {
                 .autoReverse(true)
                 .interpolator(Interpolators.SINE.EASE_IN_OUT())
                 .translate(title)
-                .from(new Point2D(WIDTH / 2 - 200, -200)) // Starting position
-                .to(new Point2D(WIDTH / 2 - 200, 300)) // Target position
+                .from(new Point2D((double) WIDTH / 2 - 200, -200)) // Starting position
+                .to(new Point2D((double) WIDTH / 2 - 200, 300)) // Target position
                 .buildAndPlay();
 
         // Add a delay to keep the title visible for 3 more seconds after the animation ends
@@ -98,8 +100,11 @@ public class CardApplication extends GameApplication {
         // Background music
         FXGL.loopBGM("theme.mp3");
 
-        FXGL.getGameWorld().addEntityFactory(new CardFactory());
+        FXGL.getGameWorld().addEntityFactory(new GameFactory());
         FXGL.spawn("Background", new SpawnData(0, 0).put("width", WIDTH).put("height", HEIGHT));
+
+        //Should this be an Entity or UINode
+        handRank = FXGL.spawn("HandRank", new SpawnData(new Point2D(100,100)));
 
         // Create a Deck and shuffle
         Deck deck = new Deck();
@@ -145,9 +150,6 @@ public class CardApplication extends GameApplication {
 
         // Can't get these fuckin shaders to work
         FXGL.getGameScene().addUINode(buttons);
-
-
-
 
     }
 

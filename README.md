@@ -12,6 +12,6 @@ The game model consists mainly of the following concrete classes: Card, Hand, De
 ![UML diagram of game model](UML-class-diagram.png)
 
 # Demo
-In this demo you will se me select up to five cards and play them.
+In this demonstration a player selects up to five cards and plays them.
 
 ![A GIF of the game in play](gameplay.gif)

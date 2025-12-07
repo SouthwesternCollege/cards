@@ -6,12 +6,11 @@ import com.almasb.fxgl.entity.EntityFactory;
 import com.almasb.fxgl.entity.SpawnData;
 import com.almasb.fxgl.entity.Spawns;
 import com.almasb.fxgl.entity.components.IrremovableComponent;
-import javafx.fxml.FXML;
-import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Text;
 
-public class CardFactory implements EntityFactory {
+public class GameFactory implements EntityFactory {
 
     @Spawns("Background")
     public Entity spawnBackground(SpawnData data) {
@@ -19,6 +18,14 @@ public class CardFactory implements EntityFactory {
                 .view(new Rectangle(data.<Integer>get("width"), data.<Integer>get("height"), Color.GREEN))
                 .with(new IrremovableComponent())
                 .zIndex(-100)
+                .build();
+    }
+
+    @Spawns("HandRank")
+    public Entity spawnHandRank(SpawnData data) {
+        return FXGL.entityBuilder(data)
+                .view(new Text("wassup"))
+                .zIndex(0)
                 .build();
     }
 
