@@ -58,6 +58,7 @@ public class CardApplication extends GameApplication {
 
     @Override
     protected void initGame() {
+        // Title Screen
         Text title = new Text("LA KIKA");
         title.setFont(font);
         title.setStyle("-fx-fill: white;");

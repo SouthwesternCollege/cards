@@ -22,8 +22,6 @@ public class CardAnimationComponent extends Component {
     private final double DRAG_THRESHOLD = 1; // Threshold distance to start dragging
     private final double DEFAULT_CARD_SPACING = 160;
 
-    private Hand hand; // List of all cards in the game
-    private double cardSpacing; // Space between cards
     private Point2D initialPosition;  // Initial position of the dragged card
     private Point2D initialMousePosition; // Initial mouse position when clicked
     private boolean isDragging = false;  // Track if a card is being dragged
@@ -32,6 +30,11 @@ public class CardAnimationComponent extends Component {
     // Offset to ensure the card stays centered on the mouse
     private double offsetX;
     private double offsetY;
+
+    // I think that all of this information should be kept out of the CardAnimationComponent class
+    private static Text handRankText; // Hand-rank Text component
+    private Hand hand; // List of all cards in the game
+    private double cardSpacing; // Space between cards
 
     @Override
     public void onAdded() {
@@ -110,39 +113,40 @@ public class CardAnimationComponent extends Component {
                 .buildAndPlay();
     }
 
-    private void toggleCardState() {
-        if (isRaised) {
-            hand.removeSelected(entity.getComponent(CardComponent.class).getCard()); // Remove from selected
-            lowerCard();                  // Lower the card
-            isRaised = false;             // Update the state
+    private void updateHandRankText(String rank) {
+        if (handRankText == null) {
+            handRankText = new Text();
+            handRankText.setFont(Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 24));
+            handRankText.setFill(Color.WHITE);
 
+            // Temporary position. Later this can move into your HUD area.
+            handRankText.setTranslateX(100);
+            handRankText.setTranslateY(50);
+
+            FXGL.getGameScene().addUINode(handRankText);
+        }
+
+        handRankText.setText(rank);
+    }
+
+    private void toggleCardState() {
+        Card card = entity.getComponent(CardComponent.class).getCard();
+
+        if (isRaised) {
+            if (hand.removeSelected(card)) {
+                lowerCard();
+                isRaised = false;
+                refreshHandRank();
+            }
 
         } else {
-            if (hand.getSelectedCards().size() < 5) {
-                hand.addSelected(entity.getComponent(CardComponent.class).getCard()); // Add to selected
-                raiseCard();              // Raise the card
-                isRaised = true;          // Update the state
-                // No immediate confirmation or playing of cards here
-
-                // Determine poker hand
-                int[] selectedRank = new int[hand.getSelectedCards().size()];
-                for (int i = 0; i < hand.getSelectedCards().size(); i++) {
-                    selectedRank[i] = hand.getSelectedCards().get(i).getCardIndex();
-                }
-
-                System.out.println(PokerHandEvaluator.rankHand(selectedRank));
-                Text handRank = new Text(PokerHandEvaluator.rankHand(selectedRank));
-                handRank.setFont(Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 24));
-                handRank.setFill(Color.WHITE);
-                // Position the Text on the screen
-                handRank.setTranslateX(100); // X position
-                handRank.setTranslateY(50);  // Y position
-                FXGL.getGameScene().addUINode(handRank);
-
+            if (hand.addSelected(card)) {
+                raiseCard();
+                isRaised = true;
+                refreshHandRank();
             }
         }
     }
-
     private void onMousePressed(MouseEvent event) {
         cardSpacing = hand.getCardSpacing();
         if (event.getButton() == MouseButton.PRIMARY) {
@@ -190,7 +194,7 @@ public class CardAnimationComponent extends Component {
             // Reset the dragging flag
             isDragging = false;
         } else {
-            if (entity.getComponent(CardComponent.class).getCard().isSelectable()){
+            if (entity.getComponent(CardComponent.class).getCard().isSelectable()) {
                 toggleCardState();
             }
         }
@@ -220,7 +224,7 @@ public class CardAnimationComponent extends Component {
         List<Card> sortedCards = hand.getCards();
         int nearestIndex = sortedCards.indexOf(entity.getComponent(CardComponent.class).getCard());
 
-        nearestIndex = Math.max(0, Math.min(nearestIndex, hand.size() - 1));
+        nearestIndex = Math.clamp(nearestIndex, 0, hand.size() - 1);
         entity.setZIndex(nearestIndex);
 
         Point2D snapPosition = new Point2D(nearestIndex * cardSpacing + FXGL.getAppWidth() / 3, initialPosition.getY());
@@ -231,5 +235,17 @@ public class CardAnimationComponent extends Component {
                 .buildAndPlay();
     }
 
+    private void refreshHandRank() {
+        if (hand.getSelectedCards().isEmpty()) {
+            updateHandRankText("");
+            return;
+        }
 
+        int[] selectedRank = new int[hand.getSelectedCards().size()];
+        for (int i = 0; i < hand.getSelectedCards().size(); i++) {
+            selectedRank[i] = hand.getSelectedCards().get(i).getCardIndex();
+        }
+
+        updateHandRankText(PokerHandEvaluator.rankHand(selectedRank));
+    }
 }

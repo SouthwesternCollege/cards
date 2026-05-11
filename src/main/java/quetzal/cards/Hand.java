@@ -9,7 +9,6 @@ import javafx.util.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Random;
 
 public class Hand extends CardCollection {
 
@@ -121,8 +120,8 @@ public class Hand extends CardCollection {
 
         // Reorganize the remaining cards in the hand
         cardSpacing = (FXGL.getAppWidth() /3  - 72) / (this.size() - 1);
-        if (getCards().size() > 0) {
-            getCards().get(0)
+        if (!getCards().isEmpty()) {
+            getCards().getFirst()
                     .getEntity()
                     .getComponent(CardAnimationComponent.class)
                     .organizeCards();
@@ -137,18 +136,24 @@ public class Hand extends CardCollection {
         return getCards().size();
     }
 
-    public void addSelected(Card card) {
+    public boolean addSelected(Card card) {
+        if (selectedCards.contains(card)) {
+            return false;
+        }
+
         if (selectedCards.size() < 5) {  // Limit to 5 selected cards
             selectedCards.add(card);
-        } else {
-            FXGL.getNotificationService().pushNotification("You can only select up to 5 cards!");
+            return true;
         }
+
+        FXGL.getNotificationService().pushNotification("You can only select up to 5 cards!");
+        return false;
     }
 
     // Remove a card from the selected list
-    public void removeSelected(Card card) {
-        selectedCards.remove(card);
-        // You can add additional logic here if needed
+    public boolean removeSelected(Card card) {
+        // Add additional logic here if needed
+        return selectedCards.remove(card);
     }
 
     public int getHandY() {
