@@ -2,7 +2,6 @@ package quetzal.cards;
 
 import com.almasb.fxgl.animation.Interpolators;
 import com.almasb.fxgl.dsl.FXGL;
-import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.component.Component;
 import javafx.geometry.Point2D;
 import javafx.scene.input.MouseButton;
@@ -16,16 +15,12 @@ import java.util.List;
 public class CardAnimationComponent extends Component {
 
     private final double DEFAULT_WIGGLE_AMPLITUDE = 2;  // Default wiggle amplitude
-    private final double HOVER_WIGGLE_AMPLITUDE = 4;   // Increased wiggle amplitude on hover
-    private final double DEFAULT_WIGGLE_DURATION = 2;  // Default wiggle amplitude
-    private final double HOVER_WIGGLE_DURATION = 1;   // Increased wiggle amplitude on hover
-    private final double DRAG_THRESHOLD = 1; // Threshold distance to start dragging
-    private final double DEFAULT_CARD_SPACING = 160;
 
     private Point2D initialPosition;  // Initial position of the dragged card
     private Point2D initialMousePosition; // Initial mouse position when clicked
     private boolean isDragging = false;  // Track if a card is being dragged
     private boolean isRaised = false;  // New flag to track if the card is raised or not
+    private int lastDragIndex = -1;
 
     // Offset to ensure the card stays centered on the mouse
     private double offsetX;
@@ -65,11 +60,17 @@ public class CardAnimationComponent extends Component {
     }
 
     private void increaseWiggle() {
+        // Increased wiggle amplitude on hover
+        double HOVER_WIGGLE_AMPLITUDE = 4;
+        // Increased wiggle amplitude on hover
+        double HOVER_WIGGLE_DURATION = 1;
         startWiggle(HOVER_WIGGLE_AMPLITUDE, HOVER_WIGGLE_DURATION);
 
     }
 
     private void revertWiggle() {
+        // Default wiggle amplitude
+        double DEFAULT_WIGGLE_DURATION = 2;
         startWiggle(DEFAULT_WIGGLE_AMPLITUDE, DEFAULT_WIGGLE_DURATION);
 
     }
@@ -89,27 +90,34 @@ public class CardAnimationComponent extends Component {
     }
 
     private void raiseCard() {
-        // Add card to selected list, maximum selected is 5
+        Card card = entity.getComponent(CardComponent.class).getCard();
+        int index = hand.getCards().indexOf(card);
 
-        // Create an animation to move the card upwards
+        if (index < 0) {
+            return;
+        }
+
         FXGL.animationBuilder()
                 .duration(Duration.seconds(0.2))  // Duration of the raise animation
                 .interpolator(Interpolators.CIRCULAR.EASE_OUT())  // Smooth bounce effect
                 .translate(entity)
-                .from(entity.getPosition())       // Start from the current position
-                .to(entity.getPosition().add(0, -50))  // Move the card up by 50px
+                .to(hand.getCardVisualPosition(index))
                 .buildAndPlay();
     }
 
     private void lowerCard() {
+        Card card = entity.getComponent(CardComponent.class).getCard();
+        int index = hand.getCards().indexOf(card);
 
-        // Create an animation to move the card back to the original position
+        if (index < 0) {
+            return;
+        }
+
         FXGL.animationBuilder()
                 .duration(Duration.seconds(0.2))  // Duration of the lower animation
                 .interpolator(Interpolators.SMOOTH.EASE_OUT())  // Smooth effect
                 .translate(entity)
-                .from(entity.getPosition())       // Start from the current position
-                .to(entity.getPosition().add(0, 50))  // Move the card down by 50 pixels
+                .to(hand.getCardPosition(index))
                 .buildAndPlay();
     }
 
@@ -139,14 +147,16 @@ public class CardAnimationComponent extends Component {
                 refreshHandRank();
             }
 
-        } else {
-            if (hand.addSelected(card)) {
-                raiseCard();
-                isRaised = true;
-                refreshHandRank();
-            }
+            return;
+        }
+
+        if (hand.addSelected(card)) {
+            raiseCard();
+            isRaised = true;
+            refreshHandRank();
         }
     }
+
     private void onMousePressed(MouseEvent event) {
         cardSpacing = hand.getCardSpacing();
         if (event.getButton() == MouseButton.PRIMARY) {
@@ -166,32 +176,35 @@ public class CardAnimationComponent extends Component {
         // Calculate the distance the mouse has moved from its initial position
         double distanceMoved = initialMousePosition.distance(event.getSceneX(), event.getSceneY());
 
+        // Threshold distance to start dragging
+        final double DRAG_THRESHOLD = 1;
+
         // Start dragging only if the mouse has moved beyond the threshold
         if (!isDragging && distanceMoved > DRAG_THRESHOLD) {
             isDragging = true;
 
+            Card draggedCard = entity.getComponent(CardComponent.class).getCard();
+            lastDragIndex = hand.getCards().indexOf(draggedCard);
+
             // Bring the card to the front by increasing its zIndex
             entity.getViewComponent().setZIndex(100);
+            entity.setZIndex(100);
         }
 
         if (isDragging) {
-            // Move the card to follow the mouse cursor, adjusted by the original offset
+            // Move only the dragged card directly with the mouse.
             entity.setPosition(event.getSceneX() - offsetX, event.getSceneY() - offsetY);
 
-            organizeCards();
+            reorganizeHandDuringDrag();
         }
     }
 
     private void onMouseReleased(MouseEvent event) {
         if (isDragging) {
+            hand.sortCardsByPosition(hand.getCards());
+            hand.organizeCardEntities();
 
-            // Reorganize the cards
-            organizeCards();
-
-            // Snap the dragged card to the nearest position when the drag is released
-            snapCardToNearestPosition();
-
-            // Reset the dragging flag
+            lastDragIndex = -1;
             isDragging = false;
         } else {
             if (entity.getComponent(CardComponent.class).getCard().isSelectable()) {
@@ -200,23 +213,22 @@ public class CardAnimationComponent extends Component {
         }
     }
 
-    protected void organizeCards() {
-        hand.sortCardsByPosition(hand.getCards());  // Sort cards once
+    private void reorganizeHandDuringDrag() {
+        Card draggedCard = entity.getComponent(CardComponent.class).getCard();
 
-        List<Card> sortedCards = hand.getCards(); // Already sorted by position
-        cardSpacing = Math.min(hand.getCardSpacing(), DEFAULT_CARD_SPACING);
+        hand.sortCardsByPosition(hand.getCards());
 
-        for (int i = 0; i < sortedCards.size(); i++) {
-            Entity cardEntity = sortedCards.get(i).getEntity();
-            double targetX = i * cardSpacing + FXGL.getAppWidth() / 3;
-            cardEntity.setZIndex(i);
+        int currentDragIndex = hand.getCards().indexOf(draggedCard);
 
-            FXGL.animationBuilder()
-                    .duration(Duration.seconds(0.2))
-                    .translate(cardEntity)
-                    .to(new Point2D(targetX, cardEntity.getY()))
-                    .buildAndPlay();
+        if (currentDragIndex != lastDragIndex) {
+            lastDragIndex = currentDragIndex;
+            hand.organizeCardEntitiesExcept(draggedCard);
         }
+    }
+
+    protected void organizeCards() {
+        hand.sortCardsByPosition(hand.getCards());
+        hand.organizeCardEntities();
     }
 
     private void snapCardToNearestPosition() {
@@ -227,7 +239,7 @@ public class CardAnimationComponent extends Component {
         nearestIndex = Math.clamp(nearestIndex, 0, hand.size() - 1);
         entity.setZIndex(nearestIndex);
 
-        Point2D snapPosition = new Point2D(nearestIndex * cardSpacing + FXGL.getAppWidth() / 3, initialPosition.getY());
+        Point2D snapPosition = hand.getCardPosition(nearestIndex);
         FXGL.animationBuilder()
                 .duration(Duration.seconds(0.2))
                 .translate(entity)
