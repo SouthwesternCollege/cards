@@ -12,24 +12,23 @@ import com.almasb.fxgl.entity.SpawnData;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.control.Button;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.util.Duration;
+import org.jetbrains.annotations.NotNull;
 
-//import com.almasb.fxgl.texture.*;
-//import java.io.IOException;
-//import java.net.URISyntaxException;
-//import java.nio.file.Files;
-//import java.nio.file.Paths;
 
 public class CardApplication extends GameApplication {
     private static final int WIDTH = 1920;
     private static final int HEIGHT = 1080;
     private Hand hand;
+    private GameLayout gameLayout;
     private final Font font = Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 36);
     protected static Entity handRank = null;
 
@@ -49,6 +48,7 @@ public class CardApplication extends GameApplication {
         gameSettings.setHeight(HEIGHT);
         gameSettings.setDefaultCursor(new CursorInfo("cursor.png", 0, 0));
         gameSettings.setSceneFactory(new SceneFactory() {
+            @NotNull
             @Override
             public FXGLMenu newGameMenu() {
                 return new PauseMenu();
@@ -58,6 +58,7 @@ public class CardApplication extends GameApplication {
 
     @Override
     protected void initGame() {
+        gameLayout = new GameLayout(WIDTH, HEIGHT);
         // Title Screen
         Text title = new Text("LA KIKA");
         title.setFont(font);
@@ -104,6 +105,8 @@ public class CardApplication extends GameApplication {
         FXGL.getGameWorld().addEntityFactory(new GameFactory());
         FXGL.spawn("Background", new SpawnData(0, 0).put("width", WIDTH).put("height", HEIGHT));
 
+        addLayoutDebugOverlay();
+
         //Should this be an Entity or UINode
         handRank = FXGL.spawn("HandRank", new SpawnData(new Point2D(100,100)));
 
@@ -111,23 +114,15 @@ public class CardApplication extends GameApplication {
         Deck deck = new Deck();
         deck.shuffle();
 
-        // Create the hand with appropriate card spacing
-        hand = new Hand(WIDTH / 3, HEIGHT * 2 / 3, deck);
+        // Initialize hand area
+        Rectangle2D playerHandArea = gameLayout.getPlayerHandArea();
+
+        // Create the hand inside the player hand area
+        hand = new Hand(playerHandArea,deck);
 
         // Number of cards in the hand
         int handSize = 13;
         hand.populateHand(handSize);
-
-//        try {
-//            System.out.println(getClass().getResource("../../assets/shaders/crt.glsl"));
-//            String shader = Files.readString(Paths.get(getClass().getResource("../../assets/shaders/crt.glsl").toURI()));
-//            ImageView view = new ImageView();
-//
-//        } catch (IOException e) {
-//            throw new RuntimeException(e);
-//        } catch (URISyntaxException e) {
-//            throw new RuntimeException(e);
-//        }
 
     }
 
@@ -145,13 +140,33 @@ public class CardApplication extends GameApplication {
 
         // Add the buttons to the game's UI
         HBox buttons = new HBox(10, playButton, discardButton, sortSuitButton, sortRankButton);
-        buttons.setTranslateX(WIDTH/2-100);
-        buttons.setTranslateY(HEIGHT-100);
+        Rectangle2D buttonArea = gameLayout.getButtonArea();
+        buttons.setTranslateX(buttonArea.getMinX() + 40);
+        buttons.setTranslateY(buttonArea.getMinY() + 20);
 
 
         // Can't get these fuckin shaders to work
         FXGL.getGameScene().addUINode(buttons);
 
+    }
+
+    private void addLayoutDebugOverlay() {
+        addDebugArea(gameLayout.getHudArea(), Color.color(0.05, 0.05, 0.05, 0.45));
+        addDebugArea(gameLayout.getOpponentPlayedArea(), Color.color(0.4, 0.1, 0.1, 0.25));
+        addDebugArea(gameLayout.getPlayerPlayedArea(), Color.color(0.1, 0.1, 0.4, 0.25));
+        addDebugArea(gameLayout.getPlayerHandArea(), Color.color(0.1, 0.4, 0.1, 0.25));
+        addDebugArea(gameLayout.getButtonArea(), Color.color(0.4, 0.4, 0.1, 0.25));
+    }
+
+    private void addDebugArea(Rectangle2D area, Color color) {
+        Rectangle rectangle = new Rectangle(area.getWidth(), area.getHeight());
+        rectangle.setTranslateX(area.getMinX());
+        rectangle.setTranslateY(area.getMinY());
+        rectangle.setFill(color);
+        rectangle.setStroke(Color.color(1, 1, 1, 0.25));
+        rectangle.setMouseTransparent(true);
+
+        FXGL.getGameScene().addUINode(rectangle);
     }
 
     private Button gameButton(Text text, Color color) {
