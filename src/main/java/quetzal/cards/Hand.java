@@ -5,6 +5,7 @@ import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.SpawnData;
 import javafx.geometry.Point2D;
+import javafx.geometry.Rectangle2D;
 import javafx.util.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -17,39 +18,42 @@ public class Hand extends CardCollection {
     private final int DEFAULT_CARD_SPACING = 80;
     private final int COLLAPSE_SPACING = 30;  // Horizontal spacing between cards
     private final int VERTICAL_SPACING = 400;  // Vertical spacing between rows of cards
+    private static final double CARD_WIDTH = 142;
+    private static final double CARD_TOP_PADDING = 60;
+    private static final double SELECTED_CARD_Y_OFFSET = -50;
 
     private Deck deck;
     private List<Card> selectedCards = new ArrayList<>();  // Keep track of selected cards
+    private Rectangle2D handArea;
     private int handY;
     private int handX;
     private int cardSpacing;
 
-    public Hand(int handX, int handY, Deck deck) {
+    public Hand(Rectangle2D handArea, Deck deck) {
         super(new ArrayList<>());
-        this.handX = handX;
-        this.handY = handY;
+        this.handArea = handArea;
+        this.handX = (int) handArea.getMinX();
+        this.handY = (int) handArea.getMinY();
         this.cardSpacing = DEFAULT_CARD_SPACING;
         this.deck = deck;
     }
 
     public void populateHand(int size) {
-        cardSpacing = Math.min(DEFAULT_CARD_SPACING, (FXGL.getAppWidth()/3) / (size - 1));
-
         // Populate the hand with 'size' number of cards
         for (int i = 0; i < size; i++) {
             Card card = deck.drawCard();
 
-            Entity cardEntity = FXGL.spawn("Card", new SpawnData(handX + i * cardSpacing, handY)
+            Entity cardEntity = FXGL.spawn("Card", new SpawnData(handArea.getMinX(), handArea.getMinY() + CARD_TOP_PADDING)
                     .put("card", card)
                     .put("z-index", i)
                     .put("hand", this));
 
-
             card.setEntity(cardEntity);
             getCards().add(card);  // Add the card to the hand's list
         }
-    }
 
+        organizeCardEntities();
+    }
     @Override
     public void addCard(Card card) {
         getCards().add(card);
@@ -119,12 +123,8 @@ public class Hand extends CardCollection {
         selectedCards.clear();
 
         // Reorganize the remaining cards in the hand
-        cardSpacing = (FXGL.getAppWidth() /3  - 72) / (this.size() - 1);
         if (!getCards().isEmpty()) {
-            getCards().getFirst()
-                    .getEntity()
-                    .getComponent(CardAnimationComponent.class)
-                    .organizeCards();
+            organizeCardEntities();
         }
     }
 
@@ -182,6 +182,92 @@ public class Hand extends CardCollection {
 
     public void sortCardsByPosition(List<Card> cards) {
         cards.sort(Comparator.comparingDouble(card -> card.getEntity().getX()));
+    }
+
+    public void organizeCardEntities() {
+        updateCardSpacing();
+
+        List<Card> cards = getCards();
+
+        for (int i = 0; i < cards.size(); i++) {
+            Entity cardEntity = cards.get(i).getEntity();
+            Point2D targetPosition = getCardVisualPosition(i);
+
+            cardEntity.setZIndex(i);
+
+            FXGL.animationBuilder()
+                    .duration(Duration.seconds(0.2))
+                    .translate(cardEntity)
+                    .to(targetPosition)
+                    .buildAndPlay();
+        }
+    }
+
+    public void organizeCardEntitiesExcept(Card excludedCard) {
+        updateCardSpacing();
+
+        List<Card> cards = getCards();
+
+        for (int i = 0; i < cards.size(); i++) {
+            Card card = cards.get(i);
+
+            if (card == excludedCard) {
+                card.getEntity().setZIndex(100);
+                continue;
+            }
+
+            Entity cardEntity = card.getEntity();
+            Point2D targetPosition = getCardVisualPosition(i);
+
+            cardEntity.setZIndex(i);
+
+            FXGL.animationBuilder()
+                    .duration(Duration.seconds(0.12))
+                    .translate(cardEntity)
+                    .to(targetPosition)
+                    .buildAndPlay();
+        }
+    }
+
+    private void updateCardSpacing() {
+        int cardCount = getCards().size();
+
+        if (cardCount <= 1) {
+            cardSpacing = DEFAULT_CARD_SPACING;
+            return;
+        }
+
+        double availableWidth = handArea.getWidth() - CARD_WIDTH;
+        double idealSpacing = availableWidth / (cardCount - 1);
+
+        cardSpacing = (int) Math.min(DEFAULT_CARD_SPACING, idealSpacing);
+    }
+
+    public Point2D getCardPosition(int index) {
+        updateCardSpacing();
+
+        int cardCount = getCards().size();
+
+        if (cardCount == 0) {
+            return new Point2D(handArea.getMinX(), handArea.getMinY() + CARD_TOP_PADDING);
+        }
+
+        double totalHandWidth = CARD_WIDTH + cardSpacing * (cardCount - 1);
+        double startX = handArea.getMinX() + (handArea.getWidth() - totalHandWidth) / 2;
+        double y = handArea.getMinY() + CARD_TOP_PADDING;
+
+        return new Point2D(startX + index * cardSpacing, y);
+    }
+
+    public Point2D getCardVisualPosition(int index) {
+        Point2D position = getCardPosition(index);
+        Card card = getCards().get(index);
+
+        if (selectedCards.contains(card)) {
+            return position.add(0, SELECTED_CARD_Y_OFFSET);
+        }
+
+        return position;
     }
 
 }
