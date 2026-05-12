@@ -8,7 +8,6 @@ import com.almasb.fxgl.entity.Spawns;
 import com.almasb.fxgl.entity.components.IrremovableComponent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
-import javafx.scene.text.Text;
 
 public class GameFactory implements EntityFactory {
 
@@ -24,7 +23,6 @@ public class GameFactory implements EntityFactory {
     @Spawns("HandRank")
     public Entity spawnHandRank(SpawnData data) {
         return FXGL.entityBuilder(data)
-                .view(new Text("wassup"))
                 .zIndex(0)
                 .build();
     }
