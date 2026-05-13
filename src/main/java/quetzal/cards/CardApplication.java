@@ -7,15 +7,11 @@ import com.almasb.fxgl.app.GameSettings;
 import com.almasb.fxgl.app.scene.FXGLMenu;
 import com.almasb.fxgl.app.scene.SceneFactory;
 import com.almasb.fxgl.dsl.FXGL;
-import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.SpawnData;
 
-import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
 import javafx.geometry.Rectangle2D;
-import javafx.scene.control.Button;
 import javafx.scene.effect.DropShadow;
-import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
@@ -29,9 +25,9 @@ public class CardApplication extends GameApplication {
     private static final int HEIGHT = 1080;
     private Hand hand;
     private GameLayout gameLayout;
+    private GameHUD gameHUD;
+    private GameControls gameControls;
     private final Font font = Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 36);
-    protected static Entity handRank = null;
-
 
     public static void main(String[] args) {
         launch(args);
@@ -105,10 +101,11 @@ public class CardApplication extends GameApplication {
         FXGL.getGameWorld().addEntityFactory(new GameFactory());
         FXGL.spawn("Background", new SpawnData(0, 0).put("width", WIDTH).put("height", HEIGHT));
 
+        // Overlay to help with debugging GameLayout
         addLayoutDebugOverlay();
 
-        //Should this be an Entity or UINode
-        handRank = FXGL.spawn("HandRank", new SpawnData(new Point2D(100,100)));
+        // Initialize gameLayout
+        gameHUD = new GameHUD(gameLayout);
 
         // Create a Deck and shuffle
         Deck deck = new Deck();
@@ -128,25 +125,7 @@ public class CardApplication extends GameApplication {
 
     @Override
     protected void initUI() {
-        // Create a 'Play' button
-        Button playButton = gameButton(new Text("Play Hand"), Color.color(0.9, 0, 0));
-
-        // Attach the playSelectedCards() method to the button's action
-        playButton.setOnAction(event -> hand.playSelectedCards());
-
-        Button discardButton = gameButton(new Text("Discard"), Color.color(0, 0.3, 0.9));
-        Button sortRankButton = gameButton(new Text("Rank"), Color.color(0.8, 0.7, 0));
-        Button sortSuitButton = gameButton(new Text("Suit"), Color.color(0.8, 0.7, 0));
-
-        // Add the buttons to the game's UI
-        HBox buttons = new HBox(10, playButton, discardButton, sortSuitButton, sortRankButton);
-        Rectangle2D buttonArea = gameLayout.getButtonArea();
-        buttons.setTranslateX(buttonArea.getMinX() + 40);
-        buttons.setTranslateY(buttonArea.getMinY() + 20);
-
-
-        // Can't get these fuckin shaders to work
-        FXGL.getGameScene().addUINode(buttons);
+        gameControls = new GameControls(gameLayout, hand);
 
     }
 
@@ -167,34 +146,6 @@ public class CardApplication extends GameApplication {
         rectangle.setMouseTransparent(true);
 
         FXGL.getGameScene().addUINode(rectangle);
-    }
-
-    private Button gameButton(Text text, Color color) {
-        Button button = new Button();
-
-
-        text.setFont(Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 24));
-        text.setStyle("-fx-fill: #ffffff;");
-        button.setStyle(String.format("-fx-background-color: #%s ;", color.toString().substring(2, 8)));
-        button.setPadding(new Insets(24));
-
-        // Dropshadow effect on text
-        DropShadow textShadow = new DropShadow();
-        textShadow.setRadius(1);
-        textShadow.setOffsetY(2.0);
-        textShadow.setColor(color.darker().darker());
-        text.setEffect(textShadow);
-
-        //Dropshadow effect on button
-        DropShadow buttonShadow = new DropShadow();
-        buttonShadow.setRadius(1);
-        buttonShadow.setOffsetY(6.0);
-        buttonShadow.setColor(Color.color(0.1, 0.1, 0.1));
-        button.setEffect(buttonShadow);
-
-        button.setGraphic(text);
-
-        return button;
     }
 
 }

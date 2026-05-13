@@ -20,13 +20,6 @@ public class GameFactory implements EntityFactory {
                 .build();
     }
 
-    @Spawns("HandRank")
-    public Entity spawnHandRank(SpawnData data) {
-        return FXGL.entityBuilder(data)
-                .zIndex(0)
-                .build();
-    }
-
     @Spawns("Card")
     public Entity spawnCard(SpawnData data) {
         Card card = data.get("card");

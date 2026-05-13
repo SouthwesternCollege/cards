@@ -52,4 +52,8 @@ public class Card {
     public int rank() {
         return cardIndex % 13;
     }
+
+    public Suit suit() {
+        return suits[cardIndex / 13];
+    }
 }

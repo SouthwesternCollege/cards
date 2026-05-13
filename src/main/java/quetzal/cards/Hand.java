@@ -132,12 +132,8 @@ public class Hand extends CardCollection {
         return selectedCards;
     }
 
-    public int size() {
-        return getCards().size();
-    }
-
     public boolean addSelected(Card card) {
-        if (selectedCards.contains(card)) {
+        if (isSelected(card)) {
             return false;
         }
 
@@ -151,9 +147,18 @@ public class Hand extends CardCollection {
     }
 
     // Remove a card from the selected list
+
     public boolean removeSelected(Card card) {
         // Add additional logic here if needed
         return selectedCards.remove(card);
+    }
+
+    public boolean isSelected(Card card) {
+        return selectedCards.contains(card);
+    }
+
+    public int size() {
+        return getCards().size();
     }
 
     public int getHandY() {
@@ -178,10 +183,6 @@ public class Hand extends CardCollection {
             entities.add(card.getEntity());
         }
         return entities;
-    }
-
-    public void sortCardsByPosition(List<Card> cards) {
-        cards.sort(Comparator.comparingDouble(card -> card.getEntity().getX()));
     }
 
     public void organizeCardEntities() {
@@ -263,11 +264,33 @@ public class Hand extends CardCollection {
         Point2D position = getCardPosition(index);
         Card card = getCards().get(index);
 
-        if (selectedCards.contains(card)) {
+        if (isSelected(card)) {
             return position.add(0, SELECTED_CARD_Y_OFFSET);
         }
 
         return position;
+    }
+
+    public void sortByRank() {
+        getCards().sort(
+                Comparator.comparingInt(Card::rank)
+                        .thenComparing(Card::suit)
+        );
+
+        organizeCardEntities();
+    }
+
+    public void sortBySuit() {
+        getCards().sort(
+                Comparator.comparing(Card::suit)
+                        .thenComparingInt(Card::rank)
+        );
+
+        organizeCardEntities();
+    }
+
+    public void sortCardsByPosition(List<Card> cards) {
+        cards.sort(Comparator.comparingDouble(card -> card.getEntity().getX()));
     }
 
 }
