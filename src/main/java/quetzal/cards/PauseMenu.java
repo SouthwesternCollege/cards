@@ -120,10 +120,7 @@ public class PauseMenu extends FXGLMenu {
         Button button = new Button();
         button.setStyle(String.format(
                 "-fx-background-color: #%s;" +
-                        "-fx-background-radius: 8;" +
-                        "-fx-border-color: rgba(0,0,0,0.8);" +
-                        "-fx-border-width: 3;" +
-                        "-fx-border-radius: 8;",
+                        "-fx-background-radius: 8;",
                 color.toString().substring(2, 8)
         ));
 
