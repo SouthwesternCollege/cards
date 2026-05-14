@@ -6,115 +6,91 @@ import com.almasb.fxgl.app.scene.FXGLMenu;
 import com.almasb.fxgl.app.scene.MenuType;
 import com.almasb.fxgl.core.util.EmptyRunnable;
 import com.almasb.fxgl.dsl.FXGL;
-import com.almasb.fxgl.ui.FontType;
-import javafx.beans.binding.Bindings;
+
+import javafx.geometry.Pos;
+import javafx.scene.layout.StackPane;
+import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
+import javafx.scene.control.Button;
 import javafx.scene.control.Slider;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
-import javafx.scene.shape.Shape;
+import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.util.Duration;
 
 public class PauseMenu extends FXGLMenu {
 
-    private static final int SIZE = 150;
-
-    private Animation<?> animation;
+    private final Animation<?> animation;
 
     public PauseMenu() {
         super(MenuType.GAME_MENU);
+        Button resumeButton = gameButton("RESUME", Color.DODGERBLUE);
+        resumeButton.setOnAction(e -> fireResume());
 
-        getContentRoot().setTranslateX(FXGL.getAppWidth() / 2.0 - SIZE);
-        getContentRoot().setTranslateY(FXGL.getAppHeight() / 2.0 - SIZE);
+        Button optionsButton = gameButton("OPTIONS", Color.GOLD);
 
-        var shape = Shape.subtract(new Circle(SIZE, SIZE, SIZE), new Rectangle(0, SIZE, SIZE*2, SIZE));
+        Button exitButton = gameButton("EXIT", Color.CRIMSON);
+        exitButton.setOnAction(e -> FXGL.getGameController().exit());
 
+        // Volume slider
+        Slider volumeSlider = new Slider(0, 1, FXGL.getSettings().getGlobalMusicVolume());
+        volumeSlider.setShowTickLabels(false);
+        volumeSlider.setShowTickMarks(false);
 
-        var shape2 = Shape.subtract(shape, new Rectangle(0, 0, SIZE, SIZE));
+        volumeSlider.setStyle("""
+                    -fx-control-inner-background: #202020;
+                    -fx-accent: #f4c542;
+                """);
 
-        var shape3 = new Rectangle(SIZE*2, SIZE / 2);
+        Text volumeText = new Text("MUSIC VOLUME");
+        volumeText.setFont(Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 24));
+        volumeText.setFill(Color.WHITE);
 
-        shape = Shape.subtract(shape, new Rectangle(SIZE, 0, SIZE, SIZE));
+        VBox volumeBox = new VBox(10, volumeText, volumeSlider);
+        volumeBox.setPadding(new Insets(18));
+        volumeBox.setStyle("""
+                    -fx-background-color: #3a2b55;
+                    -fx-background-radius: 8;
+                    -fx-border-color: black;
+                    -fx-border-width: 3;
+                    -fx-border-radius: 8;
+                """);
 
+        volumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> FXGL.getSettings().setGlobalMusicVolume(newVal.doubleValue()));
 
-        shape.setStrokeWidth(3);
-        shape.strokeProperty().bind(
-                Bindings.when(shape.hoverProperty()).then(Color.BLUE).otherwise(Color.BLACK)
+        VBox menuBox = new VBox(16);
+        menuBox.setAlignment(Pos.CENTER);
+        menuBox.setMaxWidth(320);
+
+        resumeButton.setMaxWidth(Double.MAX_VALUE);
+        optionsButton.setMaxWidth(Double.MAX_VALUE);
+        exitButton.setMaxWidth(Double.MAX_VALUE);
+
+        menuBox.getChildren().addAll(
+                resumeButton,
+                optionsButton,
+                volumeBox,
+                exitButton
         );
 
-        shape.fillProperty().bind(
-                Bindings.when(shape.pressedProperty()).then(Color.BLUE).otherwise(Color.color(0.1, 0.05, 0.0, 0.75))
-        );
-        shape.setOnMouseClicked(e -> fireResume());
+        Rectangle overlay = new Rectangle(FXGL.getAppWidth(), FXGL.getAppHeight());
+        overlay.setFill(Color.color(0, 0, 0, 0.55));
+        overlay.setMouseTransparent(false);
 
-        shape2.setStrokeWidth(3);
-        shape2.strokeProperty().bind(
-                Bindings.when(shape2.hoverProperty()).then(Color.RED).otherwise(Color.BLACK)
-        );
+        StackPane pauseRoot = new StackPane();
+        pauseRoot.setPrefSize(FXGL.getAppWidth(), FXGL.getAppHeight());
+        pauseRoot.setAlignment(Pos.CENTER);
+        pauseRoot.getChildren().addAll(overlay, menuBox);
 
-        shape2.fillProperty().bind(
-                Bindings.when(shape2.pressedProperty()).then(Color.RED).otherwise(Color.color(0.1, 0.05, 0.0, 0.75))
-        );
-        shape2.setOnMouseClicked(e -> FXGL.getGameController().exit());
-
-
-        shape3.setStrokeWidth(3);
-        shape3.strokeProperty().bind(
-                Bindings.when(shape3.hoverProperty()).then(Color.YELLOW).otherwise(Color.BLACK)
-        );
-
-        shape3.fillProperty().bind(
-                Bindings.when(shape3.pressedProperty()).then(Color.YELLOW).otherwise(Color.color(0.1, 0.05, 0.0, 0.75))
-        );
-
-        shape3.setTranslateY(SIZE);
-
-        Text textResume = FXGL.getUIFactoryService().newText("RESUME", Color.WHITE, FontType.GAME, 24.0);
-        textResume.setTranslateX(50);
-        textResume.setTranslateY(100);
-        textResume.setMouseTransparent(true);
-
-        Text textExit = FXGL.getUIFactoryService().newText("EXIT", Color.WHITE, FontType.GAME, 24.0);
-        textExit.setTranslateX(200);
-        textExit.setTranslateY(100);
-        textExit.setMouseTransparent(true);
-
-        Text textOptions = FXGL.getUIFactoryService().newText("OPTIONS", Color.WHITE, FontType.GAME, 24.0);
-        textOptions.setTranslateX(110);
-        textOptions.setTranslateY(195);
-        textOptions.setMouseTransparent(true);
-
-        // Create volume control slider
-        Slider volumeSlider = new Slider(0, 1, FXGL.getSettings().getGlobalMusicVolume()); // range from 0 to 1
-        volumeSlider.setShowTickLabels(true);
-        volumeSlider.setShowTickMarks(true);
-
-        // Update volume when the slider is moved
-        volumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
-            FXGL.getSettings().setGlobalMusicVolume(newVal.doubleValue());
-        });
-
-        Text volumeText = FXGL.getUIFactoryService().newText("MUSIC VOLUME", Color.WHITE, FontType.GAME, 24.0);
-
-        VBox volumeControlBox = new VBox(10, volumeText, volumeSlider);
-        volumeControlBox.setTranslateX(50);
-        volumeControlBox.setTranslateY(250);
-
-
-
-        getContentRoot().getChildren().addAll(shape, shape2, shape3, textResume, textExit, textOptions, volumeControlBox);
-
-
-        getContentRoot().setScaleX(0);
-        getContentRoot().setScaleY(0);
+        getContentRoot().getChildren().add(pauseRoot);
 
         animation = FXGL.animationBuilder()
                 .duration(Duration.seconds(0.66))
                 .interpolator(Interpolators.EXPONENTIAL.EASE_OUT())
-                .scale(getContentRoot())
+                .scale(menuBox)
                 .from(new Point2D(0, 0))
                 .to(new Point2D(1, 1))
                 .build();
@@ -130,5 +106,42 @@ public class PauseMenu extends FXGLMenu {
     @Override
     protected void onUpdate(double tpf) {
         animation.onUpdate(tpf);
+    }
+
+    public Button gameButton(String label, Color color) {
+        Text text = new Text(label);
+
+        text.setFont(Font.loadFont(
+                getClass().getResourceAsStream("/DePixelHalbfett.ttf"),
+                24
+        ));
+        text.setStyle("-fx-fill: #ffffff;");
+
+        Button button = new Button();
+        button.setStyle(String.format(
+                "-fx-background-color: #%s;" +
+                        "-fx-background-radius: 8;" +
+                        "-fx-border-color: rgba(0,0,0,0.8);" +
+                        "-fx-border-width: 3;" +
+                        "-fx-border-radius: 8;",
+                color.toString().substring(2, 8)
+        ));
+
+        button.setPadding(new Insets(18, 28, 18, 28));
+
+        DropShadow textShadow = new DropShadow();
+        textShadow.setRadius(1);
+        textShadow.setOffsetY(2.0);
+        textShadow.setColor(color.darker().darker());
+        text.setEffect(textShadow);
+
+        DropShadow buttonShadow = new DropShadow();
+        buttonShadow.setRadius(1);
+        buttonShadow.setOffsetY(6.0);
+        buttonShadow.setColor(Color.color(0.1, 0.1, 0.1));
+        button.setEffect(buttonShadow);
+
+        button.setGraphic(text);
+        return button;
     }
 }
