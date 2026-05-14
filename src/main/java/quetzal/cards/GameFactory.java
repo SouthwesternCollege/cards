@@ -29,8 +29,6 @@ public class GameFactory implements EntityFactory {
                 .with(new CardAnimationComponent(data.get("hand")))
                 .zIndex(data.get("z-index"))
                 .build();
-        card.setEntity(cardEntity);
-
         return cardEntity;
     }
 

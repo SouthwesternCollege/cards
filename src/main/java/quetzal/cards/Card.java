@@ -1,16 +1,62 @@
 package quetzal.cards;
 
-import com.almasb.fxgl.entity.Entity;
-
 public class Card {
 
-    public static Suit[] suits = {Suit.HEART, Suit.CLUB, Suit.DIAMOND, Suit.SPADE};
-    private int cardIndex;
-    private Entity entity;
+    private static final int RANKS_PER_SUIT = 13;
+
+    private final Rank rank;
+    private final Suit suit;
+    private final int deckNumber;
+    private final boolean joker;
     private boolean selectable = true;
 
     public Card(int cardIndex) {
-        this.cardIndex =cardIndex;
+        if (cardIndex < 0 || cardIndex >= 52) {
+            throw new IllegalArgumentException("Standard card index must be between 0 and 51: " + cardIndex);
+        }
+
+        this.rank = Rank.fromSpriteColumn(cardIndex % RANKS_PER_SUIT);
+        this.suit = Suit.fromSpriteRow(cardIndex / RANKS_PER_SUIT);
+        this.deckNumber = 0;
+        this.joker = false;
+    }
+
+    public Card(Rank rank, Suit suit) {
+        this(rank, suit, 0);
+    }
+
+    public Card(Rank rank, Suit suit, int deckNumber) {
+        if (rank == null) {
+            throw new IllegalArgumentException("rank cannot be null");
+        }
+        if (suit == null) {
+            throw new IllegalArgumentException("suit cannot be null");
+        }
+
+        this.rank = rank;
+        this.suit = suit;
+        this.deckNumber = deckNumber;
+        this.joker = false;
+    }
+
+    public static Card joker(int deckNumber) {
+        return new Card(deckNumber);
+    }
+
+    public Rank getRank() {
+        return rank;
+    }
+
+    public Suit getSuit() {
+        return suit;
+    }
+
+    public int getDeckNumber() {
+        return deckNumber;
+    }
+
+    public boolean isJoker() {
+        return joker;
     }
 
     public boolean isSelectable() {
@@ -21,39 +67,32 @@ public class Card {
         this.selectable = selectable;
     }
 
-    // Make sure that only selectable cards can be added to the selected list
-    public Card select() {
-        if (selectable) {
-            return this;
-            // Add to selectedCards in Hand
-        }
-        return null;
-    }
-
-    // Getter and setter for rank
     public int getCardIndex() {
-        return cardIndex;
-    }
+        if (joker) {
+            return 52;
+        }
 
-    public void setCardIndex(int cardIndex) {
-        this.cardIndex = cardIndex;
-    }
-
-
-    // Optional: Manage associated Entity
-    public Entity getEntity() {
-        return entity;
-    }
-
-    public void setEntity(Entity entity) {
-        this.entity = entity;
+        return suit.spriteRow() * RANKS_PER_SUIT + rank.spriteColumn();
     }
 
     public int rank() {
-        return cardIndex % 13;
+        if (joker) {
+            return Integer.MAX_VALUE;
+        }
+
+        return rank.pokerValue();
     }
 
     public Suit suit() {
-        return suits[cardIndex / 13];
+        return suit;
+    }
+
+    @Override
+    public String toString() {
+        if (joker) {
+            return "Joker (deck " + deckNumber + ")";
+        }
+
+        return rank.displayName() + " of " + suit.pluralDisplayName() + " (deck " + deckNumber + ")";
     }
 }

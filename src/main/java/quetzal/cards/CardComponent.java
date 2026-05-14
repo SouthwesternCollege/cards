@@ -14,7 +14,6 @@ public class CardComponent extends Component {
 
     public CardComponent(Card card) {
         this.card = card;
-        this.card.setEntity(entity);  // Associate the entity with the card
 
         Image image = FXGL.image("deck.png");
         int frameWidth = 71;

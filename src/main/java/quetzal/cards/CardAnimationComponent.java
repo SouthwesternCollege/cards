@@ -231,11 +231,6 @@ public class CardAnimationComponent extends Component {
             return;
         }
 
-        int[] selectedRank = new int[hand.getSelectedCards().size()];
-        for (int i = 0; i < hand.getSelectedCards().size(); i++) {
-            selectedRank[i] = hand.getSelectedCards().get(i).getCardIndex();
-        }
-
-        GameHUD.updateHandRank(PokerHandEvaluator.rankHand(selectedRank));
+        GameHUD.updateHandRank(PokerHandEvaluator.rankHand(hand.getSelectedCards()));
     }
 }

@@ -1,83 +1,79 @@
 package quetzal.cards;
+
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class PokerHandEvaluator {
 
-    // Card suits and ranks
-    private static final String[] SUITS = {"Hearts", "Diamonds", "Clubs", "Spades"};
-    private static final String[] RANKS = {"2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace"};
-
-    // Poker hand rankings
     private enum HandRank {
-        HIGH_CARD, ONE_PAIR, TWO_PAIR, THREE_OF_A_KIND, STRAIGHT, FLUSH, FULL_HOUSE, FOUR_OF_A_KIND, STRAIGHT_FLUSH;
-    }
+        HIGH_CARD("High Card"),
+        ONE_PAIR("One Pair"),
+        TWO_PAIR("Two Pair"),
+        THREE_OF_A_KIND("Three of a Kind"),
+        STRAIGHT("Straight"),
+        FLUSH("Flush"),
+        FULL_HOUSE("Full House"),
+        FOUR_OF_A_KIND("Four of a Kind"),
+        STRAIGHT_FLUSH("Straight Flush");
 
-    // Get rank of card from 0 to 51
-    private static int getRank(int card) {
-        return card % 13;
-    }
+        private final String displayName;
 
-    // Get suit of card from 0 to 51
-    private static int getSuit(int card) {
-        return card / 13;
-    }
-
-    // Sort hand by rank
-    private static int[] sortHand(int[] hand) {
-        return Arrays.stream(hand).map(PokerHandEvaluator::getRank).sorted().toArray();
-    }
-
-    // Check for flush (all cards have the same suit)
-    private static boolean isFlush(int[] hand) {
-        int suit = getSuit(hand[0]);
-        for (int card : hand) {
-            if (getSuit(card) != suit) {
-                return false;
-            }
+        HandRank(String displayName) {
+            this.displayName = displayName;
         }
-        return true;
     }
 
-    // Check for straight (consecutive ranks)
-    private static boolean isStraight(int[] hand) {
-        int[] sortedRanks = sortHand(hand);
-        for (int i = 1; i < sortedRanks.length; i++) {
-            if (sortedRanks[i] != sortedRanks[i - 1] + 1) {
-                return false;
-            }
+    public static String rankHand(List<Card> hand) {
+        if (hand == null || hand.isEmpty()) {
+            return "No cards in hand!";
         }
-        // Special case for Ace-low straight (A, 2, 3, 4, 5)
-        return !(sortedRanks[sortedRanks.length - 1] == 12 && sortedRanks[0] == 0);
-    }
 
-    // Count occurrences of each rank
-    private static Map<Integer, Integer> countRanks(int[] hand) {
-        Map<Integer, Integer> rankCount = new HashMap<>();
-        for (int card : hand) {
-            int rank = getRank(card);
-            rankCount.put(rank, rankCount.getOrDefault(rank, 0) + 1);
+        if (hand.stream().anyMatch(Card::isJoker)) {
+            return "Wild-card evaluation not implemented yet";
         }
-        return rankCount;
+
+        HandRank handRank = evaluateHand(hand);
+
+        if (handRank == HandRank.HIGH_CARD) {
+            Rank highestCard = hand.stream()
+                    .map(Card::getRank)
+                    .max((a, b) -> Integer.compare(a.pokerValue(), b.pokerValue()))
+                    .orElseThrow();
+
+            return handRank.displayName + ": " + highestCard.displayName();
+        }
+
+        return handRank.displayName;
     }
 
-    // Determine the hand ranking for any hand size (from 2 to 5 cards)
-    private static HandRank evaluateHand(int[] hand) {
-        boolean flush = hand.length > 4 && isFlush(hand); // Flush needs at least 2 cards of the same suit
-        boolean straight = hand.length > 4 && isStraight(hand); // Straight requires at least 3 cards
-        Map<Integer, Integer> rankCount = countRanks(hand);
-        int pairs = 0, threes = 0, fours = 0;
+    public static String rankHand(int[] hand) {
+        if (hand == null || hand.length == 0) {
+            return "No cards in hand!";
+        }
 
-        // Count pairs, triples, and quads
+        return rankHand(Arrays.stream(hand)
+                .mapToObj(Card::new)
+                .toList());
+    }
+
+    private static HandRank evaluateHand(List<Card> hand) {
+        boolean flush = hand.size() == 5 && isFlush(hand);
+        boolean straight = hand.size() == 5 && isStraight(hand);
+
+        Map<Rank, Integer> rankCount = countRanks(hand);
+        int pairs = 0;
+        int threes = 0;
+        int fours = 0;
+
         for (int count : rankCount.values()) {
             if (count == 2) pairs++;
             if (count == 3) threes++;
             if (count == 4) fours++;
         }
 
-        // Identify the hand based on available cards
-        if (flush && straight && hand.length == 5) return HandRank.STRAIGHT_FLUSH;
+        if (flush && straight) return HandRank.STRAIGHT_FLUSH;
         if (fours == 1) return HandRank.FOUR_OF_A_KIND;
         if (threes == 1 && pairs == 1) return HandRank.FULL_HOUSE;
         if (flush) return HandRank.FLUSH;
@@ -86,41 +82,49 @@ public class PokerHandEvaluator {
         if (pairs == 2) return HandRank.TWO_PAIR;
         if (pairs == 1) return HandRank.ONE_PAIR;
 
-        return HandRank.HIGH_CARD; // Default to high card if no patterns found
+        return HandRank.HIGH_CARD;
     }
 
-    // Method to print out the hand ranking
-    public static String rankHand(int[] hand) {
-        if (hand.length == 0) {
-            return "No cards in hand!";
+    private static boolean isFlush(List<Card> hand) {
+        Suit suit = hand.getFirst().getSuit();
+
+        for (Card card : hand) {
+            if (card.getSuit() != suit) {
+                return false;
+            }
         }
 
-        HandRank handRank = evaluateHand(hand);
-        String handDescription = "" + handRank;
-
-        if (handRank == HandRank.HIGH_CARD) {
-            int highestCard = Arrays.stream(hand).map(PokerHandEvaluator::getRank).max().getAsInt();
-            handDescription += ": " + RANKS[highestCard];
-        }
-
-        return handDescription;
+        return true;
     }
 
-    public static void main(String[] args) {
-        // Example with 2 cards (pair detection)
-        int[] hand1 = {0, 13}; // Two of Hearts, Two of Diamonds
-        System.out.println(rankHand(hand1)); // Outputs "One Pair"
+    private static boolean isStraight(List<Card> hand) {
+        int[] values = hand.stream()
+                .map(Card::getRank)
+                .mapToInt(Rank::pokerValue)
+                .sorted()
+                .toArray();
 
-        // Example with 3 cards (three-of-a-kind detection)
-        int[] hand2 = {0, 13, 26}; // Two of Hearts, Two of Diamonds, Two of Clubs
-        System.out.println(rankHand(hand2)); // Outputs "Three of a Kind"
+        if (Arrays.equals(values, new int[]{2, 3, 4, 5, 14})) {
+            return true;
+        }
 
-        // Example with 4 cards (high card)
-        int[] hand3 = {0, 13, 26, 39}; // All Twos (Hearts, Diamonds, Clubs, Spades)
-        System.out.println(rankHand(hand3)); // Outputs "Four of a Kind"
+        for (int i = 1; i < values.length; i++) {
+            if (values[i] != values[i - 1] + 1) {
+                return false;
+            }
+        }
 
-        // Full hand example
-        int[] hand4 = {0, 12, 25, 38, 51}; // Two of Hearts, Ace of Hearts, King of Diamonds, Queen of Clubs, Ace of Spades
-        System.out.println(rankHand(hand4)); // Outputs the hand ranking
+        return true;
+    }
+
+    private static Map<Rank, Integer> countRanks(List<Card> hand) {
+        Map<Rank, Integer> rankCount = new HashMap<>();
+
+        for (Card card : hand) {
+            Rank rank = card.getRank();
+            rankCount.put(rank, rankCount.getOrDefault(rank, 0) + 1);
+        }
+
+        return rankCount;
     }
 }

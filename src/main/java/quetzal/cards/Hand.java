@@ -9,7 +9,9 @@ import javafx.geometry.Rectangle2D;
 import javafx.util.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Hand extends CardCollection {
 
@@ -23,6 +25,7 @@ public class Hand extends CardCollection {
     private static final double SELECTED_CARD_Y_OFFSET = -50;
 
     private Deck deck;
+    private final Map<Card, Entity> cardEntities = new IdentityHashMap<>();
     private List<Card> selectedCards = new ArrayList<>();  // Keep track of selected cards
     private Rectangle2D handArea;
     private int handY;
@@ -48,7 +51,7 @@ public class Hand extends CardCollection {
                     .put("z-index", i)
                     .put("hand", this));
 
-            card.setEntity(cardEntity);
+            cardEntities.put(card, cardEntity);
             getCards().add(card);  // Add the card to the hand's list
         }
 
@@ -79,7 +82,7 @@ public class Hand extends CardCollection {
 
         for (int i = 0; i < selectedCards.size(); i++) {
             Card card = selectedCards.get(i);
-            Entity cardEntity = card.getEntity();
+            Entity cardEntity = getEntity(card);
 
             // Expand to the "played" area with a slight size increase
             FXGL.animationBuilder()
@@ -180,9 +183,19 @@ public class Hand extends CardCollection {
     public List<Entity> getEntities() {
         List<Entity> entities = new ArrayList<>();
         for(Card card: getCards()) {
-            entities.add(card.getEntity());
+            entities.add(getEntity(card));
         }
         return entities;
+    }
+
+    public Entity getEntity(Card card) {
+        Entity entity = cardEntities.get(card);
+
+        if (entity == null) {
+            throw new IllegalStateException("No entity is registered for card: " + card);
+        }
+
+        return entity;
     }
 
     public void organizeCardEntities() {
@@ -191,7 +204,7 @@ public class Hand extends CardCollection {
         List<Card> cards = getCards();
 
         for (int i = 0; i < cards.size(); i++) {
-            Entity cardEntity = cards.get(i).getEntity();
+            Entity cardEntity = getEntity(cards.get(i));
             Point2D targetPosition = getCardVisualPosition(i);
 
             cardEntity.setZIndex(i);
@@ -213,11 +226,11 @@ public class Hand extends CardCollection {
             Card card = cards.get(i);
 
             if (card == excludedCard) {
-                card.getEntity().setZIndex(100);
+                getEntity(card).setZIndex(100);
                 continue;
             }
 
-            Entity cardEntity = card.getEntity();
+            Entity cardEntity = getEntity(card);
             Point2D targetPosition = getCardVisualPosition(i);
 
             cardEntity.setZIndex(i);
@@ -290,7 +303,7 @@ public class Hand extends CardCollection {
     }
 
     public void sortCardsByPosition(List<Card> cards) {
-        cards.sort(Comparator.comparingDouble(card -> card.getEntity().getX()));
+        cards.sort(Comparator.comparingDouble(card -> getEntity(card).getX()));
     }
 
 }
