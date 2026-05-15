@@ -2,20 +2,27 @@
 
 ## Project
 
-Reusable Java/FXGL card-game engine plus a specific turn-based multiplayer card game application.
+Reusable Java/FXGL card-game engine plus the specific turn-based multiplayer card game application **La Kika**.
 
 ## Purpose
 
 Build a clean, extensible card-game architecture while developing a playable custom card game. The project should support learning software engineering, game architecture, JavaFX, FXGL, and design patterns through practical development.
 
+The project should also serve as a teaching vehicle for interface design and deep modules: Raul should focus increasingly on domain concepts and public interfaces, while implementation details are delegated behind well-designed modules.
+
 ## Product Goals
 
-1. Create a playable turn-based multiplayer card game.
+1. Create a playable turn-based multiplayer implementation of La Kika.
 2. Develop reusable card-engine abstractions that are not tightly coupled to FXGL.
-3. Support multiple standard decks and jokers as wild cards.
-4. Support save states through explicit snapshots.
-5. Keep architecture clean enough to test domain logic without launching FXGL.
-6. Use the project as a guided learning environment for interface design, deep modules, and design patterns.
+3. Support 2-4 players.
+4. Support multiple standard decks and jokers as wild cards.
+5. Support La Kika meld rules: three-of-a-kind-or-more and straight flushes only.
+6. Support castigo behavior.
+7. Support six rounds with distinct opening requirements.
+8. Support round scoring and cumulative scoring.
+9. Support save states through explicit snapshots.
+10. Keep architecture clean enough to test domain logic without launching FXGL.
+11. Use the project as a guided learning environment for interface design, deep modules, and design patterns.
 
 ## Non-Goals for Now
 
@@ -27,16 +34,28 @@ These are not immediate priorities:
 - Full modding/scripting support.
 - Polished commercial UI.
 - Final balancing of all game rules.
+- Mobile deployment.
+- Persistence beyond local save/load.
 
 ## Current Known Game Summary
 
-- Turn-based multiplayer.
-- Fixed decks.
-- Multiple standard decks may be used.
-- Jokers are included and act as wilds.
-- The game has several rounds.
-- The first player to empty their hand wins the round.
-- Other players score points based on the sum of cards remaining in hand.
+La Kika is a turn-based multiplayer card game for 2-4 players.
+
+Each round:
+
+- Each player is dealt 13 cards.
+- Players take turns drawing, playing/mutating melds, and discarding.
+- A player must satisfy the round opening requirement before freely playing or mutating melds.
+- Melds remain in a shared play area.
+- Any player may mutate any meld if the move is legal.
+- The round ends when a player empties their hand.
+- Other players score penalty points based on cards remaining in hand.
+
+The full game:
+
+- Has six rounds.
+- Uses cumulative scoring.
+- The player with the lowest cumulative score after six rounds wins.
 
 ## Users
 
@@ -46,7 +65,7 @@ Raul, developer and domain expert, building the game while learning software eng
 
 ### Future Players
 
-Players of the custom card game.
+Players of La Kika.
 
 ## Guiding Architecture Principles
 
@@ -54,16 +73,30 @@ Players of the custom card game.
 
 Domain classes should not depend on FXGL or JavaFX.
 
-Good:
+Good domain candidates:
 
 ```text
-Card, Deck, HandModel, RoundState, ScoreRule
+Card
+Deck
+HandModel
+Player
+Meld
+Move
+RoundState
+GameState
+ScoreRule
+OpeningRequirement
 ```
 
-FXGL-dependent:
+FXGL-dependent candidates:
 
 ```text
-CardComponent, HandView, GameHUD, CardAnimationComponent
+CardComponent
+HandView
+GameHUD
+CardAnimationComponent
+MeldView
+PlayAreaView
 ```
 
 ### 2. Prefer Deep Modules
@@ -73,20 +106,53 @@ Public interfaces should be small and intention-revealing. Implementation detail
 Example target interface:
 
 ```java
-round.start();
-round.play(playerId, selectedCards);
-round.score();
+game.startNewRound();
+game.draw(playerId);
+game.takeCastigo(playerId);
+game.playMove(playerId, move);
+game.discard(playerId, cardId);
 ```
 
-The caller should not manage all low-level mutation itself.
+The caller should not manually manipulate every card collection. The rules module should decide whether a move is legal and then mutate the game state consistently.
 
-### 3. Save State Is a First-Class Requirement
+### 3. Distinguish Validity from Legality
+
+Use two separate concepts:
+
+```text
+Valid = structurally correct.
+Legal = allowed in the current game state.
+```
+
+Example:
+
+- `7♣ 7♦ 7♠` is a valid three-of-a-kind meld.
+- It may be illegal to play if the player has not satisfied the round opening requirement.
+
+### 4. Save State Is a First-Class Requirement
 
 Do not rely on Java object identity alone. Domain objects that must survive save/load need stable IDs and snapshots.
 
-### 4. Build Incrementally
+### 5. Build Incrementally
 
 Avoid large rewrites unless the current architecture blocks progress. Prefer small steps with tests where possible.
+
+### 6. Prefer Explicit Domain Concepts
+
+Avoid hiding game rules in generic collections or UI code.
+
+Examples of concepts that deserve explicit names:
+
+```text
+Meld
+Castigo
+OpeningRequirement
+RoundState
+TurnPhase
+Move
+LegalMoveValidator
+ScoreRule
+```
 
 ## Functional Requirements
 
@@ -108,7 +174,14 @@ The system shall represent jokers as distinct cards.
 
 Status: partially implemented.
 
-Needs rules for wild-card behavior.
+Known La Kika rules:
+
+- Jokers may represent any rank or suit.
+- Jokers may not make up more than half of a meld.
+- Jokers may not be consecutive in a straight flush.
+- Jokers may be replaced and taken from melds.
+- Taken jokers must be played during the same turn.
+- Jokers score 50 points when left in hand.
 
 ### FR-4: Deck Creation
 
@@ -122,45 +195,150 @@ The system shall represent cards held by a player.
 
 Status: implemented, but currently mixed with FXGL rendering and animation.
 
+Known La Kika rule:
+
+- Each player starts each round with 13 cards.
+
 ### FR-6: Card Selection
 
 The system shall allow a player to select cards from their hand.
 
 Status: implemented in current `Hand`/component behavior, but should be separated into domain logic and presentation logic.
 
-### FR-7: Playing Cards
+Required update:
 
-The system shall allow a player to play selected cards according to game rules.
+- Selection must support melds larger than five cards.
+- Selection behavior should be driven by move construction, not poker-hand assumptions.
 
-Status: prototype behavior exists, but domain rules are not finalized.
+### FR-7: Meld Creation
 
-### FR-8: Round End
+The system shall allow a player to create legal melds.
+
+Allowed meld types:
+
+1. Three-of-a-kind or more.
+2. Straight flush.
+
+Status: not yet implemented as clean domain logic.
+
+### FR-8: Meld Mutation
+
+The system shall allow players to mutate existing melds in the play area.
+
+Allowed mutations:
+
+- Add a same-rank card to a three-of-a-kind-or-more meld.
+- Add a continuing card to the beginning or end of a straight flush.
+- Replace a joker in a meld.
+- Take a joker from a meld if the replacement is legal.
+- Use a taken joker during the same turn.
+
+Status: not yet implemented.
+
+### FR-9: Play Area
+
+The system shall represent melds currently in play.
+
+Rules:
+
+- The play area is shared for rule purposes.
+- Melds are not permanently owned by individual players.
+- Any player may mutate any meld if the move is legal.
+
+Status: not yet implemented as a clean domain model.
+
+### FR-10: Turn Structure
+
+The system shall model a turn as three phases:
+
+1. Draw/castigo phase.
+2. Meld play/meld mutation phase.
+3. Discard phase.
+
+Status: not yet implemented.
+
+### FR-11: Castigo
+
+The system shall support castigo.
+
+Rules:
+
+- A player may take only the most recently discarded card.
+- A player taking castigo must also draw three cards from the deck.
+- Only one castigo may occur per turn.
+- If the active player declines the castigo, other players may accept it in player turn order.
+
+Status: not yet implemented.
+
+### FR-12: Round Opening Requirements
+
+The system shall enforce opening requirements per round.
+
+Opening requirements:
+
+1. Round 1: one three-of-a-kind.
+2. Round 2: two three-of-a-kind melds.
+3. Round 3: one four-of-a-kind.
+4. Round 4: two four-of-a-kind melds.
+5. Round 5: one five-of-a-kind.
+6. Round 6: one straight flush of eight cards.
+
+Rules:
+
+- A player cannot freely create or mutate melds until satisfying the current round's opening requirement.
+- Opening does not consume the full turn.
+- After opening, the player may continue creating or mutating melds immediately.
+
+Status: not yet implemented.
+
+### FR-13: Round End
 
 The system shall end a round when a player empties their hand.
 
 Status: not yet implemented as a clean domain rule.
 
-### FR-9: Scoring
+Open detail:
 
-The system shall score non-winning players based on cards remaining in hand when the round ends.
+- Need to clarify whether the final card may be discarded to end the round or must be played into a meld.
+
+### FR-14: Scoring
+
+The system shall score players based on cards remaining in hand at the end of a round.
+
+Point values:
+
+```text
+2-7     = 5 points
+8-King  = 10 points
+Ace     = 20 points
+Joker   = 50 points
+```
 
 Status: not yet implemented.
 
-### FR-10: Save and Load
+### FR-15: Game End
+
+The system shall end the game after six rounds.
+
+The player with the lowest cumulative score wins.
+
+Status: not yet implemented.
+
+### FR-16: Save and Load
 
 The system shall support save states through explicit snapshot objects.
 
 Status: started with `CardSnapshot`.
 
-### FR-11: FXGL Card Rendering
+### FR-17: FXGL Card Rendering
 
 The application shall render cards as FXGL entities using card data from the domain model.
 
 Status: partially implemented.
 
-### FR-12: HUD Updates
+### FR-18: HUD Updates
 
-The application shall display relevant game information such as selected hand rank, score, turn state, and round status.
+The application shall display relevant game information such as selected meld information, score, turn state, and round status.
 
 Status: prototype exists, but `GameHUD` currently uses static/global access.
 
@@ -188,6 +366,20 @@ Recommendation: JSON snapshots, not Java object serialization.
 
 When possible, changes should be explained in terms of interface design, responsibility boundaries, and relevant design patterns.
 
+### NFR-6: Rule Traceability
+
+Rules should be implemented in modules whose names correspond to domain concepts.
+
+Examples:
+
+```text
+MeldValidator
+OpeningRequirement
+CastigoService
+ScoreCalculator
+LegalMoveValidator
+```
+
 ## Proposed Milestones
 
 ### Milestone 1: Clean Card and Deck Foundation
@@ -199,56 +391,81 @@ When possible, changes should be explained in terms of interface design, respons
 
 Status: mostly complete.
 
-### Milestone 2: Split Hand Domain from FXGL View
+### Milestone 2: Define La Kika Domain Model
+
+- Define `Meld`.
+- Define `Move`.
+- Define `PlayArea`.
+- Define `TurnPhase`.
+- Define `RoundState`.
+- Define `OpeningRequirement`.
+
+### Milestone 3: Replace Poker-Hand Prototype Logic
+
+- Remove `PokerHandEvaluator` as a central concept.
+- Replace with La Kika meld validation.
+- Support three-of-a-kind-or-more.
+- Support straight flushes.
+- Support ace-low non-cyclic sequence rules.
+
+### Milestone 4: Split Hand Domain from FXGL View
 
 - Create pure `Hand` or `HandModel`.
 - Move layout and animation out of domain hand logic.
 - Keep FXGL entity mapping in presentation layer.
 
-### Milestone 3: Define Core Game Rules
-
-- Turn structure.
-- Legal plays.
-- Joker behavior.
-- Round ending.
-- Scoring.
-
-### Milestone 4: Introduce Game State and Actions
+### Milestone 5: Introduce Game State and Actions
 
 - `GameState` / `RoundState`.
 - Player identity.
-- Actions such as select, play, draw, discard, pass.
+- Actions such as draw, take castigo, create meld, mutate meld, discard.
 - Validation before mutation.
 
-### Milestone 5: Save/Load
+### Milestone 6: Implement Round and Turn Rules
+
+- Deal 13 cards.
+- Enforce turn phases.
+- Enforce castigo.
+- Enforce opening requirements.
+- End round when a player empties their hand.
+
+### Milestone 7: Scoring and Game End
+
+- Score remaining hand cards.
+- Track cumulative score.
+- End after six rounds.
+- Determine lowest-score winner.
+
+### Milestone 8: Save/Load
 
 - Snapshot whole game state.
 - Restore full game state.
 - Add JSON serialization.
 
-### Milestone 6: UI/HUD Cleanup
+### Milestone 9: UI/HUD Cleanup
 
 - Remove static HUD update calls.
 - Introduce observer/event/property pattern.
-- Display turn and scoring information.
+- Display turn, meld, castigo, opening, and scoring information.
 
-### Milestone 7: Tests
+### Milestone 10: Tests
 
 - Unit tests for deck creation.
 - Unit tests for card snapshots.
-- Unit tests for hand selection.
+- Unit tests for meld validation.
+- Unit tests for joker constraints.
+- Unit tests for opening requirements.
 - Unit tests for scoring.
 - Unit tests for round transitions.
 
 ## Open Product Questions
 
-1. What is the exact player count range?
-2. How many cards are dealt to each player?
-3. Do players draw cards during the round?
-4. What are all legal player actions on a turn?
-5. What combinations may be played?
-6. Are poker hands actually part of the game rules, or only a temporary prototype feature?
-7. What are joker rules?
-8. What are card point values?
-9. Does the lowest cumulative score win?
-10. How many rounds are played, or what ends the full game?
+1. May a player discard their final card to end the round, or must the final card be played into a meld?
+2. What happens if the deck has fewer than three cards when a castigo requires drawing three additional cards?
+3. What happens if the deck is exhausted during normal draw?
+4. Can a player take more than one joker from melds in a single turn?
+5. Must a taken joker be used in a new meld, or may it be used to mutate an existing meld?
+6. When a player opens with multiple melds, may those melds include jokers?
+7. For Round 6, does the eight-card straight flush opening requirement allow jokers?
+8. If a player has not opened, may they take a castigo?
+9. If a player has not opened, may they replace/take a joker, or is that considered a meld mutation that requires opening first?

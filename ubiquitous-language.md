@@ -8,12 +8,17 @@ This document defines the shared vocabulary for the card game and reusable card-
 - Prefer domain language over implementation language.
 - Keep implementation details separate from gameplay concepts when possible.
 - Raul is the domain expert for game rules. When a term is uncertain, mark it as **Needs domain definition**.
+- Use **valid** for structural correctness and **legal** for game-state permission.
 
 ## Domain Terms
 
+### Game Name
+
+The official name of the game is **La Kika**.
+
 ### Card
 
-A physical card that can move between collections such as a deck, hand, played area, or discard pile.
+A physical card that can move between collections such as a deck, hand, play area, meld, or discard pile.
 
 A `Card` has stable identity through `CardId` and face information through rank/suit or joker status.
 
@@ -56,28 +61,44 @@ Potential future improvement: introduce a `CardFace` type so `Card` is composed 
 
 The value of a standard card, such as `TWO`, `THREE`, ..., `ACE`.
 
-Open question: whether ace is always high, can be low, or depends on the rule being evaluated.
+Known La Kika rule:
+
+- Aces are low.
+- Aces are not high.
+- Straight flushes are not cyclic.
+
+This means:
+
+```text
+A-2-3 is potentially valid.
+Q-K-A is not valid.
+K-A-2 is not valid.
+```
 
 ### Suit
 
 The category of a standard card: clubs, diamonds, hearts, spades.
 
-Open question: whether suits matter for this game beyond standard poker-like hand evaluation.
+In La Kika, suits matter for straight flushes.
 
 ### Joker
 
 A special card that acts as a wild card.
 
-**Needs domain definition.**
+Known La Kika rules:
 
-Questions:
+- A joker may represent any rank.
+- A joker may represent any suit.
+- Jokers may not make up more than half of the cards in a meld.
+- Jokers may not appear consecutively in a straight flush.
+- A player may take a joker from a meld if they can replace it according to the rules.
+- A joker taken from a meld must be played during the same turn.
+- Jokers are worth 50 points when left in a player's hand at the end of a round.
 
-- Can a joker represent any rank?
-- Can a joker represent any suit?
-- Can multiple jokers represent the same card face?
-- Are jokers always interpreted optimally for the player?
-- Do jokers have a score value when left in hand?
-- Can jokers be played outside normal ranked/suited combinations?
+Joker replacement rules:
+
+- In a three-of-a-kind-or-more meld, a player may take a joker by replacing it with a card of the required rank.
+- In a straight flush meld, a player may take a joker by replacing it with the exact rank and suit represented by the joker.
 
 ### Deck
 
@@ -95,85 +116,221 @@ Deck deck = new Deck(numberOfStandardDecks, jokersPerDeck);
 
 A collection of cards held by a player.
 
+Known La Kika rule:
+
+- Each player starts a round with 13 cards.
+
 Current code warning: `Hand` currently mixes domain responsibilities with FXGL rendering, animation, input, and layout. Long term, this should be split into a pure hand model and one or more visual/controller classes.
 
 ### Selected Cards
 
 Cards in a hand that the player has selected for possible play.
 
-Current constraint: selection appears limited to 5 cards.
+Current implementation note:
 
-Open question: is 5 a permanent rule or only inherited from poker-hand evaluation?
+- The old five-card selection limit came from prototype poker-hand evaluation behavior.
+- La Kika melds may contain more than five cards, so selection rules need to be updated.
 
-### Played Cards / Played Area
+### Meld
 
-Cards that have been played from a hand during a turn or round.
+A group of three or more cards in the play area.
 
-Open question: after cards are played, do they go to a discard pile, remain in a played area, or leave the round entirely?
+In La Kika, a meld must be one of:
 
-### Discard
+1. Three-of-a-kind or more.
+2. Straight flush.
 
-A collection or area for cards that have been removed from active play.
+A meld is not permanently owned by a player. Any player may mutate any meld in the play area, subject to legal move rules.
 
-**Needs domain definition.**
+### Three-of-a-Kind or More Meld
+
+A meld containing at least three cards of the same rank.
+
+Examples:
+
+```text
+7♣ 7♦ 7♠
+K♣ K♦ K♥ K♠
+```
+
+Jokers may substitute for missing cards, subject to joker restrictions.
+
+### Straight Flush Meld
+
+A meld containing at least three sequential cards of the same suit.
+
+Known La Kika rules:
+
+- Aces are low.
+- Straight flushes are not cyclic.
+- Jokers may substitute for missing cards.
+- Jokers may not appear consecutively.
+- A player may extend the beginning or end of a straight flush if the added card continues the sequence.
+
+Examples:
+
+```text
+A♠ 2♠ 3♠
+4♥ 5♥ 6♥ 7♥
+```
+
+Non-examples:
+
+```text
+Q♠ K♠ A♠     // invalid because aces are not high
+K♠ A♠ 2♠     // invalid because straight flushes are not cyclic
+```
+
+### Valid Meld
+
+A meld whose card structure satisfies La Kika's combination rules.
+
+Examples:
+
+- Three or more cards of the same rank.
+- A straight flush of three or more cards.
+- A meld with jokers that satisfies joker ratio and placement restrictions.
+
+A valid meld may still be illegal to play if the game state does not allow it.
+
+### Legal Move
+
+A move that is permitted in the current game state.
+
+A move can be structurally valid but not legal.
+
+Examples:
+
+- A valid meld may be illegal if the player has not yet satisfied the round opening requirement.
+- A joker replacement may be invalid if the player cannot immediately play the taken joker.
+- A discard may be illegal if it occurs before the required draw/castigo phase.
+
+### Move
+
+A move is creating or mutating a meld.
+
+Examples:
+
+- Creating a new meld.
+- Extending an existing meld.
+- Replacing a joker in a meld.
+- Taking a joker from a meld.
+- Using a joker taken earlier in the same turn.
+
+Design note:
+
+- Moves happen sequentially during the play/meld phase of a turn.
+- A player may perform multiple meld mutations during one turn.
+
+### Play Area
+
+The area containing all melds currently in play.
+
+Players typically play melds in front of themselves physically, but for rules purposes the play area is shared because players may mutate any meld.
+
+### Discard Pile
+
+The place where discarded cards go.
+
+Known La Kika rules:
+
+- A player must discard one card at the end of their turn.
+- Only the most recently discarded card can be taken through castigo.
+
+### Castigo
+
+A special draw action. The word means “punishment” in Spanish.
+
+A castigo occurs when a player takes the most recently discarded card and also draws three additional cards from the deck.
+
+Known rules:
+
+- Only the most recently discarded card may be taken.
+- Only one castigo may occur per turn.
+- The active player has the first chance to take the castigo.
+- If the active player declines, the next player in turn order may choose to take it.
+- This continues in player turn order until someone takes it or all eligible players decline.
+
+### Turn
+
+One player's opportunity to act.
+
+A La Kika turn has three phases:
+
+1. Draw or castigo phase.
+2. Meld play / meld mutation phase.
+3. Discard phase.
+
+During the meld play/meld mutation phase, the player may create or mutate multiple melds.
 
 ### Round
 
-A segment of the game. The first player to empty their hand wins the round. Other players score based on the cards left in their hands.
+A sequence of turns ending when a player empties their hand.
 
-Questions:
+Known La Kika rules:
 
-- How is a round initialized?
-- How many cards does each player receive?
-- What happens to played cards between turns?
-- What ends a round besides a player emptying their hand, if anything?
+- Each player begins with 13 cards.
+- The game has six rounds.
+- Each round has an opening requirement.
+- A player cannot play freely until they satisfy that round's opening requirement.
+- Once a player opens, they may immediately continue playing and mutating melds during the same turn.
+
+### Opening Requirement
+
+The pre-condition a player must satisfy before freely creating or mutating melds in a round.
+
+The six round opening requirements are:
+
+1. One three-of-a-kind.
+2. Two three-of-a-kind melds.
+3. One four-of-a-kind.
+4. Two four-of-a-kind melds.
+5. One five-of-a-kind.
+6. One straight flush of eight cards.
+
+### Opened Player
+
+A player who has satisfied the current round's opening requirement.
+
+Once opened, the player may create and mutate melds during the same turn and future turns in the round.
+
+### Closed Player
+
+A player who has not yet satisfied the current round's opening requirement.
+
+A closed player may not freely create or mutate melds until opening.
 
 ### Game
 
-A sequence of rounds played by multiple players.
+A sequence of six rounds.
 
-**Needs domain definition.**
-
-Questions:
-
-- Does the game end after a fixed number of rounds?
-- Does the game end when someone reaches a score threshold?
-- Is low score good or high score good?
+The player with the lowest cumulative score after the sixth round wins.
 
 ### Player
 
 A participant in the game.
 
-Current known requirement: multiplayer, turn-based.
+Known La Kika rules:
 
-Questions:
-
-- Is multiplayer local, networked, AI-assisted, or all of these eventually?
-- How many players are supported?
-- Does each player have one hand?
-
-### Turn
-
-One player’s opportunity to act.
-
-**Needs domain definition.**
-
-Questions:
-
-- What actions are allowed on a turn?
-- Can a player draw, play, discard, pass, or rearrange cards?
-- Does play continue clockwise, by priority, or by some other rule?
+- The game supports 2-4 players.
+- Each player has one hand.
+- Each player accumulates score across rounds.
+- Lowest cumulative score wins.
 
 ### Score
 
-A numerical value associated with a player, round, or card collection.
+A numerical penalty value associated with cards remaining in a player's hand at the end of a round.
 
-Known rule: after a player empties their hand, other players score the sum of cards left in their hand.
+Known point values:
 
-Questions:
+```text
+2-7     = 5 points
+8-King  = 10 points
+Ace     = 20 points
+Joker   = 50 points
+```
 
-- What are the point values of numbered cards, face cards, aces, and jokers?
-- Is the winner the lowest score or highest score?
+Lower score is better.
 
 ## Technical / Architecture Terms
 
@@ -228,11 +385,13 @@ A module with a small, simple public interface and substantial hidden implementa
 Example goal:
 
 ```java
-hand.select(cardId);
-hand.playSelected();
+game.startRound();
+game.draw(playerId);
+game.playMove(playerId, move);
+game.discard(playerId, cardId);
 ```
 
-The caller should not need to know how selection is stored, how cards are ordered, or how validation happens internally.
+The caller should not need to know how validation, state transitions, joker substitution, scoring, or entity updates happen internally.
 
 ## Terms to Avoid or Use Carefully
 
@@ -244,6 +403,21 @@ Old implementation detail. Avoid using this as a domain concept.
 
 Removed from the current design. We use `CardId` to identify physical cards instead.
 
+### Poker Hand
+
+Avoid this term for La Kika rules.
+
+The prototype used poker-hand evaluation, but La Kika only allows:
+
+- Three-of-a-kind or more.
+- Straight flushes.
+
+### Played Cards
+
+Use carefully.
+
+Raul previously used “played cards” to describe cards on the table, but the preferred domain term is now **meld** when referring to a specific valid group of cards, and **play area** when referring to the table area containing all melds.
+
 ### Entity-owned Card vs Card-owned Entity
 
 Use: entity owns a component that references a card.
@@ -252,10 +426,8 @@ Avoid: card owns an FXGL entity.
 
 ## Open Vocabulary Questions
 
-1. What is the official name of the game?
-2. What is a legal play called?
-3. What is the group of cards played on a turn called?
-4. Are there named combinations, like poker hands, runs, sets, books, or melds?
-5. What is the exact role of jokers?
-6. What is the correct word for the central area where cards are played?
-7. Are players trying to minimize score, maximize score, or avoid penalty points?
+These are intentionally narrow unresolved vocabulary questions.
+
+1. Should the act of satisfying the opening requirement be called **opening**, **going down**, **laying down**, or something else?
+2. Should a player's in-front-of-them physical area be modeled separately from the shared rules-level play area?
+3. What should we call the action of taking and replacing a joker: **joker theft**, **joker replacement**, **joker rescue**, or another domain term?
