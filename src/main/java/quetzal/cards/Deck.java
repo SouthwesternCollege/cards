@@ -1,55 +1,46 @@
 package quetzal.cards;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.Stack;
 
 public class Deck extends CardCollection {
+
+    private int nextCardId = 1;
 
     public Deck() {
         this(1, 0);
     }
 
-    public Deck(int standardDeckCount, int jokersPerDeck) {
-        super(new ArrayList<>());
+    public Deck(int numberOfStandardDecks, int jokersPerDeck) {
+        super(new Stack<>());
 
-        if (standardDeckCount < 1) {
-            throw new IllegalArgumentException("standardDeckCount must be at least 1");
+        if (numberOfStandardDecks <= 0) {
+            throw new IllegalArgumentException("Number of standard decks must be positive.");
         }
+
         if (jokersPerDeck < 0) {
-            throw new IllegalArgumentException("jokersPerDeck cannot be negative");
+            throw new IllegalArgumentException("Jokers per deck cannot be negative.");
         }
 
-        for (int deckNumber = 0; deckNumber < standardDeckCount; deckNumber++) {
-            addStandardDeck(deckNumber);
-            addJokers(deckNumber, jokersPerDeck);
+        for (int i = 0; i < numberOfStandardDecks; i++) {
+            addStandard52Cards();
+            addJokers(jokersPerDeck);
         }
     }
 
-    public static Deck standard52() {
-        return new Deck(1, 0);
-    }
-
-    public static Deck standard52WithJokers(int jokerCount) {
-        return new Deck(1, jokerCount);
-    }
-
-    public static Deck multipleStandardDecks(int deckCount, int jokersPerDeck) {
-        return new Deck(deckCount, jokersPerDeck);
-    }
-
-    private void addStandardDeck(int deckNumber) {
+    private void addStandard52Cards() {
         for (Suit suit : Suit.values()) {
             for (Rank rank : Rank.values()) {
-                addCard(new Card(rank, suit, deckNumber));
+                addCard(Card.standard(new CardId(nextCardId++), rank, suit));
             }
         }
     }
 
-    private void addJokers(int deckNumber, int jokerCount) {
-        for (int i = 0; i < jokerCount; i++) {
-            addCard(Card.joker(deckNumber));
+    private void addJokers(int count) {
+        for (int i = 0; i < count; i++) {
+            addCard(Card.joker(new CardId(nextCardId++)));
         }
     }
 
@@ -60,27 +51,16 @@ public class Deck extends CardCollection {
 
     @Override
     public Card removeCard(Card card) {
-        if (!getCards().remove(card)) {
-            return null;
-        }
-
+        getCards().remove(card);
         return card;
     }
 
     public Card drawCard() {
-        if (getCards().isEmpty()) {
-            throw new IllegalStateException("Cannot draw from an empty deck");
-        }
-
         return getCards().removeLast();
     }
 
     public void shuffle() {
-        shuffle(new Random());
-    }
-
-    public void shuffle(Random random) {
         List<Card> cards = getCards();
-        Collections.shuffle(cards, random);
+        Collections.shuffle(cards, new Random());
     }
 }

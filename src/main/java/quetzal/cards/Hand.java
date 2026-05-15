@@ -9,7 +9,7 @@ import javafx.geometry.Rectangle2D;
 import javafx.util.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.IdentityHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,8 +25,8 @@ public class Hand extends CardCollection {
     private static final double SELECTED_CARD_Y_OFFSET = -50;
 
     private Deck deck;
-    private final Map<Card, Entity> cardEntities = new IdentityHashMap<>();
     private List<Card> selectedCards = new ArrayList<>();  // Keep track of selected cards
+    private final Map<CardId, Entity> cardEntities = new HashMap<>();
     private Rectangle2D handArea;
     private int handY;
     private int handX;
@@ -51,7 +51,7 @@ public class Hand extends CardCollection {
                     .put("z-index", i)
                     .put("hand", this));
 
-            cardEntities.put(card, cardEntity);
+            registerCardEntity(card, cardEntity);
             getCards().add(card);  // Add the card to the hand's list
         }
 
@@ -82,7 +82,7 @@ public class Hand extends CardCollection {
 
         for (int i = 0; i < selectedCards.size(); i++) {
             Card card = selectedCards.get(i);
-            Entity cardEntity = getEntity(card);
+            Entity cardEntity = getEntityFor(card);
 
             // Expand to the "played" area with a slight size increase
             FXGL.animationBuilder()
@@ -183,19 +183,9 @@ public class Hand extends CardCollection {
     public List<Entity> getEntities() {
         List<Entity> entities = new ArrayList<>();
         for(Card card: getCards()) {
-            entities.add(getEntity(card));
+            entities.add(getEntityFor(card));
         }
         return entities;
-    }
-
-    public Entity getEntity(Card card) {
-        Entity entity = cardEntities.get(card);
-
-        if (entity == null) {
-            throw new IllegalStateException("No entity is registered for card: " + card);
-        }
-
-        return entity;
     }
 
     public void organizeCardEntities() {
@@ -204,7 +194,7 @@ public class Hand extends CardCollection {
         List<Card> cards = getCards();
 
         for (int i = 0; i < cards.size(); i++) {
-            Entity cardEntity = getEntity(cards.get(i));
+            Entity cardEntity = getEntityFor(cards.get(i));
             Point2D targetPosition = getCardVisualPosition(i);
 
             cardEntity.setZIndex(i);
@@ -226,11 +216,11 @@ public class Hand extends CardCollection {
             Card card = cards.get(i);
 
             if (card == excludedCard) {
-                getEntity(card).setZIndex(100);
+                getEntityFor(card).setZIndex(100);
                 continue;
             }
 
-            Entity cardEntity = getEntity(card);
+            Entity cardEntity = getEntityFor(card);
             Point2D targetPosition = getCardVisualPosition(i);
 
             cardEntity.setZIndex(i);
@@ -286,8 +276,8 @@ public class Hand extends CardCollection {
 
     public void sortByRank() {
         getCards().sort(
-                Comparator.comparingInt(Card::rank)
-                        .thenComparing(Card::suit)
+                Comparator.comparingInt((Card card) -> card.isJoker() ? Integer.MAX_VALUE : card.rank().pokerValue())
+                        .thenComparing(card -> card.isJoker() ? null : card.suit(), Comparator.nullsLast(Comparator.naturalOrder()))
         );
 
         organizeCardEntities();
@@ -295,15 +285,30 @@ public class Hand extends CardCollection {
 
     public void sortBySuit() {
         getCards().sort(
-                Comparator.comparing(Card::suit)
-                        .thenComparingInt(Card::rank)
+                Comparator.comparing((Card card) -> card.isJoker() ? null : card.suit(), Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparingInt(card -> card.isJoker() ? Integer.MAX_VALUE : card.rank().pokerValue())
         );
 
         organizeCardEntities();
     }
 
     public void sortCardsByPosition(List<Card> cards) {
-        cards.sort(Comparator.comparingDouble(card -> getEntity(card).getX()));
+        cards.sort(Comparator.comparingDouble(card -> getEntityFor(card).getX()));
+    }
+
+
+    public void registerCardEntity(Card card, Entity entity) {
+        cardEntities.put(card.id(), entity);
+    }
+
+    public Entity getEntityFor(Card card) {
+        Entity entity = cardEntities.get(card.id());
+
+        if (entity == null) {
+            throw new IllegalStateException("No entity registered for card: " + card);
+        }
+
+        return entity;
     }
 
 }

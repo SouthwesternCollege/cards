@@ -1,58 +1,51 @@
 package quetzal.cards;
 
-public class Card {
+public final class Card {
 
-    private static final int RANKS_PER_SUIT = 13;
-
+    private final CardId id;
     private final Rank rank;
     private final Suit suit;
-    private final int deckNumber;
     private final boolean joker;
+
     private boolean selectable = true;
 
-    public Card(int cardIndex) {
-        if (cardIndex < 0 || cardIndex >= 52) {
-            throw new IllegalArgumentException("Standard card index must be between 0 and 51: " + cardIndex);
+    private Card(CardId id, Rank rank, Suit suit, boolean joker) {
+        if (id == null) {
+            throw new IllegalArgumentException("Card id cannot be null.");
         }
 
-        this.rank = Rank.fromSpriteColumn(cardIndex % RANKS_PER_SUIT);
-        this.suit = Suit.fromSpriteRow(cardIndex / RANKS_PER_SUIT);
-        this.deckNumber = 0;
-        this.joker = false;
-    }
-
-    public Card(Rank rank, Suit suit) {
-        this(rank, suit, 0);
-    }
-
-    public Card(Rank rank, Suit suit, int deckNumber) {
-        if (rank == null) {
-            throw new IllegalArgumentException("rank cannot be null");
-        }
-        if (suit == null) {
-            throw new IllegalArgumentException("suit cannot be null");
+        if (!joker && (rank == null || suit == null)) {
+            throw new IllegalArgumentException("A standard card must have a rank and suit.");
         }
 
+        if (joker && (rank != null || suit != null)) {
+            throw new IllegalArgumentException("A joker cannot have a rank or suit.");
+        }
+
+        this.id = id;
         this.rank = rank;
         this.suit = suit;
-        this.deckNumber = deckNumber;
-        this.joker = false;
+        this.joker = joker;
     }
 
-    public static Card joker(int deckNumber) {
-        return new Card(deckNumber);
+    public static Card standard(CardId id, Rank rank, Suit suit) {
+        return new Card(id, rank, suit, false);
     }
 
-    public Rank getRank() {
+    public static Card joker(CardId id) {
+        return new Card(id, null, null, true);
+    }
+
+    public CardId id() {
+        return id;
+    }
+
+    public Rank rank() {
         return rank;
     }
 
-    public Suit getSuit() {
+    public Suit suit() {
         return suit;
-    }
-
-    public int getDeckNumber() {
-        return deckNumber;
     }
 
     public boolean isJoker() {
@@ -67,32 +60,39 @@ public class Card {
         this.selectable = selectable;
     }
 
-    public int getCardIndex() {
-        if (joker) {
-            return 52;
-        }
-
-        return suit.spriteRow() * RANKS_PER_SUIT + rank.spriteColumn();
+    public Card select() {
+        return selectable ? this : null;
     }
 
-    public int rank() {
-        if (joker) {
-            return Integer.MAX_VALUE;
-        }
-
-        return rank.pokerValue();
+    public CardSnapshot toSnapshot() {
+        return new CardSnapshot(
+                id.value(),
+                rank == null ? null : rank.name(),
+                suit == null ? null : suit.name(),
+                joker
+        );
     }
 
-    public Suit suit() {
-        return suit;
+    public static Card fromSnapshot(CardSnapshot snapshot) {
+        CardId id = new CardId(snapshot.id());
+
+        if (snapshot.joker()) {
+            return Card.joker(id);
+        }
+
+        return Card.standard(
+                id,
+                Rank.valueOf(snapshot.rank()),
+                Suit.valueOf(snapshot.suit())
+        );
     }
 
     @Override
     public String toString() {
         if (joker) {
-            return "Joker (deck " + deckNumber + ")";
+            return "Joker #" + id.value();
         }
 
-        return rank.displayName() + " of " + suit.pluralDisplayName() + " (deck " + deckNumber + ")";
+        return rank + " of " + suit + " #" + id.value();
     }
 }

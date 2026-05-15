@@ -23,13 +23,12 @@ public class GameFactory implements EntityFactory {
     @Spawns("Card")
     public Entity spawnCard(SpawnData data) {
         Card card = data.get("card");
-        Entity cardEntity = FXGL.entityBuilder(data)
+        return FXGL.entityBuilder(data)
                 .type(EntityType.CARD)
-                .with(new CardComponent(card))  // Pass the Card object
+                .with(new CardComponent(card))
                 .with(new CardAnimationComponent(data.get("hand")))
                 .zIndex(data.get("z-index"))
                 .build();
-        return cardEntity;
     }
 
 }
