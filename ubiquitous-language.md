@@ -448,6 +448,72 @@ Lower score is better.
 
 Score modifiers may reduce score, including the exact deal bonus.
 
+
+### Scene
+
+The full FXGL/JavaFX game scene.
+
+The current scene is divided into a left HUD region and a right gameplay region.
+
+### HUD Area
+
+The left 20% of the scene.
+
+This area is reserved for heads-up display information such as current round, active player, dealer, score, opening requirement, turn phase, castigo availability, and selected-card or selected-meld feedback.
+
+### Gameplay Area
+
+The right 80% of the scene.
+
+This area is divided vertically into four regions:
+
+```text
+Top 30%       = opponent played melds
+Next 30%      = player played melds
+Next 30%      = player hand
+Bottom 10%    = play buttons
+```
+
+### Opponent Meld Area
+
+The top 30% of the gameplay area.
+
+This area displays melds currently associated visually with opponents.
+
+Rules note:
+
+- At the domain level, melds are part of a shared play area.
+- At the presentation level, the UI may visually distinguish opponent melds from player melds.
+
+### Player Meld Area
+
+The second 30% of the gameplay area.
+
+This area displays melds visually associated with the local/current player.
+
+Current issue:
+
+- Played cards currently animate near the upper-left corner instead of landing in this region.
+
+### Player Hand Area
+
+The third 30% of the gameplay area.
+
+This area displays the current player's hand.
+
+### Play Button Area
+
+The bottom 10% of the gameplay area.
+
+This area contains buttons for player actions such as playing selected cards, drawing, discarding, or future turn-phase actions.
+
+### Debug Layout Overlay
+
+A development overlay used to verify scene-region boundaries.
+
+The overlay is useful while the UI layout is still evolving and should remain a development aid rather than a domain concept.
+
+
 ## Technical / Architecture Terms
 
 ### Engine

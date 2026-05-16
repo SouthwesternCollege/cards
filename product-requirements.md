@@ -413,6 +413,80 @@ The application shall display relevant game information such as selected meld in
 
 Status: prototype exists, but `GameHUD` currently uses static/global access.
 
+
+## UI Layout Requirements
+
+The intended scene layout is:
+
+```text
+Full Scene
+├── Left 20%: HUD
+└── Right 80%: Gameplay Area
+    ├── Top 30%: Opponent played melds
+    ├── Next 30%: Player played melds
+    ├── Next 30%: Player hand
+    └── Bottom 10%: Play buttons
+```
+
+### UI-1: HUD Region
+
+The application shall reserve the left 20% of the scene for HUD information.
+
+This region should eventually display:
+
+- Round number.
+- Active player.
+- Dealer.
+- Scores.
+- Current opening requirement.
+- Whether the player has opened.
+- Turn phase.
+- Castigo availability.
+- Selected-card or selected-meld feedback.
+
+### UI-2: Opponent Meld Region
+
+The application shall reserve the top 30% of the right gameplay area for opponent played melds.
+
+This is a presentation-layer distinction. At the domain level, melds remain part of the shared play area.
+
+### UI-3: Player Meld Region
+
+The application shall reserve the second 30% of the right gameplay area for the local/current player's played melds.
+
+Known current bug:
+
+- Cards played from the hand do not currently animate to this region.
+- They currently animate near the upper-left corner.
+- This should be addressed when the hand/domain model is separated from the FXGL presentation layer.
+
+### UI-4: Player Hand Region
+
+The application shall reserve the third 30% of the right gameplay area for the current player's hand.
+
+### UI-5: Play Button Region
+
+The application shall reserve the bottom 10% of the right gameplay area for play buttons and action controls.
+
+### UI-6: Debug Layout Overlay
+
+The application may include a debug overlay to verify layout boundaries during development.
+
+This overlay is a development tool and should not be treated as part of the domain model.
+
+### UI Architecture Note
+
+The `GameLayout` class currently centralizes layout calculations. This is acceptable for the prototype, but Milestone 4 should revisit the boundary between:
+
+```text
+GameLayout          // layout geometry
+HandView            // visual hand behavior
+MeldView            // visual meld behavior
+PlayAreaView        // visual play area behavior
+Domain model        // no rendering knowledge
+```
+
+
 ## Non-Functional Requirements
 
 ### NFR-1: Testability
@@ -489,6 +563,8 @@ Status: mostly complete.
 - Create pure `Hand` or `HandModel`.
 - Move layout and animation out of domain hand logic.
 - Keep FXGL entity mapping in presentation layer.
+- Ensure played-card animation targets the player meld region.
+- Preserve or improve layout-debug overlay support.
 
 ### Milestone 5: Introduce Game State and Actions
 

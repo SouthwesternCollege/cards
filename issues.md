@@ -583,3 +583,73 @@ MustUseStolenJoker
 ```
 
 This avoids burying the rule in UI event handling or ad hoc conditionals.
+
+---
+
+## ISS-019: Played meld animation targets wrong scene region
+
+Status: Open  
+Priority: P2  
+Area: UI / Presentation
+
+### Problem
+
+When a player plays selected cards into the play area, the cards do not animate to the intended player meld region.
+
+Current observed behavior:
+
+- Played cards animate near the upper-left corner.
+
+Expected behavior:
+
+- Played cards should animate to the player meld area, which is the second 30% vertical band of the right gameplay area.
+
+### Relevant Layout
+
+```text
+Full Scene
+├── Left 20%: HUD
+└── Right 80%: Gameplay Area
+    ├── Top 30%: Opponent played melds
+    ├── Next 30%: Player played melds
+    ├── Next 30%: Player hand
+    └── Bottom 10%: Play buttons
+```
+
+### Likely Cause
+
+The animation target is probably using incorrect coordinate-space assumptions or outdated layout constants.
+
+Potential sources:
+
+- `GameLayout`
+- Hand play-card animation logic
+- Entity coordinate conversion
+- Hardcoded coordinates
+- Confusion between full-scene coordinates and gameplay-area-relative coordinates
+
+### Proposed Direction
+
+Do not solve this immediately unless it blocks development.
+
+Address during Milestone 4 when splitting the domain hand model from presentation-layer behavior.
+
+The eventual design should route visual movement through a presentation service or view/controller layer, not through domain objects.
+
+---
+
+## ISS-020: Preserve layout debug overlay during UI refactor
+
+Status: Open  
+Priority: P3  
+Area: UI / Developer Tooling
+
+### Problem
+
+The debug layout overlay is useful for verifying the dedicated scene regions.
+
+### Proposed Direction
+
+Keep the debug overlay available while layout and animation behavior are being refactored.
+
+It should remain optional/development-only and should not affect domain model behavior.
