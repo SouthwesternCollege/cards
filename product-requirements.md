@@ -19,10 +19,11 @@ The project should also serve as a teaching vehicle for interface design and dee
 5. Support La Kika meld rules: three-of-a-kind-or-more and straight flushes only.
 6. Support castigo behavior.
 7. Support six rounds with distinct opening requirements.
-8. Support round scoring and cumulative scoring.
-9. Support save states through explicit snapshots.
-10. Keep architecture clean enough to test domain logic without launching FXGL.
-11. Use the project as a guided learning environment for interface design, deep modules, and design patterns.
+8. Support dealer rotation and the exact deal bonus.
+9. Support round scoring and cumulative scoring, including negative scores.
+10. Support save states through explicit snapshots.
+11. Keep architecture clean enough to test domain logic without launching FXGL.
+12. Use the project as a guided learning environment for interface design, deep modules, and design patterns.
 
 ## Non-Goals for Now
 
@@ -43,18 +44,24 @@ La Kika is a turn-based multiplayer card game for 2-4 players.
 
 Each round:
 
-- Each player is dealt 13 cards.
+- Dealer responsibility rotates according to turn order.
+- The dealer shuffles and prepares cards to be dealt.
+- Each player is dealt 13 cards, one at a time, starting with the player next to the dealer.
+- If the dealer prepares exactly the number of cards needed for the deal, the dealer gets a 100-point score reduction.
 - Players take turns drawing, playing/mutating melds, and discarding.
+- A player may take castigo even if they have not opened.
 - A player must satisfy the round opening requirement before freely playing or mutating melds.
+- If a closed player steals a joker, they must open that same turn.
 - Melds remain in a shared play area.
 - Any player may mutate any meld if the move is legal.
-- The round ends when a player empties their hand.
+- The round ends when a player discards their final card.
 - Other players score penalty points based on cards remaining in hand.
 
 The full game:
 
 - Has six rounds.
 - Uses cumulative scoring.
+- Allows negative scores.
 - The player with the lowest cumulative score after six rounds wins.
 
 ## Users
@@ -86,6 +93,8 @@ RoundState
 GameState
 ScoreRule
 OpeningRequirement
+DealerRotation
+DealService
 ```
 
 FXGL-dependent candidates:
@@ -152,6 +161,8 @@ TurnPhase
 Move
 LegalMoveValidator
 ScoreRule
+DealerRotation
+ExactDealBonus
 ```
 
 ## Functional Requirements
@@ -179,17 +190,39 @@ Known La Kika rules:
 - Jokers may represent any rank or suit.
 - Jokers may not make up more than half of a meld.
 - Jokers may not be consecutive in a straight flush.
-- Jokers may be replaced and taken from melds.
-- Taken jokers must be played during the same turn.
+- Jokers may be stolen from melds by replacement.
+- More than one joker may be stolen during a single turn.
+- A stolen joker must be played during the same turn.
+- A stolen joker may be used to create a new meld or mutate any meld in the play area.
 - Jokers score 50 points when left in hand.
 
 ### FR-4: Deck Creation
 
 The system shall support decks with configurable numbers of standard 52-card decks and jokers.
 
+Known setup rule:
+
+- The game starts with at least two standard decks plus jokers in early rounds.
+- Later rounds may use up to four standard decks plus jokers.
+- Exact starting deck composition by player count and round is still being researched with other game experts.
+
 Status: partially implemented.
 
-### FR-5: Hand Management
+### FR-5: Deck Exhaustion
+
+The system shall handle normal draw and castigo draw when the deck has insufficient cards.
+
+Current rule decision:
+
+- Add a new shuffled standard deck with jokers to the game deck when the current deck cannot satisfy the draw.
+
+Alternative considered:
+
+- Shuffle the discard pile into the deck if the discard pile is large enough.
+
+Status: not yet implemented.
+
+### FR-6: Hand Management
 
 The system shall represent cards held by a player.
 
@@ -199,7 +232,7 @@ Known La Kika rule:
 
 - Each player starts each round with 13 cards.
 
-### FR-6: Card Selection
+### FR-7: Card Selection
 
 The system shall allow a player to select cards from their hand.
 
@@ -210,7 +243,7 @@ Required update:
 - Selection must support melds larger than five cards.
 - Selection behavior should be driven by move construction, not poker-hand assumptions.
 
-### FR-7: Meld Creation
+### FR-8: Meld Creation
 
 The system shall allow a player to create legal melds.
 
@@ -221,7 +254,7 @@ Allowed meld types:
 
 Status: not yet implemented as clean domain logic.
 
-### FR-8: Meld Mutation
+### FR-9: Meld Mutation
 
 The system shall allow players to mutate existing melds in the play area.
 
@@ -229,13 +262,12 @@ Allowed mutations:
 
 - Add a same-rank card to a three-of-a-kind-or-more meld.
 - Add a continuing card to the beginning or end of a straight flush.
-- Replace a joker in a meld.
-- Take a joker from a meld if the replacement is legal.
-- Use a taken joker during the same turn.
+- Steal a joker from a meld by replacing it with a legal card.
+- Use a stolen joker to create a meld or mutate any meld.
 
 Status: not yet implemented.
 
-### FR-9: Play Area
+### FR-10: Play Area
 
 The system shall represent melds currently in play.
 
@@ -244,10 +276,11 @@ Rules:
 - The play area is shared for rule purposes.
 - Melds are not permanently owned by individual players.
 - Any player may mutate any meld if the move is legal.
+- A player's in-front-of-them physical area should not be modeled separately for now.
 
 Status: not yet implemented as a clean domain model.
 
-### FR-10: Turn Structure
+### FR-11: Turn Structure
 
 The system shall model a turn as three phases:
 
@@ -257,20 +290,22 @@ The system shall model a turn as three phases:
 
 Status: not yet implemented.
 
-### FR-11: Castigo
+### FR-12: Castigo
 
 The system shall support castigo.
 
 Rules:
 
 - A player may take only the most recently discarded card.
-- A player taking castigo must also draw three cards from the deck.
+- The player taking castigo must also draw three additional cards from the deck.
 - Only one castigo may occur per turn.
 - If the active player declines the castigo, other players may accept it in player turn order.
+- A player may take castigo even if they have not opened.
+- If the deck has fewer than three cards for the extra castigo draw, add a new shuffled standard deck with jokers to the game deck.
 
 Status: not yet implemented.
 
-### FR-12: Round Opening Requirements
+### FR-13: Round Opening Requirements
 
 The system shall enforce opening requirements per round.
 
@@ -288,20 +323,26 @@ Rules:
 - A player cannot freely create or mutate melds until satisfying the current round's opening requirement.
 - Opening does not consume the full turn.
 - After opening, the player may continue creating or mutating melds immediately.
+- Opening melds may include jokers if the resulting melds are legal.
+- Round 6's eight-card straight flush may include jokers if the meld is legal.
+- If a closed player steals a joker, they must open that same turn.
 
 Status: not yet implemented.
 
-### FR-13: Round End
+### FR-14: Round End
 
-The system shall end a round when a player empties their hand.
+The system shall end a round when a player discards their final card.
+
+Rules:
+
+- The final card should be discarded.
+- The final card does not need to be played into a meld.
+- If a player can play their final card during the meld phase, they still should discard the final card instead.
+- Discard is not skipped merely because the player could otherwise play all cards.
 
 Status: not yet implemented as a clean domain rule.
 
-Open detail:
-
-- Need to clarify whether the final card may be discarded to end the round or must be played into a meld.
-
-### FR-14: Scoring
+### FR-15: Scoring
 
 The system shall score players based on cards remaining in hand at the end of a round.
 
@@ -316,7 +357,37 @@ Joker   = 50 points
 
 Status: not yet implemented.
 
-### FR-15: Game End
+### FR-16: Dealer Rotation and Exact Deal Bonus
+
+The system shall rotate dealer responsibility according to turn order.
+
+Rules:
+
+- Each player takes turns being the dealer.
+- At the beginning of each round, the dealer shuffles the deck.
+- The dealer takes cards from the top of the deck all at once to create the deal packet.
+- Cards are dealt one at a time to each player in turn order, starting with the player next to the dealer.
+- The player next to the dealer also takes the first turn after the deal.
+- If the dealer takes exactly `hand size * number of players` cards, subtract 100 points from the dealer's score.
+- The exact deal bonus is applied immediately at the beginning of the round.
+- Negative scores are possible.
+- If the dealer takes too few cards, the remaining cards are dealt directly from the deck and the dealer's score is unaffected.
+- If the dealer takes too many cards, the extra cards are placed back on top of the deck and the dealer's score is unaffected.
+
+Digital interaction design:
+
+- The current preferred digital analogy is a shot/swing meter, similar to sports games.
+- The dealer selects when to stop the meter.
+- The stopped meter position determines how many cards are taken from the deck for the deal packet.
+
+Status: not yet implemented.
+
+Design note:
+
+- This is not merely UI flavor. It affects score and should be modeled in the domain layer.
+- The domain layer should not know about the visual meter. It should only receive the resulting number of cards taken.
+
+### FR-17: Game End
 
 The system shall end the game after six rounds.
 
@@ -324,21 +395,21 @@ The player with the lowest cumulative score wins.
 
 Status: not yet implemented.
 
-### FR-16: Save and Load
+### FR-18: Save and Load
 
 The system shall support save states through explicit snapshot objects.
 
 Status: started with `CardSnapshot`.
 
-### FR-17: FXGL Card Rendering
+### FR-19: FXGL Card Rendering
 
 The application shall render cards as FXGL entities using card data from the domain model.
 
 Status: partially implemented.
 
-### FR-18: HUD Updates
+### FR-20: HUD Updates
 
-The application shall display relevant game information such as selected meld information, score, turn state, and round status.
+The application shall display relevant game information such as selected meld information, score, turn state, dealer, round status, castigo availability, and opening status.
 
 Status: prototype exists, but `GameHUD` currently uses static/global access.
 
@@ -378,6 +449,8 @@ OpeningRequirement
 CastigoService
 ScoreCalculator
 LegalMoveValidator
+DealerRotation
+ExactDealBonusRule
 ```
 
 ## Proposed Milestones
@@ -399,6 +472,8 @@ Status: mostly complete.
 - Define `TurnPhase`.
 - Define `RoundState`.
 - Define `OpeningRequirement`.
+- Define `DealerRotation`.
+- Define exact deal bonus domain concept.
 
 ### Milestone 3: Replace Poker-Hand Prototype Logic
 
@@ -407,6 +482,7 @@ Status: mostly complete.
 - Support three-of-a-kind-or-more.
 - Support straight flushes.
 - Support ace-low non-cyclic sequence rules.
+- Support joker constraints.
 
 ### Milestone 4: Split Hand Domain from FXGL View
 
@@ -418,21 +494,26 @@ Status: mostly complete.
 
 - `GameState` / `RoundState`.
 - Player identity.
-- Actions such as draw, take castigo, create meld, mutate meld, discard.
+- Dealer identity.
+- Actions such as draw, take castigo, create meld, mutate meld, steal joker, discard.
 - Validation before mutation.
 
 ### Milestone 6: Implement Round and Turn Rules
 
 - Deal 13 cards.
+- Rotate dealer.
 - Enforce turn phases.
 - Enforce castigo.
+- Handle deck exhaustion by adding a new shuffled standard deck with jokers.
 - Enforce opening requirements.
-- End round when a player empties their hand.
+- End round on final discard.
 
 ### Milestone 7: Scoring and Game End
 
 - Score remaining hand cards.
+- Apply exact deal bonus.
 - Track cumulative score.
+- Support negative scores.
 - End after six rounds.
 - Determine lowest-score winner.
 
@@ -446,7 +527,7 @@ Status: mostly complete.
 
 - Remove static HUD update calls.
 - Introduce observer/event/property pattern.
-- Display turn, meld, castigo, opening, and scoring information.
+- Display turn, meld, castigo, opening, dealer, and scoring information.
 
 ### Milestone 10: Tests
 
@@ -455,17 +536,20 @@ Status: mostly complete.
 - Unit tests for meld validation.
 - Unit tests for joker constraints.
 - Unit tests for opening requirements.
+- Unit tests for castigo.
+- Unit tests for dealer rotation and exact deal bonus.
 - Unit tests for scoring.
 - Unit tests for round transitions.
 
 ## Open Product Questions
 
-1. May a player discard their final card to end the round, or must the final card be played into a meld?
-2. What happens if the deck has fewer than three cards when a castigo requires drawing three additional cards?
-3. What happens if the deck is exhausted during normal draw?
-4. Can a player take more than one joker from melds in a single turn?
-5. Must a taken joker be used in a new meld, or may it be used to mutate an existing meld?
-6. When a player opens with multiple melds, may those melds include jokers?
-7. For Round 6, does the eight-card straight flush opening requirement allow jokers?
-8. If a player has not opened, may they take a castigo?
-9. If a player has not opened, may they replace/take a joker, or is that considered a meld mutation that requires opening first?
+No blocking product questions remain for Milestone 1.
+
+Remaining clarifications to eventually answer:
+
+1. What is the exact starting deck composition by player count and round?
+   - Current rule: always start with at least two standard decks plus jokers in early rounds.
+   - Later rounds may use up to four standard decks plus jokers.
+   - Raul will consult other game experts to formalize this.
+2. When adding a new shuffled deck after exhaustion, how many jokers are included with the added 52 standard cards?
+3. How should the dealer's digital shot/swing meter be tuned so that the exact deal bonus is skill-based but not frustrating?

@@ -112,8 +112,10 @@ Known La Kika joker rules:
 - Jokers may represent any rank or suit.
 - Jokers may not make up more than half of a meld.
 - Jokers may not be consecutive in a straight flush.
-- Jokers may be replaced and taken from melds.
-- A joker taken from a meld must be played during the same turn.
+- Jokers may be stolen from melds by replacement.
+- More than one joker may be stolen during a single turn.
+- A joker stolen from a meld must be played during the same turn.
+- A stolen joker may be used to create a new meld or mutate any meld in the play area.
 - Jokers are worth 50 points in hand scoring.
 
 ### Remaining Design Work
@@ -122,8 +124,9 @@ Implementation still needs a joker subsystem to model:
 
 - Joker assignments.
 - Joker replacement.
-- Joker theft/taking.
+- Joker stealing.
 - Mandatory same-turn use.
+- Closed-player joker stealing requiring opening during the same turn.
 
 ---
 
@@ -218,16 +221,19 @@ The game is round-based, but the lifecycle was not formally modeled.
 
 Known round lifecycle:
 
-1. Deal 13 cards to each player.
-2. Players take turns.
-3. Each player must satisfy the round opening requirement before freely playing or mutating melds.
-4. A round ends when a player empties their hand.
-5. Remaining players score cards left in hand.
-6. Game ends after six rounds.
+1. Dealer rotates according to turn order.
+2. Dealer shuffles and prepares the deal.
+3. Deal 13 cards to each player, one at a time, starting with the player next to the dealer.
+4. Apply the exact deal bonus if the dealer prepared exactly the required number of cards.
+5. Players take turns.
+6. Each player must satisfy the round opening requirement before freely playing or mutating melds.
+7. A round ends when a player discards their final card.
+8. Remaining players score cards left in hand.
+9. Game ends after six rounds.
 
 ### Remaining Design Work
 
-Need to clarify exact final-card behavior.
+Need to model dealer preparation and exact deal behavior.
 
 ---
 
@@ -309,11 +315,12 @@ Castigo is a central La Kika rule and is not currently modeled.
 - The player taking castigo must also draw three additional cards from the deck.
 - Only one castigo may occur per turn.
 - If the active player declines, other players may accept in turn order.
+- A player who has not opened may take castigo.
+- If the deck has fewer than three cards, add a new shuffled standard deck with jokers to the game deck.
 
-### Open Questions
+### Remaining Design Question
 
-- What happens if the deck has fewer than three cards?
-- May a player who has not opened take castigo?
+- How many jokers should be included when adding a new deck?
 
 ---
 
@@ -335,6 +342,14 @@ Each round has a different opening requirement that gates whether a player may f
 4. Round 4: two four-of-a-kind melds.
 5. Round 5: one five-of-a-kind.
 6. Round 6: one straight flush of eight cards.
+
+### Additional Rules
+
+- Opening melds may include jokers if legal.
+- Round 6's eight-card straight flush may include jokers if legal.
+- Opening does not consume the whole turn.
+- A player may continue creating or mutating melds after opening.
+- If a closed player steals a joker, they must open during that same turn.
 
 ### Design Direction
 
@@ -365,7 +380,8 @@ Melds remain mutable in the play area, and any player may mutate any meld.
 - Melds are not permanently owned by players.
 - A player may add matching ranks to a kind meld.
 - A player may extend the beginning or end of a straight flush.
-- A player may replace/take jokers under specific constraints.
+- A player may steal jokers under specific constraints.
+- A stolen joker may be used to create a new meld or mutate any meld in the play area.
 
 ### Proposed Direction
 
@@ -404,25 +420,30 @@ Selection should support arbitrary legal move construction, not fixed-size poker
 
 ## ISS-017: Define final-card round-ending rule
 
-Status: Blocked  
+Status: Done  
 Priority: P1  
 Area: Game Rules
 
 ### Problem
 
-A round ends when a player empties their hand, but the exact method needs clarification.
+A round ends when a player empties their hand, but the exact method needed clarification.
 
-### Questions
+### Decision
 
-- May the final card be discarded to end the round?
-- Must the final card be played into a meld?
-- If a player plays all cards during the meld phase, is discard skipped?
+- The final card should be discarded.
+- The final card does not need to be played into a meld.
+- If a player can play the final card during the meld phase, they should still discard the final card.
+- Discard is not skipped simply because the player could otherwise play all cards.
+
+### Implementation Impact
+
+The turn model must always include a discard phase unless a future explicit rule says otherwise.
 
 ---
 
 ## ISS-018: Define deck exhaustion behavior
 
-Status: Blocked  
+Status: Done  
 Priority: P1  
 Area: Game Rules
 
@@ -430,8 +451,135 @@ Area: Game Rules
 
 Draw and castigo require cards from the deck.
 
+### Decision
+
+If the deck cannot satisfy a normal draw or castigo draw, add a new shuffled standard deck with jokers to the game deck.
+
+### Alternative Considered
+
+Shuffle the discard pile into the deck if the discard pile is large enough.
+
+### Remaining Design Question
+
+- How many jokers should be included when adding a new deck?
+
+---
+
+## ISS-019: Implement dealer rotation
+
+Status: Open  
+Priority: P1  
+Area: Game Rules
+
+### Problem
+
+Dealer responsibility affects dealing and scoring, so it must be modeled in the domain layer.
+
+### Known Rules
+
+- Players take turns being dealer according to turn order.
+- Dealer shuffles the deck at the beginning of a round.
+- Dealer takes a deal packet from the top of the deck all at once.
+- Cards are dealt one at a time starting with the player next to the dealer.
+- The player next to the dealer takes the first turn after the deal.
+- If the deal packet is short, remaining cards are dealt directly from the deck.
+- If the deal packet is long, extra cards are returned to the top of the deck.
+
+### Proposed Direction
+
+Introduce domain concepts such as:
+
+```text
+DealerRotation
+DealOrder
+DealService
+```
+
+---
+
+## ISS-020: Implement exact deal bonus
+
+Status: Open  
+Priority: P1  
+Area: Scoring
+
+### Problem
+
+The exact deal mechanic affects scoring and allows negative scores.
+
+### Known Rule
+
+If the dealer takes exactly:
+
+```text
+hand size * number of players
+```
+
+cards for the deal, subtract 100 points from the dealer's score immediately at the beginning of the round.
+
+### Additional Rules
+
+- Negative scores are possible.
+- If the dealer takes too few cards, the remaining cards are dealt directly from the deck and the dealer's score is unaffected.
+- If the dealer takes too many cards, the extra cards are returned to the top of the deck and the dealer's score is unaffected.
+
+### Digital Design Direction
+
+- Use a shot/swing-meter style interaction.
+- The dealer stops the meter.
+- The stopped meter position determines the number of cards taken for the deal packet.
+- The domain logic should receive the resulting count, not depend on the UI meter.
+
+---
+
+## ISS-021: Determine initial deck composition by player count
+
+Status: Open  
+Priority: P1  
+Area: Game Setup
+
+### Problem
+
+The game supports multiple standard decks and jokers, but the exact starting deck composition is not yet fully defined by player count and round.
+
+### Current Domain Knowledge
+
+- The game always starts with at least two standard decks plus jokers in early rounds.
+- Later rounds may add up to four decks.
+- Raul will consult other game experts to formulate this rule more precisely.
+
 ### Questions
 
-- What happens if the deck is empty?
-- What happens if castigo requires three additional cards and fewer than three remain?
-- Is the discard pile reshuffled into the deck?
+- How many standard decks are used by round and player count?
+- How many jokers are included per deck or per game?
+- Does the joker count scale with the number of standard decks?
+
+---
+
+## ISS-022: Model closed-player joker stealing rule
+
+Status: Open  
+Priority: P1  
+Area: Game Rules
+
+### Problem
+
+A player who has not opened may steal a joker, but must open that same turn.
+
+### Risk
+
+This creates a temporary obligation within a turn.
+
+### Proposed Direction
+
+Model turn obligations explicitly.
+
+Possible concept:
+
+```text
+TurnObligation
+MustOpenThisTurn
+MustUseStolenJoker
+```
+
+This avoids burying the rule in UI event handling or ad hoc conditionals.

@@ -91,14 +91,27 @@ Known La Kika rules:
 - A joker may represent any suit.
 - Jokers may not make up more than half of the cards in a meld.
 - Jokers may not appear consecutively in a straight flush.
-- A player may take a joker from a meld if they can replace it according to the rules.
-- A joker taken from a meld must be played during the same turn.
+- A player may steal a joker from a meld if they can replace it according to the rules.
+- A joker stolen from a meld must be played during the same turn.
+- A player may steal more than one joker in a single turn.
+- A stolen joker may be used to create a new meld or mutate any meld in the play area.
 - Jokers are worth 50 points when left in a player's hand at the end of a round.
 
 Joker replacement rules:
 
-- In a three-of-a-kind-or-more meld, a player may take a joker by replacing it with a card of the required rank.
-- In a straight flush meld, a player may take a joker by replacing it with the exact rank and suit represented by the joker.
+- In a three-of-a-kind-or-more meld, a player may steal a joker by replacing it with a card of the required rank.
+- In a straight flush meld, a player may steal a joker by replacing it with the exact rank and suit represented by the joker.
+- If a player has not opened and steals a joker, they must open during that same turn.
+
+### Joker Stealing
+
+The act of taking a joker from an existing meld by replacing it with the correct card.
+
+This is the preferred domain term, rather than “joker theft,” “joker replacement,” or “joker rescue.”
+
+Known rule:
+
+- The stolen joker must be played during the same turn.
 
 ### Deck
 
@@ -111,6 +124,21 @@ Current code concept:
 ```java
 Deck deck = new Deck(numberOfStandardDecks, jokersPerDeck);
 ```
+
+### Game Deck
+
+The active deck used during a round.
+
+Known La Kika rules:
+
+- The game starts with at least two standard decks plus jokers in early rounds.
+- Later rounds may use up to four standard decks plus jokers.
+- If the deck is exhausted, or if there are not enough cards to complete a castigo draw, the current design decision is to add a new shuffled standard deck with jokers to the game deck.
+
+Design note:
+
+- Raul also identified an alternative option: shuffle the discard pile into the deck if the discard pile is large enough. For now, adding a new shuffled standard deck with jokers is the preferred simpler rule.
+- Exact initial deck composition by player count and round is still being researched with other game experts.
 
 ### Hand
 
@@ -202,7 +230,7 @@ A move can be structurally valid but not legal.
 Examples:
 
 - A valid meld may be illegal if the player has not yet satisfied the round opening requirement.
-- A joker replacement may be invalid if the player cannot immediately play the taken joker.
+- A joker stealing action may be illegal if the player cannot immediately play the stolen joker.
 - A discard may be illegal if it occurs before the required draw/castigo phase.
 
 ### Move
@@ -214,8 +242,8 @@ Examples:
 - Creating a new meld.
 - Extending an existing meld.
 - Replacing a joker in a meld.
-- Taking a joker from a meld.
-- Using a joker taken earlier in the same turn.
+- Stealing a joker from a meld.
+- Using a stolen joker during the same turn.
 
 Design note:
 
@@ -224,9 +252,13 @@ Design note:
 
 ### Play Area
 
-The area containing all melds currently in play.
+The shared area containing all melds currently in play.
 
 Players typically play melds in front of themselves physically, but for rules purposes the play area is shared because players may mutate any meld.
+
+Decision:
+
+- Do not model each player's in-front-of-them physical area separately from the rules-level play area.
 
 ### Discard Pile
 
@@ -235,7 +267,18 @@ The place where discarded cards go.
 Known La Kika rules:
 
 - A player must discard one card at the end of their turn.
+- The final card should be discarded to end a round.
 - Only the most recently discarded card can be taken through castigo.
+
+### Final Discard
+
+The customary final action that ends a round.
+
+Known La Kika rule:
+
+- A player should discard their final card to end the round.
+- The final card does not need to be played into a meld.
+- If a player could play their final card during the meld phase, they still should discard the final card instead.
 
 ### Castigo
 
@@ -250,6 +293,7 @@ Known rules:
 - The active player has the first chance to take the castigo.
 - If the active player declines, the next player in turn order may choose to take it.
 - This continues in player turn order until someone takes it or all eligible players decline.
+- A player who has not opened may take castigo.
 
 ### Turn
 
@@ -265,7 +309,7 @@ During the meld play/meld mutation phase, the player may create or mutate multip
 
 ### Round
 
-A sequence of turns ending when a player empties their hand.
+A sequence of turns ending when a player empties their hand by discarding their final card.
 
 Known La Kika rules:
 
@@ -274,6 +318,15 @@ Known La Kika rules:
 - Each round has an opening requirement.
 - A player cannot play freely until they satisfy that round's opening requirement.
 - Once a player opens, they may immediately continue playing and mutating melds during the same turn.
+
+### Opening
+
+The act of satisfying the current round's opening requirement.
+
+Decision:
+
+- Use the term **opening**.
+- Avoid “going down” and “laying down” unless Raul later decides those are better table-language terms.
 
 ### Opening Requirement
 
@@ -288,6 +341,14 @@ The six round opening requirements are:
 5. One five-of-a-kind.
 6. One straight flush of eight cards.
 
+Jokers may be used in opening melds if the resulting melds are legal.
+
+For Round 6, the eight-card straight flush may include jokers if:
+
+- Jokers are no more than half of the meld.
+- Jokers are not consecutive.
+- The meld is otherwise legal.
+
 ### Opened Player
 
 A player who has satisfied the current round's opening requirement.
@@ -299,6 +360,11 @@ Once opened, the player may create and mutate melds during the same turn and fut
 A player who has not yet satisfied the current round's opening requirement.
 
 A closed player may not freely create or mutate melds until opening.
+
+Known exception:
+
+- A closed player may take castigo.
+- If a closed player steals a joker, they must open during that same turn.
 
 ### Game
 
@@ -316,6 +382,54 @@ Known La Kika rules:
 - Each player has one hand.
 - Each player accumulates score across rounds.
 - Lowest cumulative score wins.
+- Players take turns being dealer according to turn order.
+
+### Dealer
+
+The player responsible for shuffling and preparing cards to be dealt at the beginning of a round.
+
+Known La Kika rules:
+
+- Dealer responsibility rotates according to turn order.
+- At the beginning of each round, the dealer shuffles the deck and takes cards from the top of the deck all at once to create the deal packet.
+- Cards are dealt one at a time to each player in turn order, starting with the player next to the dealer.
+- The player next to the dealer takes the first turn after the deal.
+- If the dealer takes exactly the number of cards needed for the deal, the dealer receives a 100-point score reduction.
+- If the dealer takes too few cards, the remaining cards are dealt directly from the deck and the dealer's score is unaffected.
+- If the dealer takes too many cards, the extra cards are placed back on top of the deck and the dealer's score is unaffected.
+
+### Deal Packet
+
+The group of cards the dealer takes from the top of the deck all at once before dealing.
+
+Known La Kika rules:
+
+- The dealer attempts to take exactly enough cards to deal the round.
+- If the deal packet is exact, the dealer receives the exact deal bonus.
+- If the deal packet is short, the remaining cards are dealt directly from the deck.
+- If the deal packet is long, extra cards are returned to the top of the deck.
+
+Digital design note:
+
+- The current preferred UI analogy is a shot/swing meter.
+- The dealer stops the meter, and the meter result determines the deal packet size.
+- The domain model should receive only the resulting deal packet size, not depend on the UI meter itself.
+
+### Exact Deal Bonus
+
+A scoring bonus awarded to the dealer when the dealer takes exactly the number of cards needed for the round deal.
+
+Formula:
+
+```text
+required cards = hand size * number of players
+```
+
+Known La Kika rules:
+
+- If the dealer takes exactly `hand size * number of players` cards, subtract 100 points from the dealer's score.
+- The bonus is applied immediately at the beginning of the round.
+- Negative scores are possible.
 
 ### Score
 
@@ -331,6 +445,8 @@ Joker   = 50 points
 ```
 
 Lower score is better.
+
+Score modifiers may reduce score, including the exact deal bonus.
 
 ## Technical / Architecture Terms
 
@@ -426,8 +542,10 @@ Avoid: card owns an FXGL entity.
 
 ## Open Vocabulary Questions
 
-These are intentionally narrow unresolved vocabulary questions.
+No urgent vocabulary questions are currently open.
 
-1. Should the act of satisfying the opening requirement be called **opening**, **going down**, **laying down**, or something else?
-2. Should a player's in-front-of-them physical area be modeled separately from the shared rules-level play area?
-3. What should we call the action of taking and replacing a joker: **joker theft**, **joker replacement**, **joker rescue**, or another domain term?
+Possible future vocabulary refinements:
+
+1. Should the exact deal bonus have a traditional table name?
+2. Should the process of adding a new shuffled standard deck after exhaustion have a domain name?
+3. Should the digital meter action be called **deal preparation**, **cut**, **deal packet selection**, or something else?
