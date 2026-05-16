@@ -185,7 +185,7 @@ public class CardAnimationComponent extends Component {
             lastDragIndex = -1;
             isDragging = false;
         } else {
-            if (entity.getComponent(CardComponent.class).getCard().isSelectable()) {
+            if (hand.isSelectable(entity.getComponent(CardComponent.class).getCard())) {
                 toggleCardState();
             }
         }

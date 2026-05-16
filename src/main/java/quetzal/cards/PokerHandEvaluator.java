@@ -34,7 +34,7 @@ public class PokerHandEvaluator {
         if (handRank == HandRank.HIGH_CARD) {
             Rank highestRank = hand.stream()
                     .map(Card::rank)
-                    .max(Comparator.comparingInt(Rank::pokerValue))
+                    .max(Comparator.comparingInt(Rank::sequenceValue))
                     .orElseThrow();
 
             handDescription += ": " + highestRank;
@@ -90,7 +90,7 @@ public class PokerHandEvaluator {
 
     private static boolean isStraight(List<Card> hand) {
         List<Integer> sortedValues = hand.stream()
-                .map(card -> card.rank().pokerValue())
+                .map(card -> card.rank().sequenceValue())
                 .sorted()
                 .toList();
 
@@ -106,7 +106,7 @@ public class PokerHandEvaluator {
             return true;
         }
 
-        return sortedValues.equals(List.of(2, 3, 4, 5, 14));
+        return false;
     }
 
     private static Map<Rank, Integer> countRanks(List<Card> hand) {

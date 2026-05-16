@@ -7,8 +7,6 @@ public final class Card {
     private final Suit suit;
     private final boolean joker;
 
-    private boolean selectable = true;
-
     private Card(CardId id, Rank rank, Suit suit, boolean joker) {
         if (id == null) {
             throw new IllegalArgumentException("Card id cannot be null.");
@@ -52,16 +50,8 @@ public final class Card {
         return joker;
     }
 
-    public boolean isSelectable() {
-        return selectable;
-    }
-
-    public void setSelectable(boolean selectable) {
-        this.selectable = selectable;
-    }
-
-    public Card select() {
-        return selectable ? this : null;
+    public int scoreValue() {
+        return joker ? 50 : rank.scoreValue();
     }
 
     public CardSnapshot toSnapshot() {
@@ -74,6 +64,10 @@ public final class Card {
     }
 
     public static Card fromSnapshot(CardSnapshot snapshot) {
+        if (snapshot == null) {
+            throw new IllegalArgumentException("Card snapshot cannot be null.");
+        }
+
         CardId id = new CardId(snapshot.id());
 
         if (snapshot.joker()) {

@@ -10,8 +10,10 @@ import javafx.util.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class Hand extends CardCollection {
 
@@ -27,6 +29,7 @@ public class Hand extends CardCollection {
     private Deck deck;
     private List<Card> selectedCards = new ArrayList<>();  // Keep track of selected cards
     private final Map<CardId, Entity> cardEntities = new HashMap<>();
+    private final Set<CardId> unselectableCards = new HashSet<>();
     private Rectangle2D handArea;
     private int handY;
     private int handX;
@@ -73,15 +76,19 @@ public class Hand extends CardCollection {
             return; // No cards selected
         }
 
-        sortCardsByPosition(selectedCards);
+        // Work from a snapshot of the selection.
+        // Playing cards removes them from the hand and marks them unselectable,
+        // both of which can mutate selection-related collections. Iterating over
+        // selectedCards directly caused every other selected card to be skipped.
+        List<Card> cardsToPlay = new ArrayList<>(selectedCards);
+        sortCardsByPosition(cardsToPlay);
 
         double screenWidth = FXGL.getAppWidth();
 
         Duration expansionDuration = Duration.seconds(0.5);
         Duration collapseDuration = Duration.seconds(0.5);
 
-        for (int i = 0; i < selectedCards.size(); i++) {
-            Card card = selectedCards.get(i);
+        for (Card card : cardsToPlay) {
             Entity cardEntity = getEntityFor(card);
 
             // Expand to the "played" area with a slight size increase
@@ -110,8 +117,8 @@ public class Hand extends CardCollection {
                     .to(collapseTarget)  // Collapse to the calculated position
                     .buildAndPlay();
 
-            // Disable selection for this card after it is played
-            card.setSelectable(false);
+            // Disable selection for this card after it is played.
+            setSelectable(card, false);
 
             // Move the currentX position for the next card
             currentX += COLLAPSE_SPACING;
@@ -140,13 +147,12 @@ public class Hand extends CardCollection {
             return false;
         }
 
-        if (selectedCards.size() < 5) {  // Limit to 5 selected cards
-            selectedCards.add(card);
-            return true;
+        if (!isSelectable(card)) {
+            return false;
         }
 
-        FXGL.getNotificationService().pushNotification("You can only select up to 5 cards!");
-        return false;
+        selectedCards.add(card);
+        return true;
     }
 
     // Remove a card from the selected list
@@ -158,6 +164,19 @@ public class Hand extends CardCollection {
 
     public boolean isSelected(Card card) {
         return selectedCards.contains(card);
+    }
+
+    public boolean isSelectable(Card card) {
+        return !unselectableCards.contains(card.id());
+    }
+
+    public void setSelectable(Card card, boolean selectable) {
+        if (selectable) {
+            unselectableCards.remove(card.id());
+        } else {
+            unselectableCards.add(card.id());
+            selectedCards.remove(card);
+        }
     }
 
     public int size() {
@@ -276,7 +295,7 @@ public class Hand extends CardCollection {
 
     public void sortByRank() {
         getCards().sort(
-                Comparator.comparingInt((Card card) -> card.isJoker() ? Integer.MAX_VALUE : card.rank().pokerValue())
+                Comparator.comparingInt((Card card) -> card.isJoker() ? Integer.MAX_VALUE : card.rank().sequenceValue())
                         .thenComparing(card -> card.isJoker() ? null : card.suit(), Comparator.nullsLast(Comparator.naturalOrder()))
         );
 
@@ -286,7 +305,7 @@ public class Hand extends CardCollection {
     public void sortBySuit() {
         getCards().sort(
                 Comparator.comparing((Card card) -> card.isJoker() ? null : card.suit(), Comparator.nullsLast(Comparator.naturalOrder()))
-                        .thenComparingInt(card -> card.isJoker() ? Integer.MAX_VALUE : card.rank().pokerValue())
+                        .thenComparingInt(card -> card.isJoker() ? Integer.MAX_VALUE : card.rank().sequenceValue())
         );
 
         organizeCardEntities();

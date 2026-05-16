@@ -1,27 +1,33 @@
 package quetzal.cards;
 
 public enum Rank {
-    ACE(14),
-    TWO(2),
-    THREE(3),
-    FOUR(4),
-    FIVE(5),
-    SIX(6),
-    SEVEN(7),
-    EIGHT(8),
-    NINE(9),
-    TEN(10),
-    JACK(11),
-    QUEEN(12),
-    KING(13);
+    ACE(1, 20),
+    TWO(2, 5),
+    THREE(3, 5),
+    FOUR(4, 5),
+    FIVE(5, 5),
+    SIX(6, 5),
+    SEVEN(7, 5),
+    EIGHT(8, 10),
+    NINE(9, 10),
+    TEN(10, 10),
+    JACK(11, 10),
+    QUEEN(12, 10),
+    KING(13, 10);
 
-    private final int pokerValue;
+    private final int sequenceValue;
+    private final int scoreValue;
 
-    Rank(int pokerValue) {
-        this.pokerValue = pokerValue;
+    Rank(int sequenceValue, int scoreValue) {
+        this.sequenceValue = sequenceValue;
+        this.scoreValue = scoreValue;
     }
 
-    public int pokerValue() {
-        return pokerValue;
+    public int sequenceValue() {
+        return sequenceValue;
+    }
+
+    public int scoreValue() {
+        return scoreValue;
     }
 }

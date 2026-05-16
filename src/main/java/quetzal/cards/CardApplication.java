@@ -108,7 +108,7 @@ public class CardApplication extends GameApplication {
         gameHUD = new GameHUD(gameLayout);
 
         // Create a Deck and shuffle
-        Deck deck = new Deck();
+        Deck deck = Deck.laKikaPrototypeDeck();
         deck.shuffle();
 
         // Initialize hand area

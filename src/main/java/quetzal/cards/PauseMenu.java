@@ -48,11 +48,6 @@ public class PauseMenu extends FXGLMenu {
         Text volumeText = new Text("MUSIC VOLUME");
         volumeText.setFont(Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 24));
         volumeText.setFill(Color.WHITE);
-        DropShadow textShadow = new DropShadow();
-        textShadow.setRadius(1);
-        textShadow.setOffsetY(2.0);
-        textShadow.setColor(Color.valueOf("#3a2b55").darker().darker());
-        volumeText.setEffect(textShadow);
 
         VBox volumeBox = new VBox(10, volumeText, volumeSlider);
         volumeBox.setPadding(new Insets(18));
@@ -60,12 +55,6 @@ public class PauseMenu extends FXGLMenu {
                     -fx-background-color: #3a2b55;
                     -fx-background-radius: 8;
                 """);
-
-        DropShadow shadow = new DropShadow();
-        shadow.setRadius(1);
-        shadow.setOffsetY(6.0);
-        shadow.setColor(Color.color(0.1, 0.1, 0.1));
-        volumeBox.setEffect(shadow);
 
         volumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> FXGL.getSettings().setGlobalMusicVolume(newVal.doubleValue()));
 
