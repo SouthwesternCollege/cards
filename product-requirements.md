@@ -202,9 +202,10 @@ The system shall support decks with configurable numbers of standard 52-card dec
 
 Known setup rule:
 
-- The game starts with at least two standard decks plus jokers in early rounds.
-- Later rounds may use up to four standard decks plus jokers.
-- Exact starting deck composition by player count and round is still being researched with other game experts.
+- The game starts with two standard decks plus jokers.
+- Additional decks are added when necessary.
+- Exact scaling by player count and later rounds may be refined after consulting other game experts.
+- Each standard deck contributes two jokers.
 
 Status: partially implemented.
 
@@ -215,6 +216,7 @@ The system shall handle normal draw and castigo draw when the deck has insuffici
 Current rule decision:
 
 - Add a new shuffled standard deck with jokers to the game deck when the current deck cannot satisfy the draw.
+- The added deck includes 52 standard cards and two jokers.
 
 Alternative considered:
 
@@ -252,7 +254,26 @@ Allowed meld types:
 1. Three-of-a-kind or more.
 2. Straight flush.
 
-Status: not yet implemented as clean domain logic.
+Validation rules implemented in Milestone 3:
+
+- Minimum meld size is three cards.
+- Three-of-a-kind-or-more melds may contain duplicate physical cards with the same rank and suit because multiple standard decks are used.
+- Kind melds cannot contain mixed non-joker ranks.
+- Straight flushes cannot contain duplicate sequence ranks, even if the cards are physically distinct duplicates from multiple decks.
+- Straight flush selections do not need to be pre-sorted; the validator returns a normalized order.
+- Aces are low.
+- Straight flushes are not cyclic.
+- Jokers may appear in opening melds as long as the resulting meld is legal.
+- Jokers cannot be more than half of any meld.
+- All-joker melds are invalid.
+- Jokers cannot be consecutive in straight flush interpretations.
+- Ambiguous straight flush joker placement chooses the lowest possible valid sequence.
+
+Design nuance:
+
+- Because selected straight-flush cards are accepted unordered and ambiguous jokers choose the lowest valid sequence, `Q♠ K♠ Joker` can validate as `J♠ Q♠ K♠`; it does not validate as `Q♠ K♠ A♠` because aces are not high. If future rules require position-sensitive joker placement, the validator interface may need to accept placement/order intent.
+
+Status: implemented as initial domain validation in Milestone 3.
 
 ### FR-9: Meld Mutation
 
@@ -589,12 +610,18 @@ Status: mostly complete.
 
 ### Milestone 3: Replace Poker-Hand Prototype Logic
 
-- Remove `PokerHandEvaluator` as a central concept.
-- Replace with La Kika meld validation.
-- Support three-of-a-kind-or-more.
-- Support straight flushes.
-- Support ace-low non-cyclic sequence rules.
-- Support joker constraints.
+Status: implemented as initial domain validation.
+
+- Removed `PokerHandEvaluator` from active La Kika selection feedback.
+- Added La Kika meld validation.
+- Supported three-of-a-kind-or-more.
+- Supported straight flushes.
+- Supported ace-low non-cyclic sequence rules.
+- Supported joker ratio and consecutive-joker constraints.
+- Added validation error codes.
+- Added normalized meld results and joker assignments.
+
+Note: `PokerHandEvaluator` may remain in the codebase temporarily as a possible future generic-engine utility, but it should not drive La Kika gameplay.
 
 ### Milestone 4: Split Hand Domain from FXGL View
 
@@ -657,13 +684,16 @@ Status: mostly complete.
 
 ## Open Product Questions
 
-No blocking product questions remain for Milestone 1.
+No blocking product questions remain for Milestones 1-3.
 
 Remaining clarifications to eventually answer:
 
 1. What is the exact starting deck composition by player count and round?
-   - Current rule: always start with at least two standard decks plus jokers in early rounds.
-   - Later rounds may use up to four standard decks plus jokers.
-   - Raul will consult other game experts to formalize this.
-2. When adding a new shuffled deck after exhaustion, how many jokers are included with the added 52 standard cards?
-3. How should the dealer's digital shot/swing meter be tuned so that the exact deal bonus is skill-based but not frustrating?
+   - Current rule: start with two standard decks plus jokers.
+   - Additional decks are added when necessary.
+   - Raul will consult other game experts to formalize whether later rounds/player counts should start with more than two decks.
+2. How should the dealer's digital shot/swing meter be tuned so that the exact deal bonus is skill-based but not frustrating?
+   - Current direction: use a linear interpolation between the top and bottom of the deck.
+   - Do not display the exact number of cards selected on the meter.
+   - An arrow or similar indicator is acceptable for now.
+   - Later version may animate the deck splitting, with cards moving from top to bottom until the player clicks to stop.

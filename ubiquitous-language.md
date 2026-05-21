@@ -209,6 +209,50 @@ Q♠ K♠ A♠     // invalid because aces are not high
 K♠ A♠ 2♠     // invalid because straight flushes are not cyclic
 ```
 
+
+### Meld Validation
+
+The process of determining whether a selected group of cards forms a structurally valid La Kika meld.
+
+Milestone 3 introduced a `MeldValidator` interface and La Kika-specific validator implementation.
+
+Validation returns more than true/false. It can include:
+
+- Meld type.
+- Normalized card order.
+- Joker assignments.
+- Error codes.
+
+### Normalized Meld Order
+
+The canonical card order returned by validation.
+
+For straight flushes, this means sequence order. For kind melds, order is less important logically, but the validator may still return a stable order for UI/testing.
+
+### Meld Validation Error
+
+A structured reason why selected cards do not form a valid meld.
+
+Examples include:
+
+- Too few cards.
+- Too many jokers.
+- Mixed ranks.
+- Mixed suits.
+- Duplicate sequence rank.
+- Non-consecutive sequence.
+- Consecutive jokers.
+
+### Joker Assignment
+
+A computed interpretation of what a joker represents inside a validated meld.
+
+For a kind meld, the joker assignment usually has an assigned rank but no assigned suit.
+
+For a straight flush, the joker assignment has both assigned rank and assigned suit.
+
+Joker assignments are not stored on the `Card` itself. The same physical joker may mean different things in different melds.
+
 ### Valid Meld
 
 A meld whose card structure satisfies La Kika's combination rules.

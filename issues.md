@@ -177,7 +177,7 @@ Use observer/event/property updates from game state to HUD.
 
 ## ISS-008: Replace poker-hand evaluator with La Kika meld validation
 
-Status: Open  
+Status: Done  
 Priority: P1  
 Area: Game Rules
 
@@ -194,16 +194,25 @@ Only two meld families are valid:
 
 No other poker hands are legal.
 
-### Proposed Direction
+### Result
 
-Replace `PokerHandEvaluator` with domain-specific validation such as:
+La Kika selection feedback now uses domain-specific meld validation instead of `PokerHandEvaluator`.
+
+Implemented concepts include:
 
 ```text
 MeldValidator
+LaKikaMeldValidator
 KindMeldValidator
 StraightFlushMeldValidator
-JokerConstraintValidator
+JokerRules
+MeldValidationError
+MeldValidationResult
+MeldInterpretation
+JokerAssignment
 ```
+
+`PokerHandEvaluator` may remain temporarily as a possible future generic-engine utility, but it should not drive La Kika gameplay.
 
 ---
 
@@ -318,9 +327,9 @@ Castigo is a central La Kika rule and is not currently modeled.
 - A player who has not opened may take castigo.
 - If the deck has fewer than three cards, add a new shuffled standard deck with jokers to the game deck.
 
-### Remaining Design Question
+### Decision
 
-- How many jokers should be included when adding a new deck?
+- Each added standard deck includes two jokers.
 
 ---
 
@@ -459,9 +468,9 @@ If the deck cannot satisfy a normal draw or castigo draw, add a new shuffled sta
 
 Shuffle the discard pile into the deck if the discard pile is large enough.
 
-### Remaining Design Question
+### Decision
 
-- How many jokers should be included when adding a new deck?
+- Each added standard deck includes two jokers.
 
 ---
 
@@ -528,6 +537,10 @@ cards for the deal, subtract 100 points from the dealer's score immediately at t
 - Use a shot/swing-meter style interaction.
 - The dealer stops the meter.
 - The stopped meter position determines the number of cards taken for the deal packet.
+- Use a linear interpolation between the top and bottom of the deck for now.
+- Do not display the exact number of selected cards on the meter.
+- An arrow indicator is acceptable for the first version.
+- A later version may animate the deck splitting, with cards moving from top to bottom until the player clicks to stop.
 - The domain logic should receive the resulting count, not depend on the UI meter.
 
 ---
@@ -544,15 +557,14 @@ The game supports multiple standard decks and jokers, but the exact starting dec
 
 ### Current Domain Knowledge
 
-- The game always starts with at least two standard decks plus jokers in early rounds.
-- Later rounds may add up to four decks.
-- Raul will consult other game experts to formulate this rule more precisely.
+- The game starts with two standard decks plus jokers.
+- Each standard deck contributes two jokers.
+- Additional decks are added when necessary.
+- Raul will consult other game experts to determine whether later rounds/player counts should start with more than two decks.
 
-### Questions
+### Remaining Question
 
-- How many standard decks are used by round and player count?
-- How many jokers are included per deck or per game?
-- Does the joker count scale with the number of standard decks?
+- Should later rounds or larger player counts start with more than two decks, or should the game always start with two and add decks only when necessary?
 
 ---
 
@@ -721,3 +733,37 @@ Introduce initial types for:
 - FXGL UI refactor
 
 These are handled in later milestones.
+
+---
+
+## ISS-023: Decide whether straight-flush joker placement should become position-sensitive
+
+Status: Deferred  
+Priority: P2  
+Area: Game Rules / UI Interaction
+
+### Problem
+
+Milestone 3 validation accepts unordered straight-flush selections and chooses the lowest possible valid sequence when joker placement is ambiguous.
+
+This means a selection such as:
+
+```text
+Q♠ K♠ Joker
+```
+
+can validate as:
+
+```text
+J♠ Q♠ K♠
+```
+
+It does not validate as `Q♠ K♠ A♠`, because aces are low and straight flushes are not cyclic.
+
+### Reason for Deferral
+
+Raul indicated that ambiguous joker placement is not a major issue because players can move the joker to the beginning or end of the meld before the end of the turn.
+
+### Possible Future Direction
+
+If position-sensitive joker placement becomes important, update the validation interface to accept explicit placement/order intent from the UI.
