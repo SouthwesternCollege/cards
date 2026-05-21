@@ -54,6 +54,9 @@ public class PauseMenu extends FXGLMenu {
         volumeBox.setStyle("""
                     -fx-background-color: #3a2b55;
                     -fx-background-radius: 8;
+                    -fx-border-color: black;
+                    -fx-border-width: 3;
+                    -fx-border-radius: 8;
                 """);
 
         volumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> FXGL.getSettings().setGlobalMusicVolume(newVal.doubleValue()));
