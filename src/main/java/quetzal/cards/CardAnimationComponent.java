@@ -23,7 +23,8 @@ public class CardAnimationComponent extends Component {
     private double offsetY;
 
     // I think that all of this information should be kept out of the CardAnimationComponent class
-    private Hand hand; // List of all cards in the game
+    private final Hand hand; // List of all cards in the game
+    private final MeldValidator meldValidator = new LaKikaMeldValidator();
     private double cardSpacing; // Space between cards
 
     @Override
@@ -231,6 +232,7 @@ public class CardAnimationComponent extends Component {
             return;
         }
 
-        GameHUD.updateHandRank(PokerHandEvaluator.rankHand(hand.getSelectedCards()));
+        MeldValidationResult result = meldValidator.validate(hand.getSelectedCards());
+        GameHUD.updateHandRank(result.displayText());
     }
 }

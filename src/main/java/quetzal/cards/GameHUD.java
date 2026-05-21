@@ -23,7 +23,7 @@ public class GameHUD {
         this.labelFont = Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 18);
         this.valueFont = Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 24);
 
-        this.handRankLabel = new Text("Hand Rank");
+        this.handRankLabel = new Text("Selected Meld");
         this.handRankValue = new Text("");
 
         initializeHandRankText();
