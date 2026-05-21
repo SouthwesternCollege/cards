@@ -295,6 +295,29 @@ Known rules:
 - This continues in player turn order until someone takes it or all eligible players decline.
 - A player who has not opened may take castigo.
 
+
+### Stealing a Joker
+
+The domain term for taking and replacing a joker from an existing meld is **stealing a joker**.
+
+A player steals a joker by replacing it with a valid card and taking the joker into their temporary turn state.
+
+Rules:
+
+- A player may steal more than one joker in a turn.
+- A stolen joker may be used to create a new meld or mutate any meld in the play area.
+- A stolen joker must be played during the same turn.
+- If the stolen joker is not played during the same turn, it must be returned.
+- If a closed player steals a joker, they must open that turn and must still play the stolen joker that turn.
+
+### Joker Obligation
+
+A same-turn obligation created when a player steals a joker.
+
+The obligation is not satisfied until the stolen joker is legally played into a meld during that same turn.
+
+If the obligation is not satisfied, the joker must be returned to its source meld.
+
 ### Turn
 
 One player's opportunity to act.

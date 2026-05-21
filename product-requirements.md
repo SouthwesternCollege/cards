@@ -487,6 +487,44 @@ Domain model        // no rendering knowledge
 ```
 
 
+
+### FR-19: Milestone 2 Domain Model Interfaces
+
+The system shall define initial domain-model types and interfaces for La Kika before implementing full validation logic.
+
+Included concepts:
+
+```text
+PlayerId
+MeldId
+Meld
+MeldType
+MeldPlacement
+PlayArea
+Move
+CreateMeldMove
+AddToMeldMove
+StealJokerMove
+TurnPhase
+RoundState
+OpeningRequirement
+MeldValidator
+MeldValidationResult
+JokerAssignment
+StolenJokerObligation
+LegalMoveValidator
+MoveResult
+```
+
+Design constraints:
+
+- These types belong to the domain layer.
+- They should not depend on FXGL or JavaFX.
+- Full meld validation is deferred to Milestone 3.
+- Full turn execution is deferred to later game-state milestones.
+
+Status: started in Milestone 2.
+
 ## Non-Functional Requirements
 
 ### NFR-1: Testability

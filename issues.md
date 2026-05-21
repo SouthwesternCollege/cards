@@ -653,3 +653,71 @@ The debug layout overlay is useful for verifying the dedicated scene regions.
 Keep the debug overlay available while layout and animation behavior are being refactored.
 
 It should remain optional/development-only and should not affect domain model behavior.
+
+---
+
+## ISS-021: Implement stolen joker obligations
+
+Status: Open  
+Priority: P1  
+Area: Game Rules
+
+### Problem
+
+Stealing a joker creates a same-turn obligation that is not yet implemented in executable game logic.
+
+### Known Rules
+
+- A player may steal more than one joker in a turn.
+- A stolen joker may be used to create a new meld or mutate any meld in the play area.
+- A stolen joker must be played during the same turn.
+- If the stolen joker is not played during the same turn, it must be returned.
+- If a closed player steals a joker, they must open that turn.
+
+### Proposed Direction
+
+Represent this with a domain object such as:
+
+```java
+public record StolenJokerObligation(
+    PlayerId playerId,
+    CardId jokerId,
+    MeldId sourceMeldId
+) {}
+```
+
+The turn engine should verify that all joker obligations are satisfied before allowing discard/end-turn.
+
+---
+
+## ISS-022: Complete Milestone 2 domain model types
+
+Status: In Progress  
+Priority: P1  
+Area: Domain Model
+
+### Problem
+
+The project needs explicit La Kika domain types before meld validation and turn execution can be cleanly implemented.
+
+### Scope
+
+Introduce initial types for:
+
+- Players
+- Melds
+- Play area
+- Moves
+- Turn phases
+- Opening requirements
+- Validation results
+- Joker assignments
+- Stolen joker obligations
+
+### Out of Scope
+
+- Full meld validation
+- Full legal move execution
+- FXGL UI refactor
+
+These are handled in later milestones.
