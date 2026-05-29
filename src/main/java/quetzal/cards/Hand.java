@@ -1,313 +1,302 @@
 package quetzal.cards;
 
 import com.almasb.fxgl.animation.Interpolators;
-import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.dsl.FXGL;
+import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.SpawnData;
 import javafx.geometry.Point2D;
 import javafx.geometry.Rectangle2D;
 import javafx.util.Duration;
+
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
-public class Hand extends CardCollection {
+/**
+ * Transitional presentation facade for the player's visible hand.
+ *
+ * Milestone 4A intentionally keeps this class name so the rest of the prototype
+ * still works, but it now delegates domain state to HandModel and layout math to
+ * HandLayout. The remaining FXGL spawning/animation code will later move into a
+ * dedicated HandView/HandController.
+ */
+public class Hand {
 
-    private double currentX = 100;  // Starting X position for played cards (initially set to a margin)
-    private double currentY = 100;  // Starting Y position for played cards (initially set to a margin)
-    private final int DEFAULT_CARD_SPACING = 80;
-    private final int COLLAPSE_SPACING = 30;  // Horizontal spacing between cards
-    private final int VERTICAL_SPACING = 400;  // Vertical spacing between rows of cards
-    private static final double CARD_WIDTH = 142;
-    private static final double CARD_TOP_PADDING = 60;
-    private static final double SELECTED_CARD_Y_OFFSET = -50;
+    private final HandModel model;
+    private final HandLayout layout;
+    private final PlayedMeldLayout playedMeldLayout;
+    private final CardEntityRegistry entityRegistry;
+    private final Rectangle2D playerPlayedArea;
+    private final Deck deck;
+    private final MeldValidator meldValidator = new LaKikaMeldValidator();
+    private final SelectionFeedback selectionFeedback;
+    private final List<List<Card>> playedMelds = new ArrayList<>();
 
-    private Deck deck;
-    private List<Card> selectedCards = new ArrayList<>();  // Keep track of selected cards
-    private final Map<CardId, Entity> cardEntities = new HashMap<>();
-    private final Set<CardId> unselectableCards = new HashSet<>();
-    private Rectangle2D handArea;
-    private int handY;
-    private int handX;
-    private int cardSpacing;
+    public Hand(Rectangle2D handArea, Rectangle2D playerPlayedArea, Deck deck) {
+        this(handArea, playerPlayedArea, deck, new HudMeldSelectionFeedback(new LaKikaMeldValidator()));
+    }
 
-    public Hand(Rectangle2D handArea, Deck deck) {
-        super(new ArrayList<>());
-        this.handArea = handArea;
-        this.handX = (int) handArea.getMinX();
-        this.handY = (int) handArea.getMinY();
-        this.cardSpacing = DEFAULT_CARD_SPACING;
+    public Hand(Rectangle2D handArea, Rectangle2D playerPlayedArea, Deck deck, SelectionFeedback selectionFeedback) {
+        this.model = new HandModel();
+        this.layout = new HandLayout(handArea);
+        this.playedMeldLayout = new PlayedMeldLayout();
+        this.entityRegistry = new CardEntityRegistry();
+        this.playerPlayedArea = playerPlayedArea;
         this.deck = deck;
+        this.selectionFeedback = selectionFeedback == null ? new NoOpSelectionFeedback() : selectionFeedback;
+    }
+
+    /**
+     * Compatibility constructor for older call sites.
+     * Prefer Hand(Rectangle2D handArea, Rectangle2D playerPlayedArea, Deck deck).
+     */
+    public Hand(Rectangle2D handArea, Deck deck) {
+        this(handArea, new Rectangle2D(handArea.getMinX(), handArea.getMinY() - 260, handArea.getWidth(), 220), deck);
     }
 
     public void populateHand(int size) {
-        // Populate the hand with 'size' number of cards
         for (int i = 0; i < size; i++) {
-            Card card = deck.drawCard();
+            Card card = model.drawFrom(deck);
+            Point2D spawnPosition = layout.basePosition(i, size);
 
-            Entity cardEntity = FXGL.spawn("Card", new SpawnData(handArea.getMinX(), handArea.getMinY() + CARD_TOP_PADDING)
+            Entity cardEntity = FXGL.spawn("Card", new SpawnData(spawnPosition.getX(), spawnPosition.getY())
                     .put("card", card)
                     .put("z-index", i)
                     .put("hand", this));
 
             registerCardEntity(card, cardEntity);
-            getCards().add(card);  // Add the card to the hand's list
         }
 
         organizeCardEntities();
     }
-    @Override
+
     public void addCard(Card card) {
-        getCards().add(card);
+        model.addCard(card);
     }
 
-    @Override
     public Card removeCard(Card card) {
-        getCards().remove(card);
-        return card;
+        return model.removeCard(card);
     }
 
     public void playSelectedCards() {
-        if (selectedCards.isEmpty()) {
-            return; // No cards selected
+        if (model.getSelectedCards().isEmpty()) {
+            return;
         }
 
-        // Work from a snapshot of the selection.
-        // Playing cards removes them from the hand and marks them unselectable,
-        // both of which can mutate selection-related collections. Iterating over
-        // selectedCards directly caused every other selected card to be skipped.
-        List<Card> cardsToPlay = new ArrayList<>(selectedCards);
-        sortCardsByPosition(cardsToPlay);
+        List<Card> selectedSnapshot = model.selectedCardsSnapshot();
+        MeldValidationResult validationResult = meldValidator.validate(selectedSnapshot);
 
-        double screenWidth = FXGL.getAppWidth();
+        if (!validationResult.valid()) {
+            selectionFeedback.invalidPlayAttempt(validationResult);
+            return;
+        }
 
-        Duration expansionDuration = Duration.seconds(0.5);
-        Duration collapseDuration = Duration.seconds(0.5);
+        List<Card> cardsToPlay = orderedCardsForPlayedMeld(selectedSnapshot, validationResult);
+        Set<CardId> newlyPlayedCardIds = cardIds(cardsToPlay);
 
-        for (Card card : cardsToPlay) {
+        playedMelds.add(List.copyOf(cardsToPlay));
+        List<CardLayoutSlot> playedSlots = playedMeldLayout.centeredSlotsForMelds(playedMelds, playerPlayedArea);
+
+        Duration playDuration = Duration.seconds(0.45);
+
+        for (CardLayoutSlot slot : playedSlots) {
+            Card card = slot.card();
             Entity cardEntity = getEntityFor(card);
+            Point2D target = slot.visualPosition();
 
-            // Expand to the "played" area with a slight size increase
-            FXGL.animationBuilder()
-                    .duration(expansionDuration)
-                    .interpolator(Interpolators.SMOOTH.EASE_OUT())
-                    .translate(cardEntity)
-                    .to(new Point2D(cardEntity.getX(), handY - 200))  // Move to the played area
-                    .buildAndPlay();
-
-            // Check if the next card would go beyond the screen width
-            if (currentX + COLLAPSE_SPACING > screenWidth) {
-                // Wrap to the next line
-                currentX = 30;  // Reset X to the left margin
-                currentY += VERTICAL_SPACING;  // Move to the next row
+            if (newlyPlayedCardIds.contains(card.id())) {
+                model.setSelectable(card, false);
+                model.removeCard(card);
+                disableHandInteraction(cardEntity);
             }
 
-            // Collapse to the currentX and currentY position with 10-pixel visibility spacing
-            Point2D collapseTarget = new Point2D(currentX, currentY);
-
             FXGL.animationBuilder()
-                    .delay(expansionDuration)  // Delay until after the expansion
-                    .duration(collapseDuration)
-                    .interpolator(Interpolators.SMOOTH.EASE_IN())
+                    .duration(playDuration)
+                    .interpolator(Interpolators.SMOOTH.EASE_OUT())
                     .translate(cardEntity)
-                    .to(collapseTarget)  // Collapse to the calculated position
+                    .to(target)
                     .buildAndPlay();
 
-            // Disable selection for this card after it is played.
-            setSelectable(card, false);
-
-            // Move the currentX position for the next card
-            currentX += COLLAPSE_SPACING;
-
-            // After the animations, remove the card from the hand
-            removeCard(card);
+            cardEntity.setZIndex(100 + slot.zIndex());
         }
 
-        currentX += 120;
+        model.clearSelected();
+        selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
 
-        // Clear the selected cards list
-        selectedCards.clear();
-
-        // Reorganize the remaining cards in the hand
-        if (!getCards().isEmpty()) {
+        if (!model.getCards().isEmpty()) {
             organizeCardEntities();
         }
     }
 
+
+    private Set<CardId> cardIds(List<Card> cards) {
+        Set<CardId> ids = new HashSet<>();
+
+        for (Card card : cards) {
+            ids.add(card.id());
+        }
+
+        return ids;
+    }
+
+    private void disableHandInteraction(Entity cardEntity) {
+        cardEntity.getComponent(CardAnimationComponent.class).setInteractionEnabled(false);
+    }
+
+    private List<Card> orderedCardsForPlayedMeld(List<Card> selectedSnapshot, MeldValidationResult validationResult) {
+        if (validationResult.valid() && validationResult.meldType() == MeldType.STRAIGHT_FLUSH) {
+            return validationResult.normalizedCards();
+        }
+
+        // Kind melds preserve selection/insertion order.
+        return selectedSnapshot;
+    }
+
     public List<Card> getSelectedCards() {
-        return selectedCards;
+        return model.getSelectedCards();
     }
 
     public boolean addSelected(Card card) {
-        if (isSelected(card)) {
-            return false;
+        boolean added = model.addSelected(card);
+
+        if (added) {
+            selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
         }
 
-        if (!isSelectable(card)) {
-            return false;
-        }
-
-        selectedCards.add(card);
-        return true;
+        return added;
     }
 
-    // Remove a card from the selected list
-
     public boolean removeSelected(Card card) {
-        // Add additional logic here if needed
-        return selectedCards.remove(card);
+        boolean removed = model.removeSelected(card);
+
+        if (removed) {
+            selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
+        }
+
+        return removed;
+    }
+
+    public SelectionChange toggleSelected(Card card) {
+        if (model.isSelected(card)) {
+            if (model.removeSelected(card)) {
+                selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
+                return SelectionChange.DESELECTED;
+            }
+
+            return SelectionChange.UNCHANGED;
+        }
+
+        if (model.addSelected(card)) {
+            selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
+            return SelectionChange.SELECTED;
+        }
+
+        return SelectionChange.UNCHANGED;
     }
 
     public boolean isSelected(Card card) {
-        return selectedCards.contains(card);
+        return model.isSelected(card);
     }
 
     public boolean isSelectable(Card card) {
-        return !unselectableCards.contains(card.id());
+        return model.isSelectable(card);
     }
 
     public void setSelectable(Card card, boolean selectable) {
-        if (selectable) {
-            unselectableCards.remove(card.id());
-        } else {
-            unselectableCards.add(card.id());
-            selectedCards.remove(card);
-        }
+        model.setSelectable(card, selectable);
     }
 
     public int size() {
-        return getCards().size();
+        return model.size();
     }
 
     public int getHandY() {
-        return handY;
+        return (int) layout.handArea().getMinY();
     }
 
     public int getHandX() {
-        return handX;
+        return (int) layout.handArea().getMinX();
     }
 
-    public int getCardSpacing() {
-        return cardSpacing;
+    public double getCardSpacing() {
+        return layout.cardSpacing(model.size());
     }
 
     public Card getCard(int index) {
-        return getCards().get(index);
+        return model.getCard(index);
+    }
+
+    public List<Card> getCards() {
+        return model.getCards();
     }
 
     public List<Entity> getEntities() {
-        List<Entity> entities = new ArrayList<>();
-        for(Card card: getCards()) {
-            entities.add(getEntityFor(card));
-        }
-        return entities;
+        return entityRegistry.getAllFor(model.getCards());
     }
 
     public void organizeCardEntities() {
-        updateCardSpacing();
-
-        List<Card> cards = getCards();
-
-        for (int i = 0; i < cards.size(); i++) {
-            Entity cardEntity = getEntityFor(cards.get(i));
-            Point2D targetPosition = getCardVisualPosition(i);
-
-            cardEntity.setZIndex(i);
+        for (CardLayoutSlot slot : currentLayoutSlots()) {
+            Entity cardEntity = getEntityFor(slot.card());
+            cardEntity.setZIndex(slot.zIndex());
 
             FXGL.animationBuilder()
                     .duration(Duration.seconds(0.2))
                     .translate(cardEntity)
-                    .to(targetPosition)
+                    .to(slot.visualPosition())
                     .buildAndPlay();
         }
     }
 
     public void organizeCardEntitiesExcept(Card excludedCard) {
-        updateCardSpacing();
+        for (CardLayoutSlot slot : currentLayoutSlots()) {
+            Entity cardEntity = getEntityFor(slot.card());
 
-        List<Card> cards = getCards();
-
-        for (int i = 0; i < cards.size(); i++) {
-            Card card = cards.get(i);
-
-            if (card == excludedCard) {
-                getEntityFor(card).setZIndex(100);
+            if (slot.card() == excludedCard) {
+                cardEntity.setZIndex(100);
                 continue;
             }
 
-            Entity cardEntity = getEntityFor(card);
-            Point2D targetPosition = getCardVisualPosition(i);
-
-            cardEntity.setZIndex(i);
+            cardEntity.setZIndex(slot.zIndex());
 
             FXGL.animationBuilder()
                     .duration(Duration.seconds(0.12))
                     .translate(cardEntity)
-                    .to(targetPosition)
+                    .to(slot.visualPosition())
                     .buildAndPlay();
         }
     }
 
-    private void updateCardSpacing() {
-        int cardCount = getCards().size();
+    private List<CardLayoutSlot> currentLayoutSlots() {
+        return layout.slots(model.getCards(), selectedCardIds());
+    }
 
-        if (cardCount <= 1) {
-            cardSpacing = DEFAULT_CARD_SPACING;
-            return;
+    private Set<CardId> selectedCardIds() {
+        Set<CardId> selectedCardIds = new HashSet<>();
+
+        for (Card card : model.getSelectedCards()) {
+            selectedCardIds.add(card.id());
         }
 
-        double availableWidth = handArea.getWidth() - CARD_WIDTH;
-        double idealSpacing = availableWidth / (cardCount - 1);
-
-        cardSpacing = (int) Math.min(DEFAULT_CARD_SPACING, idealSpacing);
+        return selectedCardIds;
     }
 
     public Point2D getCardPosition(int index) {
-        updateCardSpacing();
-
-        int cardCount = getCards().size();
-
-        if (cardCount == 0) {
-            return new Point2D(handArea.getMinX(), handArea.getMinY() + CARD_TOP_PADDING);
-        }
-
-        double totalHandWidth = CARD_WIDTH + cardSpacing * (cardCount - 1);
-        double startX = handArea.getMinX() + (handArea.getWidth() - totalHandWidth) / 2;
-        double y = handArea.getMinY() + CARD_TOP_PADDING;
-
-        return new Point2D(startX + index * cardSpacing, y);
+        return layout.basePosition(index, model.size());
     }
 
     public Point2D getCardVisualPosition(int index) {
-        Point2D position = getCardPosition(index);
-        Card card = getCards().get(index);
-
-        if (isSelected(card)) {
-            return position.add(0, SELECTED_CARD_Y_OFFSET);
-        }
-
-        return position;
+        return layout.visualPosition(index, model.getCards(), selectedCardIds());
     }
 
     public void sortByRank() {
-        getCards().sort(
-                Comparator.comparingInt((Card card) -> card.isJoker() ? Integer.MAX_VALUE : card.rank().sequenceValue())
-                        .thenComparing(card -> card.isJoker() ? null : card.suit(), Comparator.nullsLast(Comparator.naturalOrder()))
-        );
-
+        model.sortByRank();
         organizeCardEntities();
     }
 
     public void sortBySuit() {
-        getCards().sort(
-                Comparator.comparing((Card card) -> card.isJoker() ? null : card.suit(), Comparator.nullsLast(Comparator.naturalOrder()))
-                        .thenComparingInt(card -> card.isJoker() ? Integer.MAX_VALUE : card.rank().sequenceValue())
-        );
-
+        model.sortBySuit();
         organizeCardEntities();
     }
 
@@ -315,19 +304,11 @@ public class Hand extends CardCollection {
         cards.sort(Comparator.comparingDouble(card -> getEntityFor(card).getX()));
     }
 
-
     public void registerCardEntity(Card card, Entity entity) {
-        cardEntities.put(card.id(), entity);
+        entityRegistry.register(card, entity);
     }
 
     public Entity getEntityFor(Card card) {
-        Entity entity = cardEntities.get(card.id());
-
-        if (entity == null) {
-            throw new IllegalStateException("No entity registered for card: " + card);
-        }
-
-        return entity;
+        return entityRegistry.get(card);
     }
-
 }

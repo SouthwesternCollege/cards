@@ -7,7 +7,6 @@ import javafx.geometry.Point2D;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.util.Duration;
-import java.util.List;
 
 public class CardAnimationComponent extends Component {
 
@@ -22,10 +21,11 @@ public class CardAnimationComponent extends Component {
     private double offsetX;
     private double offsetY;
 
-    // I think that all of this information should be kept out of the CardAnimationComponent class
-    private final Hand hand; // List of all cards in the game
-    private final MeldValidator meldValidator = new LaKikaMeldValidator();
+    // Transitional dependency: this component still delegates interaction to Hand.
+    // It no longer validates melds or updates the HUD directly.
+    private final Hand hand;
     private double cardSpacing; // Space between cards
+    private boolean interactionEnabled = true;
 
     @Override
     public void onAdded() {
@@ -55,7 +55,20 @@ public class CardAnimationComponent extends Component {
         this.hand = hand;
     }
 
+    public void setInteractionEnabled(boolean interactionEnabled) {
+        this.interactionEnabled = interactionEnabled;
+
+        if (!interactionEnabled) {
+            isDragging = false;
+            entity.setRotation(0.0);
+        }
+    }
+
     private void increaseWiggle() {
+        if (!interactionEnabled) {
+            return;
+        }
+
         // Increased wiggle amplitude on hover
         double HOVER_WIGGLE_AMPLITUDE = 4;
         // Increased wiggle amplitude on hover
@@ -65,6 +78,10 @@ public class CardAnimationComponent extends Component {
     }
 
     private void revertWiggle() {
+        if (!interactionEnabled) {
+            return;
+        }
+
         // Default wiggle amplitude
         double DEFAULT_WIGGLE_DURATION = 2;
         startWiggle(DEFAULT_WIGGLE_AMPLITUDE, DEFAULT_WIGGLE_DURATION);
@@ -120,23 +137,20 @@ public class CardAnimationComponent extends Component {
 
     private void toggleCardState() {
         Card card = entity.getComponent(CardComponent.class).getCard();
+        SelectionChange change = hand.toggleSelected(card);
 
-        if (hand.isSelected(card)) {
-            if (hand.removeSelected(card)) {
-                lowerCard();
-                refreshHandRank();
-            }
-
-            return;
-        }
-
-        if (hand.addSelected(card)) {
+        if (change == SelectionChange.SELECTED) {
             raiseCard();
-            refreshHandRank();
+        } else if (change == SelectionChange.DESELECTED) {
+            lowerCard();
         }
     }
 
     private void onMousePressed(MouseEvent event) {
+        if (!interactionEnabled) {
+            return;
+        }
+
         cardSpacing = hand.getCardSpacing();
         if (event.getButton() == MouseButton.PRIMARY) {
             // Store the initial position of the card when the drag starts
@@ -152,6 +166,10 @@ public class CardAnimationComponent extends Component {
     }
 
     private void onMouseDragged(MouseEvent event) {
+        if (!interactionEnabled) {
+            return;
+        }
+
         // Calculate the distance the mouse has moved from its initial position
         double distanceMoved = initialMousePosition.distance(event.getSceneX(), event.getSceneY());
 
@@ -179,6 +197,10 @@ public class CardAnimationComponent extends Component {
     }
 
     private void onMouseReleased(MouseEvent event) {
+        if (!interactionEnabled) {
+            return;
+        }
+
         if (isDragging) {
             hand.sortCardsByPosition(hand.getCards());
             hand.organizeCardEntities();
@@ -210,29 +232,4 @@ public class CardAnimationComponent extends Component {
         hand.organizeCardEntities();
     }
 
-    private void snapCardToNearestPosition() {
-
-        List<Card> sortedCards = hand.getCards();
-        int nearestIndex = sortedCards.indexOf(entity.getComponent(CardComponent.class).getCard());
-
-        nearestIndex = Math.clamp(nearestIndex, 0, hand.size() - 1);
-        entity.setZIndex(nearestIndex);
-
-        Point2D snapPosition = hand.getCardPosition(nearestIndex);
-        FXGL.animationBuilder()
-                .duration(Duration.seconds(0.2))
-                .translate(entity)
-                .to(snapPosition)
-                .buildAndPlay();
-    }
-
-    private void refreshHandRank() {
-        if (hand.getSelectedCards().isEmpty()) {
-            GameHUD.updateHandRank("");
-            return;
-        }
-
-        MeldValidationResult result = meldValidator.validate(hand.getSelectedCards());
-        GameHUD.updateHandRank(result.displayText());
-    }
 }

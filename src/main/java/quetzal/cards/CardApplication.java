@@ -115,7 +115,7 @@ public class CardApplication extends GameApplication {
         Rectangle2D playerHandArea = gameLayout.getPlayerHandArea();
 
         // Create the hand inside the player hand area
-        hand = new Hand(playerHandArea,deck);
+        hand = new Hand(playerHandArea, gameLayout.getPlayerPlayedArea(), deck);
 
         // Number of cards in the hand
         int handSize = 13;
