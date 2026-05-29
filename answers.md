@@ -97,4 +97,39 @@ Before we move on to Milestone 4, I would like to have a conversation about the 
 - Should scores show cumulative score only, or also current-round pending hand score? Cumulative score only.
 - Since melds are rules-level shared and not owned, what does “opponent’s played melds” mean visually? A meld appears under the player who originally created it. Even if others mutate it, it stays visually in the creator’s area.
 - Is this a temporary overlay while holding a key/button, or a toggle screen? I like the idea of a button toggle screen.
-- 
+- Can the player interact with melds in full play-area view, or is it read-only? Read only.
+- Should full play-area view still use the opponent carousel, or show all players simultaneously? It should show all players simultaneously and if a player has too many cards in their play area then I think that a scroll (left and right) action could work well. The idea behind the full play area is that cards and melds should be easier to see so I want to avoid shrinking cards in the full view mode.
+- Should melds lay out horizontally first, then wrap to new rows? I like this idea rather than shrinking cards to fit. there could be a bit of overlapping the bottom row with the top row because the play area may get a bit crowded.
+- Should a single long meld compress internally before the overall card scale shrinks? Yes, I would like to avoid shrinking.
+- Should different melds in the same area use the same card scale? Yes.
+- What is the minimum card scale allowed? Let's go with your recommendation, 70%.
+- Should the hand always be centered? Yes.
+- Should selected cards lift upward from the hand? Yes, this behavior should already be implemented.
+- Should the hand sort cards automatically? No, a player may choose their own ordering. So preserve the dealt order.
+- Do you prefer gameplay objects near the hand even if it reduces hand space, or inside HUD for stability? I prefer to the right of the hand, but it may get too crowded. So we may need to experiment with this.
+- Is the font already loaded reliably at startup, or are some nodes still defaulting to another font? The font loads well, but it is not set as the "default" font.
+- Should title screen auto-transition after animation, or require click/key press? Auto-transition.
+- Should main menu be implemented with FXGL scenes/subscenes or JavaFX panes inside the main scene? Let's rely on FXGL as much as possible.
+- Should Play immediately start local multiplayer, or open a player setup screen? For noe, start prototype local game with default players, but later we should create a player setup screen.
+- Should all cards always wiggle, or only cards in hand? Opponent/player meld cards may be calmer. I like your recommendation:
+  - Hand cards: wiggle
+  - Hovered hand card: stronger wiggle
+  - Played meld cards: no wiggle or very subtle idle
+  - Deck/discard: no wiggle unless interactive
+- What is the current intended resolution? 1920x1080, but I would like to experiment with different resolutions later.
+- Should the local player always be at the bottom? Yes.
+- Are all players human-local for the prototype? Oh wow, I haven't even thought of that. Yes, let's go with local hot-seat style.
+- Should hidden opponent hands be visible during hot-seat play? Hide non-active hands. I like your idea of development mode, but where will the hands be visible?
+- Should the HUD display castigos used or castigos remaining? Yes, display as "Castigos: X remaining".
+  - Opened status color. Closed = muted/gray
+  - Opened = bright/normal player color
+  - Active turn = highlighted + arrow
+- Do you want fixed player colors? Sure why not. I am a fan of primary colors.
+- When a player mutates another player’s meld, should there be any visual history marker? No.
+- Where should the toggle button live? Play button area.
+- Deck/discard placement experiment. Right of hand for now, but may need to move to HUD.
+- Should deck and discard be separate buttons or drag/drop targets? Let's start with button-like behavior and try drag and drop later. I am thinking that button-like might work well for a draw or castigo, and drag/drop for discard.
+- Should meld layout preserve the meld’s internal card order? I have thought about this a lot and I think that especially for straight flushes, sequence order must be adhered to, even when playing a meld. It shouldn't matter, but in the real world it would definitely upset other players and it is basically an unspoken rule.
+- Should a kind meld be sorted too, or preserve selected order? Preserve selected order.
+- Should full table view be part of Milestone 4C or deferred? Let's deffer this feature, but plan on implementing it later.
+- Should title/menu work happen before or after hand/presentation split? After. 
