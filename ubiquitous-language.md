@@ -131,14 +131,15 @@ The active deck used during a round.
 
 Known La Kika rules:
 
-- The game starts with at least two standard decks plus jokers in early rounds.
-- Later rounds may use up to four standard decks plus jokers.
-- If the deck is exhausted, or if there are not enough cards to complete a castigo draw, the current design decision is to add a new shuffled standard deck with jokers to the game deck.
+- The game currently starts with two standard 52-card decks plus jokers.
+- Each standard deck contributes two jokers.
+- Additional shuffled standard decks with jokers are added when necessary.
+- If the deck is exhausted, or if there are not enough cards to complete a castigo draw, add a new shuffled standard deck with jokers to the game deck.
 
 Design note:
 
-- Raul also identified an alternative option: shuffle the discard pile into the deck if the discard pile is large enough. For now, adding a new shuffled standard deck with jokers is the preferred simpler rule.
-- Exact initial deck composition by player count and round is still being researched with other game experts.
+- Exact starting deck composition by player count and later rounds may be refined after Raul consults other game experts.
+- For now, the working rule is: start with two standard decks plus jokers, then add decks when needed.
 
 ### Hand
 
@@ -225,9 +226,23 @@ Validation returns more than true/false. It can include:
 
 ### Normalized Meld Order
 
-The canonical card order returned by validation.
+The canonical card order returned by validation or used by presentation when cards are placed into the play area.
 
-For straight flushes, this means sequence order. For kind melds, order is less important logically, but the validator may still return a stable order for UI/testing.
+For straight flushes, this means sequence order.
+
+Decision:
+
+- Players may select straight-flush cards in any order.
+- Meld validation answers whether those cards can structurally form a straight flush.
+- Presentation/meld placement arranges the played straight flush into normalized sequence order.
+- Kind melds preserve selected/insertion order.
+
+This is a deliberate domain/presentation boundary:
+
+```text
+Meld validation = can these cards form a valid meld?
+Meld presentation = how should this valid meld be displayed?
+```
 
 ### Meld Validation Error
 
@@ -338,6 +353,10 @@ Known rules:
 - If the active player declines, the next player in turn order may choose to take it.
 - This continues in player turn order until someone takes it or all eligible players decline.
 - A player who has not opened may take castigo.
+- Each player has 10 castigos per game.
+- Taking a castigo consumes one castigo.
+- Declining a castigo does not consume one.
+- Castigos reset between games, but not between rounds.
 
 
 ### Stealing a Joker
@@ -581,6 +600,62 @@ A development overlay used to verify scene-region boundaries.
 The overlay is useful while the UI layout is still evolving and should remain a development aid rather than a domain concept.
 
 
+
+### Local Hot-Seat Play
+
+The prototype multiplayer mode is local hot-seat play.
+
+Rules/UX direction:
+
+- The local/current player is always displayed at the bottom.
+- Only the active player's hand should be visible during normal gameplay.
+- Opponent/non-active hands should be hidden.
+- Hidden hands may be exposed through a development-only debug overlay.
+- Long-term, the game should use a pass-device screen between turns.
+
+### Debug Hand Overlay
+
+A development-only overlay that can reveal hidden player hands for debugging.
+
+This should not be part of normal gameplay and should not affect domain rules.
+
+### Pass-Device Screen
+
+A future hot-seat transition screen that hides sensitive hand information between turns.
+
+Intended flow:
+
+```text
+Player turn ends
+Screen hides hands
+Prompt: Pass device to next player
+Next player confirms
+Next player's hand becomes visible
+```
+
+### Player Colors
+
+The current fixed player color palette is:
+
+```text
+Player 1 = blue
+Player 2 = red
+Player 3 = gold
+Player 4 = green
+```
+
+These colors may be used for HUD names, turn indicators, dealer indicators, meld creator grouping, and full-table rows.
+
+### Castigo Remaining Display
+
+The HUD should display castigos as remaining uses:
+
+```text
+Castigos: X remaining
+```
+
+Text is sufficient for now. A chip/icon style may be added later.
+
 ## Technical / Architecture Terms
 
 ### Engine
@@ -626,6 +701,52 @@ Card restored = Card.fromSnapshot(snapshot);
 ```
 
 Snapshots should be simple data, suitable for JSON.
+
+
+### HandModel
+
+A pure hand/domain state object introduced during Milestone 4A.
+
+It owns hand cards, selected cards, and selectability state, but should not know about FXGL entities, textures, animation, or scene coordinates.
+
+### HandLayout
+
+A presentation-layer layout calculator introduced during Milestone 4A.
+
+It computes visual card positions for the hand while hiding centering, spacing, compression, and selected-card lift math behind a small interface.
+
+### CardEntityRegistry
+
+A presentation-layer mapping from domain card identity to FXGL entity.
+
+It keeps the rule intact that `Card` does not own or know about an FXGL `Entity`.
+
+### PlayedMeldLayout
+
+A presentation-layer layout calculator for played meld positions.
+
+Current behavior:
+
+- Centers played meld groups in the player meld area.
+- Keeps separate played melds visually distinct.
+- Lays out straight flushes using normalized order.
+- Preserves selected/insertion order for kind melds.
+
+Long-term, this should evolve into a fuller `MeldLayout` / `PlayAreaView` system.
+
+### SelectionFeedback
+
+A presentation feedback interface introduced during Milestone 4A.2.
+
+It decouples card animation/input behavior from the HUD and meld validation details.
+
+Current implementation:
+
+```text
+CardAnimationComponent -> Hand -> SelectionFeedback -> HUD
+```
+
+This is transitional. A future event/property-based UI update system should replace static HUD calls.
 
 ### Deep Module
 

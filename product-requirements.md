@@ -203,9 +203,9 @@ The system shall support decks with configurable numbers of standard 52-card dec
 Known setup rule:
 
 - The game starts with two standard decks plus jokers.
+- Each standard deck contributes two jokers.
 - Additional decks are added when necessary.
 - Exact scaling by player count and later rounds may be refined after consulting other game experts.
-- Each standard deck contributes two jokers.
 
 Status: partially implemented.
 
@@ -260,7 +260,7 @@ Validation rules implemented in Milestone 3:
 - Three-of-a-kind-or-more melds may contain duplicate physical cards with the same rank and suit because multiple standard decks are used.
 - Kind melds cannot contain mixed non-joker ranks.
 - Straight flushes cannot contain duplicate sequence ranks, even if the cards are physically distinct duplicates from multiple decks.
-- Straight flush selections do not need to be pre-sorted; the validator returns a normalized order.
+- Straight flush selections do not need to be pre-sorted; the validator returns or supports a normalized order for presentation.
 - Aces are low.
 - Straight flushes are not cyclic.
 - Jokers may appear in opening melds as long as the resulting meld is legal.
@@ -271,7 +271,11 @@ Validation rules implemented in Milestone 3:
 
 Design nuance:
 
-- Because selected straight-flush cards are accepted unordered and ambiguous jokers choose the lowest valid sequence, `Q♠ K♠ Joker` can validate as `J♠ Q♠ K♠`; it does not validate as `Q♠ K♠ A♠` because aces are not high. If future rules require position-sensitive joker placement, the validator interface may need to accept placement/order intent.
+- Meld validation answers whether selected cards can structurally form a valid meld.
+- Presentation/meld placement determines how the valid meld should be displayed.
+- Players may select straight-flush cards in any order. Once played, the straight flush should be displayed in normalized sequence order.
+- Kind melds preserve selected/insertion order.
+- Because ambiguous jokers choose the lowest valid sequence, `Q♠ K♠ Joker` can validate as `J♠ Q♠ K♠`; it does not validate as `Q♠ K♠ A♠` because aces are not high. If future rules require position-sensitive joker placement, the validator interface may need to accept placement/order intent.
 
 Status: implemented as initial domain validation in Milestone 3.
 
@@ -323,6 +327,10 @@ Rules:
 - If the active player declines the castigo, other players may accept it in player turn order.
 - A player may take castigo even if they have not opened.
 - If the deck has fewer than three cards for the extra castigo draw, add a new shuffled standard deck with jokers to the game deck.
+- Each player has 10 castigos per game.
+- Taking a castigo consumes one castigo.
+- Declining a castigo does not consume one.
+- Castigos reset between games, but not between rounds.
 
 Status: not yet implemented.
 
@@ -475,11 +483,10 @@ This is a presentation-layer distinction. At the domain level, melds remain part
 
 The application shall reserve the second 30% of the right gameplay area for the local/current player's played melds.
 
-Known current bug:
+Current status:
 
-- Cards played from the hand do not currently animate to this region.
-- They currently animate near the upper-left corner.
-- This should be addressed when the hand/domain model is separated from the FXGL presentation layer.
+- Milestone 4A/4A.2 introduced an initial played-meld layout and centering fix.
+- This is still transitional. Full multi-meld wrapping, compression, creator grouping, and opponent carousel behavior remain future work.
 
 ### UI-4: Player Hand Region
 
@@ -495,6 +502,109 @@ The application may include a debug overlay to verify layout boundaries during d
 
 This overlay is a development tool and should not be treated as part of the domain model.
 
+
+### UI-7: Local Hot-Seat Prototype
+
+The application shall use local hot-seat multiplayer for the prototype.
+
+Rules:
+
+- The local/current player is always displayed at the bottom.
+- The hand area shows the active player's hand.
+- Opponent/non-active hands are hidden during normal play.
+
+### UI-8: Debug Hand Overlay
+
+The application may include a development-only debug overlay that reveals hidden hands.
+
+This overlay is for testing/debugging only and should not be part of normal gameplay.
+
+### UI-9: Future Pass-Device Screen
+
+A future version should include a pass-device screen between turns.
+
+Intended flow:
+
+```text
+Player turn ends
+Screen hides hand information
+Prompt: Pass device to next player
+Next player confirms
+Next player's hand becomes visible
+```
+
+### UI-10: HUD Player Status
+
+The HUD should show all players simultaneously.
+
+For each player, the HUD should eventually display or visually indicate:
+
+- Name.
+- Cumulative score only.
+- Cards remaining.
+- Castigos remaining.
+- Opened/closed status.
+- Dealer indicator.
+- Active-turn indicator.
+
+Current visual direction:
+
+```text
+Closed = muted/gray name
+Opened = bright/normal player color
+Active turn = highlighted + arrow
+Dealer = chip/icon
+Castigos = simple text for now
+```
+
+### UI-11: Player Colors
+
+Players should use fixed colors for identity cues:
+
+```text
+Player 1 = blue
+Player 2 = red
+Player 3 = gold
+Player 4 = green
+```
+
+### UI-12: Deck and Discard Placement
+
+Preferred placement is to the right of the player hand.
+
+Fallback placement is the bottom of the HUD if the hand area becomes too crowded.
+
+Interaction direction:
+
+- Click/button-like behavior for draw and castigo first.
+- Drag/drop discard may be added later.
+
+### UI-13: Card Wiggle Behavior
+
+Desired behavior:
+
+- Hand cards have subtle idle wiggle.
+- Hovered hand card has stronger wiggle.
+- Played meld cards have no wiggle or very subtle idle.
+- Deck/discard should not wiggle unless interactive feedback is needed.
+
+Known animation concern:
+
+- Hover-intensified wiggle should not jump to a starting angle; it should continue smoothly from current phase.
+
+### UI-14: Future Full Play-Area View
+
+A future read-only full play-area view should hide HUD, hand, and controls.
+
+Direction:
+
+- Toggle button should live in the play button area.
+- Show all players simultaneously, one row per player.
+- Avoid shrinking cards in full view when possible.
+- Use horizontal scrolling if a player's play area has too many cards.
+
+Status: deferred.
+
 ### UI Architecture Note
 
 The `GameLayout` class currently centralizes layout calculations. This is acceptable for the prototype, but Milestone 4 should revisit the boundary between:
@@ -509,7 +619,7 @@ Domain model        // no rendering knowledge
 
 
 
-### FR-19: Milestone 2 Domain Model Interfaces
+### FR-21: Milestone 2 Domain Model Interfaces
 
 The system shall define initial domain-model types and interfaces for La Kika before implementing full validation logic.
 
@@ -545,6 +655,38 @@ Design constraints:
 - Full turn execution is deferred to later game-state milestones.
 
 Status: started in Milestone 2.
+
+
+### FR-22: Milestone 4 Presentation Architecture Baseline
+
+The system shall continue separating domain hand state from FXGL presentation behavior.
+
+Milestone 4A introduced:
+
+```text
+HandModel
+HandLayout
+CardLayoutSlot
+CardEntityRegistry
+```
+
+Milestone 4A.2 introduced or refined:
+
+```text
+SelectionFeedback
+HudMeldSelectionFeedback
+PlayedMeldLayout
+```
+
+Current design direction:
+
+- `HandModel` owns pure hand state.
+- `HandLayout` computes hand visual positions.
+- `CardEntityRegistry` maps cards to FXGL entities in the presentation layer.
+- `PlayedMeldLayout` handles transitional played-meld centering and grouping.
+- `CardAnimationComponent` should focus on card input/animation behavior rather than HUD updates or validation internals.
+
+Status: in progress.
 
 ## Non-Functional Requirements
 
@@ -625,11 +767,29 @@ Note: `PokerHandEvaluator` may remain in the codebase temporarily as a possible 
 
 ### Milestone 4: Split Hand Domain from FXGL View
 
-- Create pure `Hand` or `HandModel`.
-- Move layout and animation out of domain hand logic.
-- Keep FXGL entity mapping in presentation layer.
-- Ensure played-card animation targets the player meld region.
+Status: in progress.
+
+Milestone 4A completed the first presentation-architecture baseline:
+
+- Introduced `HandModel` for pure hand state.
+- Introduced `HandLayout` and `CardLayoutSlot` for hand positioning.
+- Introduced `CardEntityRegistry` so domain cards still do not own FXGL entities.
+- Kept the existing `Hand` as a transitional facade.
+
+Milestone 4A.2 continued the split:
+
+- Introduced `SelectionFeedback` to reduce direct coupling between card animation, validation, and HUD updates.
+- Added initial `PlayedMeldLayout` behavior for centered played melds.
+- Disabled hand interaction for cards after they are played.
+
+Remaining Milestone 4 work:
+
+- Complete `HandView` / `HandController` separation.
+- Replace static/global HUD calls with event/property-based updates.
+- Implement robust multi-meld layout, wrapping, compression, and creator grouping.
+- Implement opponent meld carousel later.
 - Preserve or improve layout-debug overlay support.
+- Address wiggle animation continuity.
 
 ### Milestone 5: Introduce Game State and Actions
 
@@ -684,12 +844,13 @@ Note: `PokerHandEvaluator` may remain in the codebase temporarily as a possible 
 
 ## Open Product Questions
 
-No blocking product questions remain for Milestones 1-3.
+No blocking product questions remain for Milestones 1-4A.2.
 
 Remaining clarifications to eventually answer:
 
 1. What is the exact starting deck composition by player count and round?
    - Current rule: start with two standard decks plus jokers.
+   - Each standard deck contributes two jokers.
    - Additional decks are added when necessary.
    - Raul will consult other game experts to formalize whether later rounds/player counts should start with more than two decks.
 2. How should the dealer's digital shot/swing meter be tuned so that the exact deal bonus is skill-based but not frustrating?
@@ -697,3 +858,7 @@ Remaining clarifications to eventually answer:
    - Do not display the exact number of cards selected on the meter.
    - An arrow or similar indicator is acceptable for now.
    - Later version may animate the deck splitting, with cards moving from top to bottom until the player clicks to stop.
+3. How should full play-area view be implemented visually?
+   - Current direction: deferred read-only toggle screen.
+   - Show all players simultaneously.
+   - Avoid shrinking cards where possible; prefer scrolling.

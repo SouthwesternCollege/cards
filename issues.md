@@ -55,7 +55,7 @@ Use explicit `Rank`, `Suit`, and joker status.
 
 ### Result
 
-`Card.standard(...)` and `Card.joker(...)` now construct cards explicitly.
+`Card.standard(...)` and `Card.joker(...)` construct cards explicitly.
 
 ---
 
@@ -101,10 +101,6 @@ Status: Done
 Priority: P1  
 Area: Game Rules
 
-### Problem
-
-Jokers were known to be wild, but exact behavior was initially undefined.
-
 ### Decision
 
 Known La Kika joker rules:
@@ -114,43 +110,48 @@ Known La Kika joker rules:
 - Jokers may not be consecutive in a straight flush.
 - Jokers may be stolen from melds by replacement.
 - More than one joker may be stolen during a single turn.
-- A joker stolen from a meld must be played during the same turn.
+- A stolen joker must be played during the same turn.
 - A stolen joker may be used to create a new meld or mutate any meld in the play area.
+- If a closed player steals a joker, they must open during that same turn.
 - Jokers are worth 50 points in hand scoring.
 
 ### Remaining Design Work
 
-Implementation still needs a joker subsystem to model:
-
-- Joker assignments.
-- Joker replacement.
-- Joker stealing.
-- Mandatory same-turn use.
-- Closed-player joker stealing requiring opening during the same turn.
+Implementation still needs a joker subsystem to model joker assignments, stealing, replacement, mandatory same-turn use, and return behavior if the obligation is not satisfied.
 
 ---
 
 ## ISS-006: Split `Hand` into domain and FXGL responsibilities
 
-Status: Open  
+Status: In Progress  
 Priority: P1  
 Area: Architecture
 
 ### Problem
 
-`Hand` currently manages card collection, deck drawing, selection, FXGL spawning, entity mapping, layout, animation, and play behavior.
+`Hand` has historically mixed card collection, selection, FXGL spawning, entity mapping, layout, animation, and play behavior.
 
-### Risk
+### Progress
 
-This makes the class difficult to test, reuse, or evolve into engine code.
-
-### Proposed Direction
-
-Split into:
+Milestone 4A introduced:
 
 ```text
-Hand / HandModel          // pure domain collection and selection rules
-HandView / HandController // FXGL spawning, layout, animation, input coordination
+HandModel
+HandLayout
+CardLayoutSlot
+CardEntityRegistry
+```
+
+The current `Hand` class remains a transitional facade.
+
+### Remaining Work
+
+Split further into:
+
+```text
+HandModel          // pure domain/hand state
+HandView           // FXGL rendering/layout
+HandController     // input and coordination
 ```
 
 ---
@@ -165,9 +166,9 @@ Area: UI Architecture
 
 `GameHUD` currently uses static/global update patterns.
 
-### Risk
+### Progress
 
-This will make multiplayer, testing, save/load, and multiple UI states harder.
+Milestone 4A.2 introduced `SelectionFeedback` and `HudMeldSelectionFeedback` as a transitional decoupling step.
 
 ### Proposed Direction
 
@@ -180,10 +181,6 @@ Use observer/event/property updates from game state to HUD.
 Status: Done  
 Priority: P1  
 Area: Game Rules
-
-### Problem
-
-Current code evaluates poker-like hands, but La Kika does not use ordinary poker hands.
 
 ### Decision
 
@@ -222,10 +219,6 @@ Status: Done
 Priority: P1  
 Area: Game Rules
 
-### Problem
-
-The game is round-based, but the lifecycle was not formally modeled.
-
 ### Decision
 
 Known round lifecycle:
@@ -239,10 +232,6 @@ Known round lifecycle:
 7. A round ends when a player discards their final card.
 8. Remaining players score cards left in hand.
 9. Game ends after six rounds.
-
-### Remaining Design Work
-
-Need to model dealer preparation and exact deal behavior.
 
 ---
 
@@ -273,10 +262,6 @@ Area: Save/Load
 
 Use human-readable JSON while the architecture is evolving.
 
-### Reason
-
-JSON is inspectable, debuggable, and compatible with explicit snapshot records.
-
 ---
 
 ## ISS-012: Package structure needs eventual engine/application split
@@ -284,10 +269,6 @@ JSON is inspectable, debuggable, and compatible with explicit snapshot records.
 Status: Deferred  
 Priority: P2  
 Area: Architecture
-
-### Problem
-
-All source currently lives under `quetzal.cards`.
 
 ### Proposed Future Direction
 
@@ -302,10 +283,6 @@ quetzal.cards.fxgl
 quetzal.cards.game
 ```
 
-### Reason for Deferral
-
-Do not reorganize packages until the core module boundaries are clearer.
-
 ---
 
 ## ISS-013: Implement castigo
@@ -314,10 +291,6 @@ Status: Open
 Priority: P1  
 Area: Game Rules
 
-### Problem
-
-Castigo is a central La Kika rule and is not currently modeled.
-
 ### Known Rules
 
 - A player may take only the most recently discarded card.
@@ -325,11 +298,16 @@ Castigo is a central La Kika rule and is not currently modeled.
 - Only one castigo may occur per turn.
 - If the active player declines, other players may accept in turn order.
 - A player who has not opened may take castigo.
+- Each player has 10 castigos per game.
+- Taking a castigo consumes one castigo.
+- Declining a castigo consumes none.
+- Castigos reset between games, but not between rounds.
 - If the deck has fewer than three cards, add a new shuffled standard deck with jokers to the game deck.
-
-### Decision
-
 - Each added standard deck includes two jokers.
+
+### Proposed Direction
+
+Track castigos remaining in player/game state, not in meld validation.
 
 ---
 
@@ -338,10 +316,6 @@ Castigo is a central La Kika rule and is not currently modeled.
 Status: Open  
 Priority: P1  
 Area: Game Rules
-
-### Problem
-
-Each round has a different opening requirement that gates whether a player may freely play or mutate melds.
 
 ### Requirements
 
@@ -360,18 +334,6 @@ Each round has a different opening requirement that gates whether a player may f
 - A player may continue creating or mutating melds after opening.
 - If a closed player steals a joker, they must open during that same turn.
 
-### Design Direction
-
-Represent this as a rule object rather than scattered conditionals.
-
-Possible interface:
-
-```java
-public interface OpeningRequirement {
-    boolean isSatisfiedBy(List<Meld> newlyPlayedMelds);
-}
-```
-
 ---
 
 ## ISS-015: Model play area and meld mutation
@@ -380,13 +342,10 @@ Status: Open
 Priority: P1  
 Area: Domain Model
 
-### Problem
-
-Melds remain mutable in the play area, and any player may mutate any meld.
-
 ### Known Rules
 
 - Melds are not permanently owned by players.
+- A meld remains visually associated with its creator.
 - A player may add matching ranks to a kind meld.
 - A player may extend the beginning or end of a straight flush.
 - A player may steal jokers under specific constraints.
@@ -394,7 +353,7 @@ Melds remain mutable in the play area, and any player may mutate any meld.
 
 ### Proposed Direction
 
-Create explicit domain types:
+Create or refine explicit domain/presentation types:
 
 ```text
 PlayArea
@@ -403,27 +362,25 @@ MeldId
 Move
 MoveResult
 LegalMoveValidator
+MeldLayout
+PlayAreaView
 ```
 
 ---
 
 ## ISS-016: Remove five-card selection assumption
 
-Status: Open  
+Status: Done  
 Priority: P1  
 Area: UI / Domain Interaction
 
 ### Problem
 
-The current prototype appears influenced by poker-hand selection, likely assuming five selected cards.
+The prototype had poker-influenced selection behavior.
 
-### Risk
+### Result
 
-La Kika melds may contain more than five cards, especially for later opening requirements and extended melds.
-
-### Proposed Direction
-
-Selection should support arbitrary legal move construction, not fixed-size poker evaluation.
+Selection now supports arbitrary selected-card counts for La Kika meld construction.
 
 ---
 
@@ -433,20 +390,12 @@ Status: Done
 Priority: P1  
 Area: Game Rules
 
-### Problem
-
-A round ends when a player empties their hand, but the exact method needed clarification.
-
 ### Decision
 
 - The final card should be discarded.
 - The final card does not need to be played into a meld.
 - If a player can play the final card during the meld phase, they should still discard the final card.
 - Discard is not skipped simply because the player could otherwise play all cards.
-
-### Implementation Impact
-
-The turn model must always include a discard phase unless a future explicit rule says otherwise.
 
 ---
 
@@ -456,21 +405,11 @@ Status: Done
 Priority: P1  
 Area: Game Rules
 
-### Problem
-
-Draw and castigo require cards from the deck.
-
 ### Decision
 
 If the deck cannot satisfy a normal draw or castigo draw, add a new shuffled standard deck with jokers to the game deck.
 
-### Alternative Considered
-
-Shuffle the discard pile into the deck if the discard pile is large enough.
-
-### Decision
-
-- Each added standard deck includes two jokers.
+Each added standard deck includes two jokers.
 
 ---
 
@@ -479,10 +418,6 @@ Shuffle the discard pile into the deck if the discard pile is large enough.
 Status: Open  
 Priority: P1  
 Area: Game Rules
-
-### Problem
-
-Dealer responsibility affects dealing and scoring, so it must be modeled in the domain layer.
 
 ### Known Rules
 
@@ -494,16 +429,6 @@ Dealer responsibility affects dealing and scoring, so it must be modeled in the 
 - If the deal packet is short, remaining cards are dealt directly from the deck.
 - If the deal packet is long, extra cards are returned to the top of the deck.
 
-### Proposed Direction
-
-Introduce domain concepts such as:
-
-```text
-DealerRotation
-DealOrder
-DealService
-```
-
 ---
 
 ## ISS-020: Implement exact deal bonus
@@ -511,10 +436,6 @@ DealService
 Status: Open  
 Priority: P1  
 Area: Scoring
-
-### Problem
-
-The exact deal mechanic affects scoring and allows negative scores.
 
 ### Known Rule
 
@@ -526,21 +447,12 @@ hand size * number of players
 
 cards for the deal, subtract 100 points from the dealer's score immediately at the beginning of the round.
 
-### Additional Rules
-
-- Negative scores are possible.
-- If the dealer takes too few cards, the remaining cards are dealt directly from the deck and the dealer's score is unaffected.
-- If the dealer takes too many cards, the extra cards are returned to the top of the deck and the dealer's score is unaffected.
-
 ### Digital Design Direction
 
 - Use a shot/swing-meter style interaction.
-- The dealer stops the meter.
-- The stopped meter position determines the number of cards taken for the deal packet.
-- Use a linear interpolation between the top and bottom of the deck for now.
+- Use linear interpolation between the top and bottom of the deck for now.
 - Do not display the exact number of selected cards on the meter.
-- An arrow indicator is acceptable for the first version.
-- A later version may animate the deck splitting, with cards moving from top to bottom until the player clicks to stop.
+- A later version may animate the deck splitting.
 - The domain logic should receive the resulting count, not depend on the UI meter.
 
 ---
@@ -551,20 +463,12 @@ Status: Open
 Priority: P1  
 Area: Game Setup
 
-### Problem
-
-The game supports multiple standard decks and jokers, but the exact starting deck composition is not yet fully defined by player count and round.
-
 ### Current Domain Knowledge
 
 - The game starts with two standard decks plus jokers.
 - Each standard deck contributes two jokers.
 - Additional decks are added when necessary.
 - Raul will consult other game experts to determine whether later rounds/player counts should start with more than two decks.
-
-### Remaining Question
-
-- Should later rounds or larger player counts start with more than two decks, or should the game always start with two and add decks only when necessary?
 
 ---
 
@@ -578,15 +482,9 @@ Area: Game Rules
 
 A player who has not opened may steal a joker, but must open that same turn.
 
-### Risk
-
-This creates a temporary obligation within a turn.
-
 ### Proposed Direction
 
-Model turn obligations explicitly.
-
-Possible concept:
+Model turn obligations explicitly:
 
 ```text
 TurnObligation
@@ -594,89 +492,13 @@ MustOpenThisTurn
 MustUseStolenJoker
 ```
 
-This avoids burying the rule in UI event handling or ad hoc conditionals.
-
 ---
 
-## ISS-019: Played meld animation targets wrong scene region
-
-Status: Open  
-Priority: P2  
-Area: UI / Presentation
-
-### Problem
-
-When a player plays selected cards into the play area, the cards do not animate to the intended player meld region.
-
-Current observed behavior:
-
-- Played cards animate near the upper-left corner.
-
-Expected behavior:
-
-- Played cards should animate to the player meld area, which is the second 30% vertical band of the right gameplay area.
-
-### Relevant Layout
-
-```text
-Full Scene
-├── Left 20%: HUD
-└── Right 80%: Gameplay Area
-    ├── Top 30%: Opponent played melds
-    ├── Next 30%: Player played melds
-    ├── Next 30%: Player hand
-    └── Bottom 10%: Play buttons
-```
-
-### Likely Cause
-
-The animation target is probably using incorrect coordinate-space assumptions or outdated layout constants.
-
-Potential sources:
-
-- `GameLayout`
-- Hand play-card animation logic
-- Entity coordinate conversion
-- Hardcoded coordinates
-- Confusion between full-scene coordinates and gameplay-area-relative coordinates
-
-### Proposed Direction
-
-Do not solve this immediately unless it blocks development.
-
-Address during Milestone 4 when splitting the domain hand model from presentation-layer behavior.
-
-The eventual design should route visual movement through a presentation service or view/controller layer, not through domain objects.
-
----
-
-## ISS-020: Preserve layout debug overlay during UI refactor
-
-Status: Open  
-Priority: P3  
-Area: UI / Developer Tooling
-
-### Problem
-
-The debug layout overlay is useful for verifying the dedicated scene regions.
-
-### Proposed Direction
-
-Keep the debug overlay available while layout and animation behavior are being refactored.
-
-It should remain optional/development-only and should not affect domain model behavior.
-
----
-
-## ISS-021: Implement stolen joker obligations
+## ISS-023: Implement stolen joker obligations
 
 Status: Open  
 Priority: P1  
 Area: Game Rules
-
-### Problem
-
-Stealing a joker creates a same-turn obligation that is not yet implemented in executable game logic.
 
 ### Known Rules
 
@@ -698,72 +520,173 @@ public record StolenJokerObligation(
 ) {}
 ```
 
-The turn engine should verify that all joker obligations are satisfied before allowing discard/end-turn.
-
 ---
 
-## ISS-022: Complete Milestone 2 domain model types
+## ISS-024: Complete Milestone 2 domain model types
 
-Status: In Progress  
+Status: Done  
 Priority: P1  
 Area: Domain Model
 
-### Problem
+### Result
 
-The project needs explicit La Kika domain types before meld validation and turn execution can be cleanly implemented.
-
-### Scope
-
-Introduce initial types for:
-
-- Players
-- Melds
-- Play area
-- Moves
-- Turn phases
-- Opening requirements
-- Validation results
-- Joker assignments
-- Stolen joker obligations
-
-### Out of Scope
-
-- Full meld validation
-- Full legal move execution
-- FXGL UI refactor
-
-These are handled in later milestones.
+Initial domain types were added for players, melds, play area, moves, turn phases, opening requirements, validation results, joker assignments, and stolen joker obligations.
 
 ---
 
-## ISS-023: Decide whether straight-flush joker placement should become position-sensitive
+## ISS-025: Decide whether straight-flush joker placement should become position-sensitive
 
 Status: Deferred  
 Priority: P2  
 Area: Game Rules / UI Interaction
 
-### Problem
+### Decision
 
 Milestone 3 validation accepts unordered straight-flush selections and chooses the lowest possible valid sequence when joker placement is ambiguous.
 
-This means a selection such as:
+### Current Boundary
+
+- Validation determines whether the selected cards can structurally form a straight flush.
+- Presentation/meld placement arranges a played straight flush in normalized sequence order.
+- If position-sensitive joker placement becomes important later, update the validation interface to accept explicit placement/order intent from the UI.
+
+---
+
+## ISS-026: Preserve layout debug overlay during UI refactor
+
+Status: Open  
+Priority: P3  
+Area: UI / Developer Tooling
+
+### Problem
+
+The debug layout overlay is useful for verifying dedicated scene regions.
+
+### Proposed Direction
+
+Keep the debug overlay available while layout and animation behavior are being refactored.
+
+---
+
+## ISS-027: Played meld layout and centering
+
+Status: In Progress  
+Priority: P2  
+Area: UI / Presentation
+
+### Problem
+
+Played cards initially animated to the wrong region and then later centered as one meld, causing subsequent melds to merge visually.
+
+### Progress
+
+Milestone 4A/4A.2 introduced `PlayedMeldLayout`, centered played melds, and separate visual groups for played melds.
+
+### Remaining Work
+
+This is still transitional. Milestone 4C should implement robust multi-meld layout:
+
+- Creator grouping.
+- Wrapping.
+- Compression.
+- Minimum spacing.
+- Opponent carousel.
+- Full play-area view support.
+
+---
+
+## ISS-028: Implement hot-seat hand privacy
+
+Status: Open  
+Priority: P2  
+Area: UI / Game Flow
+
+### Decision
+
+Short term:
+
+- Use a debug overlay to reveal hidden hands during development.
+
+Long term:
+
+- Add a pass-device screen between turns.
+
+Normal gameplay should show only the active player's hand.
+
+---
+
+## ISS-029: Normalize straight flush display order
+
+Status: In Progress  
+Priority: P1  
+Area: Presentation / Meld Layout
+
+### Decision
+
+Players may select straight-flush cards in any order, but once played, the meld should display in sequence order.
+
+Kind melds preserve selected/insertion order.
+
+### Current Status
+
+Milestone 4A/4A.2 began using validation-normalized order for played straight flushes.
+
+---
+
+## ISS-030: Add pass-device screen later
+
+Status: Deferred  
+Priority: P2  
+Area: UI / Game Flow
+
+### Proposed Direction
+
+After the core presentation architecture is stable, add a screen:
 
 ```text
-Q♠ K♠ Joker
+Pass device to Player N
+Continue
 ```
 
-can validate as:
+This should hide hand information until the next player confirms.
 
-```text
-J♠ Q♠ K♠
+---
+
+## ISS-031: Fix card interaction disable rotation API
+
+Status: Done  
+Priority: P2  
+Area: FXGL / UI
+
+### Problem
+
+A patch used the wrong FXGL rotation method when disabling interaction on played cards.
+
+### Correct Project Code
+
+Use:
+
+```java
+if (!interactionEnabled) {
+    isDragging = false;
+    entity.setRotation(0.0);
+}
 ```
 
-It does not validate as `Q♠ K♠ A♠`, because aces are low and straight flushes are not cyclic.
+Avoid `setRotate(...)`.
 
-### Reason for Deferral
+---
 
-Raul indicated that ambiguous joker placement is not a major issue because players can move the joker to the beginning or end of the meld before the end of the turn.
+## ISS-032: Improve wiggle animation continuity
 
-### Possible Future Direction
+Status: Open  
+Priority: P2  
+Area: UI / Animation
 
-If position-sensitive joker placement becomes important, update the validation interface to accept explicit placement/order intent from the UI.
+### Problem
+
+When hover-intensified wiggle begins, the card jumps to the hover animation's starting angle instead of continuing smoothly from the current angle.
+
+### Proposed Direction
+
+Use a stateful animation component where hover changes amplitude/frequency without resetting phase.
