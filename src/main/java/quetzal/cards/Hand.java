@@ -4,6 +4,7 @@ import com.almasb.fxgl.animation.Interpolators;
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.SpawnData;
+import javafx.animation.PauseTransition;
 import javafx.geometry.Point2D;
 import javafx.geometry.Rectangle2D;
 import javafx.util.Duration;
@@ -26,14 +27,15 @@ public class Hand {
 
     private final HandModel model;
     private final HandLayout layout;
-    private final PlayedMeldLayout playedMeldLayout;
+    private final MeldLayout meldLayout;
+    private final VisualMeldStore visualMeldStore;
     private final CardEntityRegistry entityRegistry;
     private final Rectangle2D playerPlayedArea;
     private final Deck deck;
     private final MeldValidator meldValidator = new LaKikaMeldValidator();
     private final SelectionFeedback selectionFeedback;
     private final HandChangeListener handChangeListener;
-    private final List<List<Card>> playedMelds = new ArrayList<>();
+    private final PlayerId localPlayerId = new PlayerId(1);
 
     public Hand(Rectangle2D handArea, Rectangle2D playerPlayedArea, Deck deck) {
         this(handArea, playerPlayedArea, deck, new NoOpSelectionFeedback(), new NoOpHandChangeListener());
@@ -52,7 +54,8 @@ public class Hand {
     ) {
         this.model = new HandModel();
         this.layout = new HandLayout(handArea);
-        this.playedMeldLayout = new PlayedMeldLayout();
+        this.meldLayout = new MeldLayout();
+        this.visualMeldStore = new VisualMeldStore();
         this.entityRegistry = new CardEntityRegistry();
         this.playerPlayedArea = playerPlayedArea;
         this.deck = deck;
@@ -112,15 +115,12 @@ public class Hand {
         List<Card> cardsToPlay = orderedCardsForPlayedMeld(selectedSnapshot, validationResult);
         Set<CardId> newlyPlayedCardIds = cardIds(cardsToPlay);
 
-        playedMelds.add(List.copyOf(cardsToPlay));
-        List<CardLayoutSlot> playedSlots = playedMeldLayout.centeredSlotsForMelds(playedMelds, playerPlayedArea);
+        visualMeldStore.add(new VisualMeld(localPlayerId, cardsToPlay));
+        List<MeldLayoutSlot> playedSlots = meldLayout.slots(visualMeldStore.meldsFor(localPlayerId), playerPlayedArea);
 
-        Duration playDuration = Duration.seconds(0.45);
-
-        for (CardLayoutSlot slot : playedSlots) {
+        for (MeldLayoutSlot slot : playedSlots) {
             Card card = slot.card();
             Entity cardEntity = getEntityFor(card);
-            Point2D target = slot.visualPosition();
 
             if (newlyPlayedCardIds.contains(card.id())) {
                 model.setSelectable(card, false);
@@ -128,14 +128,7 @@ public class Hand {
                 disableHandInteraction(cardEntity);
             }
 
-            FXGL.animationBuilder()
-                    .duration(playDuration)
-                    .interpolator(Interpolators.SMOOTH.EASE_OUT())
-                    .translate(cardEntity)
-                    .to(target)
-                    .buildAndPlay();
-
-            cardEntity.setZIndex(100 + slot.zIndex());
+            animatePlayedCard(cardEntity, slot);
         }
 
         model.clearSelected();
@@ -146,6 +139,25 @@ public class Hand {
         if (!model.getCards().isEmpty()) {
             organizeCardEntities();
         }
+    }
+
+
+    private void animatePlayedCard(Entity cardEntity, MeldLayoutSlot slot) {
+        double delaySeconds = slot.zIndex() * 0.2;
+        Point2D target = slot.position();
+
+        PauseTransition delay = new PauseTransition(Duration.seconds(delaySeconds));
+        delay.setOnFinished(event -> {
+            FXGL.animationBuilder()
+                    .duration(Duration.seconds(0.45))
+                    .interpolator(Interpolators.SMOOTH.EASE_OUT())
+                    .translate(cardEntity)
+                    .to(target)
+                    .buildAndPlay();
+
+            cardEntity.setZIndex(100 + slot.zIndex());
+        });
+        delay.play();
     }
 
     private void notifyHandSizeChanged() {
