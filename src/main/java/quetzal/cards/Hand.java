@@ -32,13 +32,24 @@ public class Hand {
     private final Deck deck;
     private final MeldValidator meldValidator = new LaKikaMeldValidator();
     private final SelectionFeedback selectionFeedback;
+    private final HandChangeListener handChangeListener;
     private final List<List<Card>> playedMelds = new ArrayList<>();
 
     public Hand(Rectangle2D handArea, Rectangle2D playerPlayedArea, Deck deck) {
-        this(handArea, playerPlayedArea, deck, new HudMeldSelectionFeedback(new LaKikaMeldValidator()));
+        this(handArea, playerPlayedArea, deck, new NoOpSelectionFeedback(), new NoOpHandChangeListener());
     }
 
     public Hand(Rectangle2D handArea, Rectangle2D playerPlayedArea, Deck deck, SelectionFeedback selectionFeedback) {
+        this(handArea, playerPlayedArea, deck, selectionFeedback, new NoOpHandChangeListener());
+    }
+
+    public Hand(
+            Rectangle2D handArea,
+            Rectangle2D playerPlayedArea,
+            Deck deck,
+            SelectionFeedback selectionFeedback,
+            HandChangeListener handChangeListener
+    ) {
         this.model = new HandModel();
         this.layout = new HandLayout(handArea);
         this.playedMeldLayout = new PlayedMeldLayout();
@@ -46,6 +57,7 @@ public class Hand {
         this.playerPlayedArea = playerPlayedArea;
         this.deck = deck;
         this.selectionFeedback = selectionFeedback == null ? new NoOpSelectionFeedback() : selectionFeedback;
+        this.handChangeListener = handChangeListener == null ? new NoOpHandChangeListener() : handChangeListener;
     }
 
     /**
@@ -70,14 +82,18 @@ public class Hand {
         }
 
         organizeCardEntities();
+        notifyHandSizeChanged();
     }
 
     public void addCard(Card card) {
         model.addCard(card);
+        notifyHandSizeChanged();
     }
 
     public Card removeCard(Card card) {
-        return model.removeCard(card);
+        Card removed = model.removeCard(card);
+        notifyHandSizeChanged();
+        return removed;
     }
 
     public void playSelectedCards() {
@@ -125,11 +141,16 @@ public class Hand {
         model.clearSelected();
         selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
 
+        notifyHandSizeChanged();
+
         if (!model.getCards().isEmpty()) {
             organizeCardEntities();
         }
     }
 
+    private void notifyHandSizeChanged() {
+        handChangeListener.handSizeChanged(model.size());
+    }
 
     private Set<CardId> cardIds(List<Card> cards) {
         Set<CardId> ids = new HashSet<>();

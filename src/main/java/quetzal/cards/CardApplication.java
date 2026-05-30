@@ -26,6 +26,7 @@ public class CardApplication extends GameApplication {
     private Hand hand;
     private GameLayout gameLayout;
     private GameHUD gameHUD;
+    private GameHudController gameHudController;
     private GameControls gameControls;
     private final Font font = Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 36);
 
@@ -104,8 +105,11 @@ public class CardApplication extends GameApplication {
         // Overlay to help with debugging GameLayout
         addLayoutDebugOverlay();
 
-        // Initialize gameLayout
-        gameHUD = new GameHUD(gameLayout);
+        // Initialize HUD with prototype presentation state until real GameState exists.
+        PlayerHudModel playerHudModel = PlayerHudModel.prototype(4);
+        gameHUD = new GameHUD(gameLayout, playerHudModel);
+        gameHudController = new GameHudController(playerHudModel, gameHUD);
+        gameHudController.refresh();
 
         // Create a Deck and shuffle
         Deck deck = Deck.laKikaPrototypeDeck();
@@ -114,8 +118,22 @@ public class CardApplication extends GameApplication {
         // Initialize hand area
         Rectangle2D playerHandArea = gameLayout.getPlayerHandArea();
 
-        // Create the hand inside the player hand area
-        hand = new Hand(playerHandArea, gameLayout.getPlayerPlayedArea(), deck);
+        // Create the active local player's hand inside the player hand area.
+        PlayerId localPlayerId = new PlayerId(1);
+        SelectionFeedback selectionFeedback = new HudMeldSelectionFeedback(
+                new LaKikaMeldValidator(),
+                gameHudController
+        );
+        HandChangeListener handChangeListener = cardsRemaining ->
+                gameHudController.setCardsRemaining(localPlayerId, cardsRemaining);
+
+        hand = new Hand(
+                playerHandArea,
+                gameLayout.getPlayerPlayedArea(),
+                deck,
+                selectionFeedback,
+                handChangeListener
+        );
 
         // Number of cards in the hand
         int handSize = 13;
