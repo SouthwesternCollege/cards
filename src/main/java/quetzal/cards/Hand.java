@@ -36,6 +36,7 @@ public class Hand {
     private final SelectionFeedback selectionFeedback;
     private final HandChangeListener handChangeListener;
     private final PlayerId localPlayerId = new PlayerId(1);
+    private int nextDebugCardId = 10_000;
 
     public Hand(Rectangle2D handArea, Rectangle2D playerPlayedArea, Deck deck) {
         this(handArea, playerPlayedArea, deck, new NoOpSelectionFeedback(), new NoOpHandChangeListener());
@@ -116,20 +117,15 @@ public class Hand {
         Set<CardId> newlyPlayedCardIds = cardIds(cardsToPlay);
 
         visualMeldStore.add(new VisualMeld(localPlayerId, cardsToPlay));
-        List<MeldLayoutSlot> playedSlots = meldLayout.slots(visualMeldStore.meldsFor(localPlayerId), playerPlayedArea);
 
-        for (MeldLayoutSlot slot : playedSlots) {
-            Card card = slot.card();
+        for (Card card : cardsToPlay) {
             Entity cardEntity = getEntityFor(card);
-
-            if (newlyPlayedCardIds.contains(card.id())) {
-                model.setSelectable(card, false);
-                model.removeCard(card);
-                disableHandInteraction(cardEntity);
-            }
-
-            animatePlayedCard(cardEntity, slot);
+            model.setSelectable(card, false);
+            model.removeCard(card);
+            disableHandInteraction(cardEntity);
         }
+
+        reflowPlayedMelds();
 
         model.clearSelected();
         selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
@@ -142,8 +138,148 @@ public class Hand {
     }
 
 
+    /**
+     * Development-only helper for stress-testing the played-meld layout without
+     * needing full draw/discard/turn systems. Do not use this as game logic.
+     */
+    public void debugAddKindMeld() {
+        int sequence = visualMeldStore.all().size();
+        Rank rank = Rank.values()[sequence % Rank.values().length];
+        Suit firstSuit = Suit.values()[sequence % Suit.values().length];
+        Suit secondSuit = Suit.values()[(sequence + 1) % Suit.values().length];
+        Suit thirdSuit = Suit.values()[(sequence + 2) % Suit.values().length];
+
+        addDebugVisualMeld(List.of(
+                Card.standard(nextDebugCardId(), rank, firstSuit),
+                Card.standard(nextDebugCardId(), rank, secondSuit),
+                Card.standard(nextDebugCardId(), rank, thirdSuit)
+        ));
+    }
+
+    /**
+     * Development-only helper for adding a valid straight flush. The cards are
+     * already in sequence order so layout behavior can be inspected directly.
+     */
+    public void debugAddStraightFlushMeld() {
+        int sequence = visualMeldStore.all().size();
+        Suit suit = Suit.values()[sequence % Suit.values().length];
+        int start = 1 + (sequence % 8);
+
+        addDebugVisualMeld(List.of(
+                Card.standard(nextDebugCardId(), rankWithSequenceValue(start), suit),
+                Card.standard(nextDebugCardId(), rankWithSequenceValue(start + 1), suit),
+                Card.standard(nextDebugCardId(), rankWithSequenceValue(start + 2), suit),
+                Card.standard(nextDebugCardId(), rankWithSequenceValue(start + 3), suit)
+        ));
+    }
+
+    /**
+     * Development-only stress tool for quickly testing wrapping, centering,
+     * overlap, and staggered animation.
+     */
+    public void debugAddManyMelds() {
+        for (int i = 0; i < 8; i++) {
+            int sequence = visualMeldStore.all().size();
+
+            if (i % 2 == 0) {
+                Rank rank = Rank.values()[sequence % Rank.values().length];
+                addDebugVisualMeld(List.of(
+                        Card.standard(nextDebugCardId(), rank, Suit.CLUB),
+                        Card.standard(nextDebugCardId(), rank, Suit.DIAMOND),
+                        Card.standard(nextDebugCardId(), rank, Suit.HEART)
+                ), false);
+            } else {
+                Suit suit = Suit.values()[sequence % Suit.values().length];
+                int start = 1 + (sequence % 8);
+                addDebugVisualMeld(List.of(
+                        Card.standard(nextDebugCardId(), rankWithSequenceValue(start), suit),
+                        Card.standard(nextDebugCardId(), rankWithSequenceValue(start + 1), suit),
+                        Card.standard(nextDebugCardId(), rankWithSequenceValue(start + 2), suit),
+                        Card.standard(nextDebugCardId(), rankWithSequenceValue(start + 3), suit),
+                        Card.standard(nextDebugCardId(), rankWithSequenceValue(start + 4), suit)
+                ), false);
+            }
+        }
+
+        reflowPlayedMelds();
+    }
+
+    /**
+     * Development-only cleanup tool. This removes all visual meld cards currently
+     * in the played area.
+     */
+    public void debugClearVisualMelds() {
+        for (VisualMeld meld : visualMeldStore.all()) {
+            for (Card card : meld.cards()) {
+                Entity entity = getEntityFor(card);
+                if (entity != null) {
+                    entity.removeFromWorld();
+                }
+            }
+        }
+
+        visualMeldStore.clear();
+    }
+
+    private void addDebugVisualMeld(List<Card> cards) {
+        addDebugVisualMeld(cards, true);
+    }
+
+    private void addDebugVisualMeld(List<Card> cards, boolean reflowAfterAdd) {
+        Point2D spawnPosition = new Point2D(
+                playerPlayedArea.getMinX() + playerPlayedArea.getWidth() / 2.0 - HandLayout.CARD_WIDTH / 2.0,
+                playerPlayedArea.getMinY() + playerPlayedArea.getHeight() / 2.0 - HandLayout.CARD_HEIGHT / 2.0
+        );
+
+        for (int i = 0; i < cards.size(); i++) {
+            Card card = cards.get(i);
+            Entity cardEntity = FXGL.spawn("Card", new SpawnData(spawnPosition.getX(), spawnPosition.getY())
+                    .put("card", card)
+                    .put("z-index", 300 + i)
+                    .put("hand", this));
+
+            registerCardEntity(card, cardEntity);
+            disableHandInteraction(cardEntity);
+        }
+
+        visualMeldStore.add(new VisualMeld(localPlayerId, cards));
+
+        if (reflowAfterAdd) {
+            reflowPlayedMelds();
+        }
+    }
+
+    private void reflowPlayedMelds() {
+        List<MeldLayoutSlot> playedSlots = meldLayout.slots(visualMeldStore.meldsFor(localPlayerId), playerPlayedArea);
+
+        for (MeldLayoutSlot slot : playedSlots) {
+            Entity cardEntity = getEntityFor(slot.card());
+
+            if (cardEntity == null) {
+                continue;
+            }
+
+            animatePlayedCard(cardEntity, slot);
+        }
+    }
+
+    private CardId nextDebugCardId() {
+        return new CardId(nextDebugCardId++);
+    }
+
+    private Rank rankWithSequenceValue(int sequenceValue) {
+        for (Rank rank : Rank.values()) {
+            if (rank.sequenceValue() == sequenceValue) {
+                return rank;
+            }
+        }
+
+        throw new IllegalArgumentException("Unsupported rank sequence value: " + sequenceValue);
+    }
+
+
     private void animatePlayedCard(Entity cardEntity, MeldLayoutSlot slot) {
-        double delaySeconds = slot.zIndex() * 0.2;
+        double delaySeconds = slot.zIndex() * 0.1;
         Point2D target = slot.position();
 
         PauseTransition delay = new PauseTransition(Duration.seconds(delaySeconds));

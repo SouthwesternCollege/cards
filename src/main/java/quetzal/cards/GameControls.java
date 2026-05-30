@@ -42,12 +42,28 @@ public class GameControls {
         Button sortSuitButton = gameButton(new Text("Suit"), Color.color(0.8, 0.7, 0));
         sortSuitButton.setOnAction(event -> hand.sortBySuit());
 
+        Button addKindTestButton = gameButton(new Text("+Kind"), Color.color(0.25, 0.45, 0.25));
+        addKindTestButton.setOnAction(event -> hand.debugAddKindMeld());
+
+        Button addStraightTestButton = gameButton(new Text("+Run"), Color.color(0.25, 0.45, 0.45));
+        addStraightTestButton.setOnAction(event -> hand.debugAddStraightFlushMeld());
+
+        Button stressMeldsButton = gameButton(new Text("Stress"), Color.color(0.45, 0.25, 0.45));
+        stressMeldsButton.setOnAction(event -> hand.debugAddManyMelds());
+
+        Button clearMeldsButton = gameButton(new Text("Clear"), Color.color(0.25, 0.25, 0.25));
+        clearMeldsButton.setOnAction(event -> hand.debugClearVisualMelds());
+
         return new HBox(
                 BUTTON_SPACING,
                 playButton,
                 discardButton,
                 sortRankButton,
-                sortSuitButton
+                sortSuitButton,
+                addKindTestButton,
+                addStraightTestButton,
+                stressMeldsButton,
+                clearMeldsButton
         );
     }
 

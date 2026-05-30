@@ -31,4 +31,9 @@ public final class VisualMeldStore {
                 .filter(meld -> meld.createdBy().equals(playerId))
                 .toList();
     }
+
+    public void clear() {
+        melds.clear();
+    }
 }
+
