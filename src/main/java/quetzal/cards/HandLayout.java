@@ -15,13 +15,9 @@ import java.util.Set;
  */
 public final class HandLayout {
 
-    public static final double CARD_WIDTH = 142.0;
-    public static final double CARD_HEIGHT = 190.0;
-    public static final double CARD_TOP_PADDING = 60.0;
     public static final double SELECTED_CARD_Y_OFFSET = -50.0;
 
     private static final double MAX_CARD_SPACING = 80.0;
-    private static final double MIN_VISIBLE_SPACING = 15.0;
 
     private final Rectangle2D handArea;
 
@@ -38,23 +34,25 @@ public final class HandLayout {
             return MAX_CARD_SPACING;
         }
 
-        double availableWidth = handArea.getWidth() - CARD_WIDTH;
+        double availableWidth = handArea.getWidth() - CardViewMetrics.renderedWidth();
         double idealSpacing = availableWidth / (cardCount - 1);
 
-        return Math.max(MIN_VISIBLE_SPACING, Math.min(MAX_CARD_SPACING, idealSpacing));
+        return Math.max(CardViewMetrics.minVisibleCardSpacing(), Math.min(MAX_CARD_SPACING, idealSpacing));
     }
 
     public Point2D basePosition(int index, int cardCount) {
         if (cardCount == 0) {
-            return new Point2D(handArea.getMinX(), handArea.getMinY() + CARD_TOP_PADDING);
+            return new Point2D(handArea.getMinX(), verticallyCenteredY());
         }
 
         double spacing = cardSpacing(cardCount);
-        double totalHandWidth = CARD_WIDTH + spacing * (cardCount - 1);
+        double totalHandWidth = CardViewMetrics.renderedWidth() + spacing * (cardCount - 1);
         double startX = handArea.getMinX() + (handArea.getWidth() - totalHandWidth) / 2.0;
-        double y = handArea.getMinY() + CARD_TOP_PADDING;
+        return new Point2D(startX + index * spacing, verticallyCenteredY());
+    }
 
-        return new Point2D(startX + index * spacing, y);
+    private double verticallyCenteredY() {
+        return LayoutRegionMath.centeredCardY(handArea);
     }
 
     public Point2D visualPosition(int index, List<Card> cards, Set<CardId> selectedCardIds) {
@@ -62,7 +60,8 @@ public final class HandLayout {
         Card card = cards.get(index);
 
         if (selectedCardIds.contains(card.id())) {
-            return position.add(0, SELECTED_CARD_Y_OFFSET);
+            double liftedY = position.getY() + SELECTED_CARD_Y_OFFSET;
+            return new Point2D(position.getX(), Math.max(handArea.getMinY(), liftedY));
         }
 
         return position;

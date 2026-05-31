@@ -656,6 +656,167 @@ Castigos: X remaining
 
 Text is sufficient for now. A chip/icon style may be added later.
 
+
+### Player HUD Row
+
+A visual row in the HUD that summarizes one player's public game state.
+
+Milestone 4B introduced a prototype row for each player.
+
+Current row information:
+
+- Player name.
+- Cumulative score.
+- Cards remaining.
+- Castigos remaining.
+- Opened/closed visual status.
+- Dealer chip.
+- Active-turn arrow.
+
+### Dealer Chip
+
+A small visual indicator in the HUD showing which player is currently the dealer.
+
+Current prototype:
+
+```text
+D chip beside the dealer's HUD row
+```
+
+### Active-Turn Arrow
+
+A visual indicator in the HUD showing whose turn is currently active.
+
+Current prototype:
+
+```text
+Arrow shown on the active player's HUD row
+```
+
+### Castigos Remaining
+
+The number of castigos a player may still take during the current game.
+
+Known rule:
+
+- Each player starts a new game with 10 castigos.
+- Taking a castigo consumes one.
+- Declining a castigo does not consume one.
+- Castigos reset between games, not between rounds.
+
+Current HUD text:
+
+```text
+Castigos: X remaining
+```
+
+### Player HUD State
+
+A presentation-facing data object used by the HUD to render player information.
+
+It is not the final domain `PlayerState`. It is a view model for the HUD.
+
+Current code concept:
+
+```java
+PlayerHudState
+```
+
+
+
+### Player HUD Model
+
+A presentation-facing model that stores the data currently rendered by the HUD.
+
+This is not the final domain `PlayerState`; it is a view model used by the UI.
+
+Current flow:
+
+```text
+PlayerHudModel -> GameHudController -> GameHUD
+```
+
+Later, real game state should feed this model through an adapter.
+
+### Game HUD Controller
+
+A presentation controller that updates `PlayerHudModel` and tells `GameHUD` to render the latest state.
+
+This exists to keep static HUD calls and direct UI manipulation out of card interaction components.
+
+
+### Visual Meld
+
+A presentation-layer grouping of cards that should be displayed as one meld.
+
+A visual meld records the player who originally created it so melds can remain visually grouped under their creator, even though the rules-level play area is shared.
+
+Current implementation note:
+
+- `VisualMeld` is a presentation helper, not the final domain aggregate.
+- Later, it should be fed by `PlayArea` / `GameState`.
+
+### Meld Layout
+
+The presentation algorithm that decides where played melds and cards appear inside a play-area region.
+
+Current layout priorities:
+
+1. Preserve meld creation order left-to-right.
+2. Compress card spacing and meld gaps before wrapping.
+3. Wrap melds to additional rows before shrinking cards.
+4. Use slight vertical row overlap when needed.
+5. Avoid card scaling unless layout pressure requires it later.
+
+### Staggered Card Animation
+
+A card movement animation style where cards move to their final positions one at a time instead of all at once.
+
+Current starting value:
+
+```text
+0.1 seconds between cards
+```
+
+
+
+### Meld Layout Debug Harness
+
+A development-only toolset for stress-testing played-meld layout before the full turn, draw, discard, and game-state systems exist.
+
+Current controls:
+
+- `+Kind`: adds a test kind meld.
+- `+Run`: adds a test straight flush meld.
+- `Stress`: adds multiple test melds to pressure-test wrapping, overlap, centering, and staggered animation.
+- `Clear`: removes the visual test melds from the played area.
+
+This is not a domain concept and should not influence La Kika rules.
+
+
+### Animation Settings
+
+Player-facing or development-facing settings that control animation timing and speed.
+
+Current default:
+
+- Played-card animation uses a 0.1-second stagger between cards.
+
+Future direction:
+
+- Animation speed should be configurable from the settings screen.
+- Code should centralize animation defaults instead of scattering hardcoded values.
+
+### House Rules
+
+Configurable La Kika rule variations.
+
+House rules should be represented explicitly in the rules/game-state layer rather than hidden in UI code or scattered constants.
+
+Known example:
+
+- Castigo draw count may vary depending on whether the player taking castigo is the active player.
+
 ## Technical / Architecture Terms
 
 ### Engine
@@ -803,3 +964,15 @@ Possible future vocabulary refinements:
 1. Should the exact deal bonus have a traditional table name?
 2. Should the process of adding a new shuffled standard deck after exhaustion have a domain name?
 3. Should the digital meter action be called **deal preparation**, **cut**, **deal packet selection**, or something else?
+
+### Card View Factory
+
+A presentation-layer factory that creates the JavaFX visual node for a card.
+
+Design invariant:
+
+```text
+Card entity position = top-left corner of the rendered card.
+```
+
+The card view should be created at its final rendered size, not visually scaled with JavaFX transform scaling. This keeps entity coordinates, layout coordinates, hitboxes, and visible card bounds aligned.

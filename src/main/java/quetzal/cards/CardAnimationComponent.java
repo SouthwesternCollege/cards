@@ -60,7 +60,6 @@ public class CardAnimationComponent extends Component {
 
         if (!interactionEnabled) {
             isDragging = false;
-            isDragging = false;
             entity.setRotation(0.0);
         }
     }

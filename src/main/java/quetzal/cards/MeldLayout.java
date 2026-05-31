@@ -17,11 +17,10 @@ import java.util.List;
  */
 public final class MeldLayout {
 
-    private static final double PREFERRED_CARD_SPACING = 30.0;
-    private static final double MIN_CARD_SPACING = 15.0;
+    private static final double PREFERRED_CARD_SPACING_RATIO = 0.24;
     private static final double PREFERRED_MELD_GAP = 70.0;
     private static final double MIN_MELD_GAP = 40.0;
-    private static final double ROW_VERTICAL_STEP = HandLayout.CARD_HEIGHT * 0.72;
+    private static final double ROW_VERTICAL_STEP_RATIO = 0.72;
 
     public List<MeldLayoutSlot> slots(List<VisualMeld> melds, Rectangle2D area) {
         List<VisualMeld> nonEmptyMelds = melds.stream()
@@ -39,16 +38,27 @@ public final class MeldLayout {
     }
 
     private LayoutMetrics chooseMetrics(List<VisualMeld> melds, Rectangle2D area) {
-        if (totalWidth(melds, PREFERRED_CARD_SPACING, PREFERRED_MELD_GAP) <= area.getWidth()) {
-            return new LayoutMetrics(PREFERRED_CARD_SPACING, PREFERRED_MELD_GAP);
+        double preferredCardSpacing = preferredCardSpacing();
+        double minimumCardSpacing = CardViewMetrics.minVisibleCardSpacing();
+
+        if (totalWidth(melds, preferredCardSpacing, PREFERRED_MELD_GAP) <= area.getWidth()) {
+            return new LayoutMetrics(preferredCardSpacing, PREFERRED_MELD_GAP);
         }
 
-        if (totalWidth(melds, MIN_CARD_SPACING, MIN_MELD_GAP) <= area.getWidth()) {
-            return new LayoutMetrics(MIN_CARD_SPACING, MIN_MELD_GAP);
+        if (totalWidth(melds, minimumCardSpacing, MIN_MELD_GAP) <= area.getWidth()) {
+            return new LayoutMetrics(minimumCardSpacing, MIN_MELD_GAP);
         }
 
         // Wrapping uses the minimum spacing before we eventually introduce scaling.
-        return new LayoutMetrics(MIN_CARD_SPACING, MIN_MELD_GAP);
+        return new LayoutMetrics(minimumCardSpacing, MIN_MELD_GAP);
+    }
+
+    private double preferredCardSpacing() {
+        return CardViewMetrics.renderedWidth() * PREFERRED_CARD_SPACING_RATIO;
+    }
+
+    private double rowVerticalStep() {
+        return CardViewMetrics.renderedHeight() * ROW_VERTICAL_STEP_RATIO;
     }
 
     private List<Row> buildRows(List<VisualMeld> melds, Rectangle2D area, LayoutMetrics metrics) {
@@ -76,15 +86,17 @@ public final class MeldLayout {
     private List<MeldLayoutSlot> buildSlots(List<Row> rows, Rectangle2D area, LayoutMetrics metrics) {
         List<MeldLayoutSlot> slots = new ArrayList<>();
 
-        double totalHeight = HandLayout.CARD_HEIGHT + ROW_VERTICAL_STEP * Math.max(0, rows.size() - 1);
-        double startY = area.getMinY() + (area.getHeight() - totalHeight) / 2.0;
+        double rowStep = rowVerticalStep();
+        double totalHeight = CardViewMetrics.renderedHeight() + rowStep * Math.max(0, rows.size() - 1);
+        Rectangle2D contentBand = LayoutRegionMath.middleVerticalBand(area);
+        double startY = contentBand.getMinY() + (contentBand.getHeight() - totalHeight) / 2.0;
         int zIndex = 0;
         int globalMeldIndex = 0;
 
         for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
             Row row = rows.get(rowIndex);
             double x = area.getMinX() + (area.getWidth() - row.width()) / 2.0;
-            double y = startY + rowIndex * ROW_VERTICAL_STEP;
+            double y = startY + rowIndex * rowStep;
 
             for (VisualMeld meld : row.melds()) {
                 for (int cardIndex = 0; cardIndex < meld.cards().size(); cardIndex++) {
@@ -116,7 +128,7 @@ public final class MeldLayout {
 
     private double meldWidth(VisualMeld meld, double cardSpacing) {
         int cardCount = meld.cards().size();
-        return HandLayout.CARD_WIDTH + cardSpacing * Math.max(0, cardCount - 1);
+        return CardViewMetrics.renderedWidth() + cardSpacing * Math.max(0, cardCount - 1);
     }
 
     private record LayoutMetrics(double cardSpacing, double meldGap) {

@@ -99,6 +99,11 @@ public class CardApplication extends GameApplication {
         // Background music
         FXGL.loopBGM("theme.mp3");
 
+        CardViewMetrics.configureFromStandardDeckSheet(
+                FXGL.image("deck.png"),
+                AnimationSettings.DEFAULT_CARD_RENDER_SCALE
+        );
+
         FXGL.getGameWorld().addEntityFactory(new GameFactory());
         FXGL.spawn("Background", new SpawnData(0, 0).put("width", WIDTH).put("height", HEIGHT));
 

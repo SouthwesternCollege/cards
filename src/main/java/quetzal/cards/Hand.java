@@ -227,8 +227,8 @@ public class Hand {
 
     private void addDebugVisualMeld(List<Card> cards, boolean reflowAfterAdd) {
         Point2D spawnPosition = new Point2D(
-                playerPlayedArea.getMinX() + playerPlayedArea.getWidth() / 2.0 - HandLayout.CARD_WIDTH / 2.0,
-                playerPlayedArea.getMinY() + playerPlayedArea.getHeight() / 2.0 - HandLayout.CARD_HEIGHT / 2.0
+                playerPlayedArea.getMinX() + playerPlayedArea.getWidth() / 2.0 - CardViewMetrics.renderedWidth() / 2.0,
+                playerPlayedArea.getMinY() + playerPlayedArea.getHeight() / 2.0 - CardViewMetrics.renderedHeight() / 2.0
         );
 
         for (int i = 0; i < cards.size(); i++) {
@@ -279,13 +279,13 @@ public class Hand {
 
 
     private void animatePlayedCard(Entity cardEntity, MeldLayoutSlot slot) {
-        double delaySeconds = slot.zIndex() * 0.1;
+        double delaySeconds = slot.zIndex() * AnimationSettings.PLAYED_CARD_STAGGER_SECONDS;
         Point2D target = slot.position();
 
         PauseTransition delay = new PauseTransition(Duration.seconds(delaySeconds));
         delay.setOnFinished(event -> {
             FXGL.animationBuilder()
-                    .duration(Duration.seconds(0.45))
+                    .duration(Duration.seconds(AnimationSettings.PLAYED_CARD_MOVE_SECONDS))
                     .interpolator(Interpolators.SMOOTH.EASE_OUT())
                     .translate(cardEntity)
                     .to(target)

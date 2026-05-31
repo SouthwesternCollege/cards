@@ -17,7 +17,7 @@ import java.util.List;
  */
 public final class PlayedMeldLayout {
 
-    private static final double CARD_SPACING = 30.0;
+    private static final double CARD_SPACING_RATIO = 0.22;
     private static final double MELD_GAP = 70.0;
 
     public List<CardLayoutSlot> centeredSlotsForMeld(List<Card> cards, Rectangle2D area) {
@@ -39,7 +39,7 @@ public final class PlayedMeldLayout {
 
         double totalWidth = totalWidth(nonEmptyMelds);
         double x = area.getMinX() + (area.getWidth() - totalWidth) / 2.0;
-        double y = area.getMinY() + (area.getHeight() - HandLayout.CARD_HEIGHT) / 2.0;
+        double y = LayoutRegionMath.centeredCardY(area);
 
         int zIndex = 0;
 
@@ -47,7 +47,7 @@ public final class PlayedMeldLayout {
             List<Card> meld = nonEmptyMelds.get(meldIndex);
 
             for (int cardIndex = 0; cardIndex < meld.size(); cardIndex++) {
-                Point2D position = new Point2D(x + cardIndex * CARD_SPACING, y);
+                Point2D position = new Point2D(x + cardIndex * cardSpacing(), y);
                 slots.add(new CardLayoutSlot(meld.get(cardIndex), cardIndex, position, position, zIndex++));
             }
 
@@ -55,6 +55,10 @@ public final class PlayedMeldLayout {
         }
 
         return slots;
+    }
+
+    private double cardSpacing() {
+        return CardViewMetrics.renderedWidth() * CARD_SPACING_RATIO;
     }
 
     private double totalWidth(List<List<Card>> melds) {
@@ -76,6 +80,6 @@ public final class PlayedMeldLayout {
             return 0;
         }
 
-        return HandLayout.CARD_WIDTH + CARD_SPACING * (cards.size() - 1);
+        return CardViewMetrics.renderedWidth() + cardSpacing() * (cards.size() - 1);
     }
 }

@@ -174,6 +174,10 @@ Milestone 4A.2 introduced `SelectionFeedback` and `HudMeldSelectionFeedback` as 
 
 Use observer/event/property updates from game state to HUD.
 
+### Milestone 4B Note
+
+Milestone 4B introduced a better all-player HUD layout, but it did not fully remove static/global HUD access. The selected-meld feedback path still uses static update methods as a transitional compatibility layer.
+
 ---
 
 ## ISS-008: Replace poker-hand evaluator with La Kika meld validation
@@ -690,3 +694,324 @@ When hover-intensified wiggle begins, the card jumps to the hover animation's st
 ### Proposed Direction
 
 Use a stateful animation component where hover changes amplitude/frequency without resetting phase.
+
+---
+
+## ISS-033: Feed HUD from real game state
+
+Status: In Progress  
+Priority: P1  
+Area: UI / Game State Integration
+
+### Problem
+
+Milestone 4B introduced a prototype all-player HUD. Milestone 4B.2 added a `PlayerHudModel` and `GameHudController`, but the HUD still cannot be fully real until the full game-state layer exists.
+
+### Current Prototype
+
+The HUD displays:
+
+- Player name.
+- Cumulative score.
+- Cards remaining.
+- Castigos remaining.
+- Opened/closed visual state.
+- Dealer chip.
+- Active-turn arrow.
+
+### Proposed Direction
+
+After `GameState`, `PlayerState`, dealer rotation, castigo tracking, and turn state exist, the HUD should be updated from real state rather than hardcoded prototype data.
+
+Possible future flow:
+
+```text
+GameState changes
+-> UI/game-state adapter publishes PlayerHudState list
+-> GameHUD renders rows
+```
+
+This keeps the HUD presentation-facing and avoids making UI nodes depend directly on mutable domain internals.
+
+---
+
+## ISS-034: Create UI theme module
+
+Status: Open  
+Priority: P2  
+Area: UI / Presentation
+
+### Problem
+
+Font loading, drop shadows, button styling, and HUD styling are still scattered across UI classes.
+
+### Desired Direction
+
+Create a small presentation utility/module for shared UI styling.
+
+Possible concept:
+
+```java
+public final class UITheme {
+    public static Font font(double size);
+    public static DropShadow dropShadow(Color color, double offsetY);
+    public static void applyButtonStyle(Button button, Color color);
+}
+```
+
+### Reason
+
+The project should consistently use DePixelHalbfett, drop shadows, borderless buttons, and matching control styles without duplicating style code in every UI class.
+
+---
+
+## ISS-035: Replace prototype HUD player data with GameState adapter
+
+Status: Open  
+Priority: P1  
+Area: UI / Game State Integration
+
+### Problem
+
+`PlayerHudModel` is currently presentation-facing prototype state. It is useful for Milestone 4, but it is not the final source of truth.
+
+### Decision
+
+Keep `PlayerHudModel` as a HUD view model, but later populate it from real game state.
+
+### Proposed Direction
+
+Introduce a mapper/adapter after the game-state model exists:
+
+```text
+GameState / PlayerState
+    -> PlayerHudState
+    -> PlayerHudModel
+    -> GameHudController
+    -> GameHUD
+```
+
+This keeps `GameHUD` from depending directly on mutable domain internals.
+
+---
+
+## ISS-036: Introduce visual meld grouping and reflow layout
+
+Status: In Progress  
+Priority: P1  
+Area: UI / Presentation
+
+### Problem
+
+The previous played-meld layout centered newly played cards, but it did not model played melds as first-class visual groups. This made it difficult to support creation order, wrapping, compression, reflow, opponent carousel behavior, and future full-table view.
+
+### Decision
+
+Introduce presentation-layer visual meld concepts:
+
+```text
+VisualMeld
+VisualMeldStore
+MeldLayout
+MeldLayoutSlot
+```
+
+### Current Rules
+
+- Melds are visually grouped by original creator.
+- Melds are laid out left-to-right in creation order.
+- Card spacing and meld gaps compress before wrapping.
+- Minimum compressed card spacing is 20% of card width.
+- Melds wrap before card shrinking.
+- Existing melds may reflow when a new meld is added.
+- Played cards animate to the final reflowed layout positions.
+- Card movement uses a 0.1-second stagger between cards.
+- Hand and meld layouts should be vertically centered inside their assigned regions.
+
+### Future Work
+
+This is still a presentation-layer bridge. Later, visual melds should be driven by domain `PlayArea` / `GameState` rather than the transitional `Hand` facade.
+
+
+---
+
+## ISS-037: Add meld layout debug harness
+
+Status: Done  
+Priority: P2  
+Area: UI / Developer Tooling
+
+### Problem
+
+The played-meld layout cannot be stress-tested organically yet because draw, discard, turn flow, and full game-state systems are not implemented.
+
+### Decision
+
+Add development-only controls that generate visual melds directly in the player meld area.
+
+### Result
+
+Milestone 4C.2 adds controls for:
+
+- Adding a test kind meld.
+- Adding a test straight flush meld.
+- Adding a batch of test melds for stress-testing wrapping and centering.
+- Clearing generated visual melds.
+
+### Constraint
+
+These controls are not gameplay features and should remain presentation/debug tooling only.
+
+### Future Direction
+
+Once real game-state-driven play-area testing exists, these controls should either be hidden behind a debug mode or removed.
+
+---
+
+## ISS-038: Tune card spacing and vertical centering
+
+Status: Done  
+Priority: P2  
+Area: UI / Presentation
+
+### Problem
+
+Compressed card spacing in played melds was too small, and hand/meld layouts were horizontally centered but not consistently vertically centered in their assigned areas.
+
+### Decision
+
+- Minimum compressed card spacing should be 20% of card width.
+- Hand cards should be vertically centered within the player hand area.
+- Played meld rows should remain vertically centered within the player meld area.
+
+### Result
+
+Milestone 4C.2 cleanup updates the layout constants and hand layout positioning.
+
+---
+
+## ISS-039: Add configurable animation settings
+
+Status: Open  
+Priority: P2  
+Area: Settings / Presentation
+
+### Problem
+
+Animation timing is currently a code-level default. The final game should allow players to configure animation speed.
+
+### Current Decision
+
+Played-card animation currently uses a 0.1-second stagger between cards.
+
+### Proposed Direction
+
+Centralize animation defaults now, then later expose them through a settings screen.
+
+Possible future settings:
+
+```text
+Animation speed: Slow / Normal / Fast / Instant
+Card movement speed
+Card stagger timing
+Wiggle intensity
+```
+
+---
+
+## ISS-040: Support house-rule configuration
+
+Status: Open  
+Priority: P2  
+Area: Game Rules / Settings
+
+### Problem
+
+La Kika has minor house-rule variations. Hardcoding every rule would make the game less flexible and harder to adapt.
+
+### Known Example
+
+Default castigo rule:
+
+- Take the most recent discard.
+- Draw three additional cards from the deck.
+
+Possible house rule:
+
+- If taking castigo on your own turn, draw three cards total including the discard.
+- If taking castigo when it is not your turn, draw four cards total.
+
+### Proposed Direction
+
+Introduce a future rules configuration object, such as:
+
+```java
+public record LaKikaRulesConfig(
+    int castigoDrawCountOnTurn,
+    int castigoDrawCountOffTurn
+) {}
+```
+
+Gameplay services should depend on explicit configuration rather than scattered constants.
+
+---
+
+## ISS-035: Replace card texture scale transforms with fitted card views
+
+Status: Done  
+Priority: P1  
+Area: UI / Presentation Architecture
+
+### Problem
+
+Scaling card texture nodes with `setScaleX` / `setScaleY` can make visual bounds differ from the entity position used by layout code.
+
+This contributed to persistent vertical-centering confusion.
+
+### Decision
+
+Use a `CardViewFactory` that creates card visual nodes at their final rendered size using fitted `ImageView` nodes.
+
+### Result
+
+`CardComponent` no longer scales child textures directly.
+
+The intended invariant is now:
+
+```text
+Entity position = top-left corner of the rendered card.
+```
+
+---
+
+## ISS-036: Keep PRD milestone structure synchronized
+
+Status: Done  
+Priority: P2  
+Area: Documentation
+
+### Problem
+
+The PRD milestone list had fallen out of sync with actual development. Several Milestone 4 sub-milestones were missing, and `UI-17` had been appended outside the intended UI requirements section.
+
+### Decision
+
+Expand Milestone 4 into explicit sub-milestones and move `UI-17` into the UI requirements section.
+
+### Result
+
+The PRD now includes:
+
+- Milestone 4A
+- Milestone 4A.2
+- Milestone 4B
+- Milestone 4B.2
+- Milestone 4C
+- Milestone 4C.2
+- Milestone 4D
+- Milestone 4E
+- Milestone 4F
+- Milestone 4G
+- Milestone 4H
+
+The PRD also includes updated future milestones for game state, round rules, scoring, save/load, settings/house rules, and tests.

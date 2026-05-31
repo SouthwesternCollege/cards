@@ -440,7 +440,9 @@ Status: partially implemented.
 
 The application shall display relevant game information such as selected meld information, score, turn state, dealer, round status, castigo availability, and opening status.
 
-Status: prototype exists, but `GameHUD` currently uses static/global access.
+Status: partially improved in Milestone 4B.
+
+Milestone 4B introduced a prototype all-player HUD layout, but `GameHUD` still uses some static/global access for selected-meld feedback. Full observer/property-based HUD updates remain future work.
 
 
 ## UI Layout Requirements
@@ -537,6 +539,8 @@ Next player's hand becomes visible
 
 The HUD should show all players simultaneously.
 
+Milestone 4B introduced a prototype all-player HUD.
+
 For each player, the HUD should eventually display or visually indicate:
 
 - Name.
@@ -556,6 +560,14 @@ Active turn = highlighted + arrow
 Dealer = chip/icon
 Castigos = simple text for now
 ```
+
+Current Milestone 4B implementation:
+
+- `PlayerHudState` represents presentation-facing HUD data.
+- `PlayerColorPalette` centralizes player colors.
+- `GameHUD` renders prototype rows for all players.
+- The prototype HUD currently uses placeholder player state until full game state exists.
+- Selected-meld feedback remains displayed at the bottom of the HUD.
 
 ### UI-11: Player Colors
 
@@ -688,6 +700,150 @@ Current design direction:
 
 Status: in progress.
 
+
+### UI-14: Played Meld Layout
+
+The application shall visually group played cards into melds.
+
+Rules:
+
+- Melds should remain visually associated with the player who originally created them.
+- Melds should be displayed left-to-right in creation order.
+- Cards within a meld should overlap enough to visually communicate grouping.
+- Minimum compressed card spacing should be 20% of card width so rank/suit remain readable.
+- Melds should have enough space between them to visually separate groups.
+- Melds should be centered horizontally and vertically within their assigned play area.
+- Card spacing and meld spacing should compress before wrapping.
+- Melds should wrap to additional rows before cards are shrunk.
+- Card scaling should be avoided where possible; normal-view scale should not go below 70% once scaling is introduced.
+- Played straight flush melds should display in normalized sequence order.
+- Kind melds should preserve selected/insertion order.
+
+### UI-15: Played Card Animation
+
+When cards are played into a meld, they should animate to the final reflowed layout positions.
+
+Current animation decision:
+
+- Cards animate one at a time.
+- Use a 0.1-second stagger between cards.
+- Existing meld cards may reflow when a new meld is added.
+- The newly played meld should animate to its final position after layout reflow is computed.
+
+Future settings direction:
+
+- Animation speed should eventually be configurable by the player.
+- For now, animation defaults may live in a centralized presentation settings object rather than being scattered as hardcoded values.
+
+
+
+### UI-16: Meld Layout Debug Harness
+
+The application shall provide development-only controls for stress-testing the played-meld layout before full draw/discard/turn systems exist.
+
+Initial debug controls:
+
+- `+Kind`: add a test three-of-a-kind-or-more visual meld.
+- `+Run`: add a test straight flush visual meld.
+- `Stress`: add several test melds to pressure-test wrapping, centering, overlap, and staggered animation.
+- `Clear`: remove the visual test melds from the played area.
+
+Rules:
+
+- These controls are development tools, not gameplay features.
+- They should not affect the final domain model.
+- They should be easy to remove, hide, or replace once real game-state-driven play-area testing is available.
+
+Status: implemented as Milestone 4C.2.
+
+
+## Settings and House Rules Requirements
+
+### SET-1: Animation Settings
+
+The application should eventually allow players to configure animation speed.
+
+Initial design direction:
+
+- Keep animation constants centralized so they can later be replaced by real settings.
+- Played-card animation currently uses a 0.1-second stagger between cards.
+- The final settings screen may expose global animation speed or separate animation categories.
+
+Status: planned.
+
+### SET-2: House Rule Configuration
+
+La Kika has minor house-rule variations. The rules engine should eventually support configurable house rules rather than hardcoding every variant.
+
+Known example:
+
+- Standard castigo behavior currently draws the most recent discard plus three additional cards from the deck.
+- A possible house rule draws four cards if the castigo is taken when it is not the player's turn, and three cards total if it is the active player's turn.
+
+Design direction:
+
+- House rules should be modeled as explicit configuration.
+- Gameplay services should depend on a rule/settings object rather than scattered constants.
+- The initial prototype may use default La Kika rules until the settings screen exists.
+
+Status: planned.
+
+
+### UI-14: Card View Metrics
+
+The application shall derive source card dimensions from the standard deck sprite sheet instead of hardcoding `71 × 95`.
+
+Sprite sheet contract:
+
+```text
+13 columns × 4 rows
+```
+
+Rendered card size:
+
+```text
+source cell size × render scale
+```
+
+Current prototype render scale:
+
+```text
+2.0
+```
+
+The render scale is a presentation setting and may later become configurable.
+
+### UI-15: Vertical Card Content Band
+
+Cards in hand and meld regions should be vertically centered inside the middle 80% of their layout area.
+
+This rule applies to:
+
+- Player hand area.
+- Player meld area.
+- Opponent meld area.
+
+Selected hand cards may lift upward into the region padding, but should not leave the hand region.
+
+### UI-16: Shared Card Metrics Across Presentation Classes
+
+`CardComponent`, `HandLayout`, and `MeldLayout` should all use the same rendered card metrics.
+
+This prevents bugs where the card texture is scaled to one size but layout code centers using another size.
+
+### UI-17: Fitted Card Views
+
+Card visuals should be rendered at their final size using fitted image nodes rather than JavaFX scale transforms.
+
+Design invariant:
+
+```text
+Card entity position = top-left corner of the rendered card.
+```
+
+This prevents layout bugs where visual card bounds are shifted relative to entity coordinates.
+
+
 ## Non-Functional Requirements
 
 ### NFR-1: Testability
@@ -732,14 +888,22 @@ ExactDealBonusRule
 
 ### Milestone 1: Clean Card and Deck Foundation
 
+Status: mostly complete.
+
+Scope:
+
 - Stable `CardId`.
 - `CardSnapshot`.
 - Remove FXGL dependency from `Card`.
 - Configurable deck creation.
-
-Status: mostly complete.
+- Support multiple standard decks and jokers.
+- Add shuffled standard deck with jokers when the deck is exhausted.
 
 ### Milestone 2: Define La Kika Domain Model
+
+Status: started.
+
+Scope:
 
 - Define `Meld`.
 - Define `Move`.
@@ -749,67 +913,213 @@ Status: mostly complete.
 - Define `OpeningRequirement`.
 - Define `DealerRotation`.
 - Define exact deal bonus domain concept.
+- Define initial validation/result abstractions.
 
 ### Milestone 3: Replace Poker-Hand Prototype Logic
 
 Status: implemented as initial domain validation.
 
-- Removed `PokerHandEvaluator` from active La Kika selection feedback.
-- Added La Kika meld validation.
-- Supported three-of-a-kind-or-more.
-- Supported straight flushes.
-- Supported ace-low non-cyclic sequence rules.
-- Supported joker ratio and consecutive-joker constraints.
-- Added validation error codes.
-- Added normalized meld results and joker assignments.
+Scope:
+
+- Remove `PokerHandEvaluator` from active La Kika selection feedback.
+- Add La Kika meld validation.
+- Support three-of-a-kind-or-more.
+- Support straight flushes.
+- Support ace-low non-cyclic sequence rules.
+- Support joker ratio and consecutive-joker constraints.
+- Add validation error codes.
+- Add normalized meld results and joker assignments.
 
 Note: `PokerHandEvaluator` may remain in the codebase temporarily as a possible future generic-engine utility, but it should not drive La Kika gameplay.
 
-### Milestone 4: Split Hand Domain from FXGL View
+### Milestone 4: Presentation Architecture and UI Layout
 
-Status: in progress.
+Milestone 4 is intentionally split into smaller sub-milestones because the GUI/presentation work is large.
 
-Milestone 4A completed the first presentation-architecture baseline:
+#### Milestone 4A: Presentation Architecture Baseline
 
-- Introduced `HandModel` for pure hand state.
-- Introduced `HandLayout` and `CardLayoutSlot` for hand positioning.
-- Introduced `CardEntityRegistry` so domain cards still do not own FXGL entities.
-- Kept the existing `Hand` as a transitional facade.
+Status: implemented.
 
-Milestone 4A.2 continued the split:
+Scope:
 
-- Introduced `SelectionFeedback` to reduce direct coupling between card animation, validation, and HUD updates.
-- Added initial `PlayedMeldLayout` behavior for centered played melds.
-- Disabled hand interaction for cards after they are played.
+- Introduce `HandModel`.
+- Introduce `HandLayout`.
+- Introduce `CardEntityRegistry`.
+- Keep existing `Hand` as a transitional facade.
+- Start moving hand state away from FXGL entity concerns.
 
-Remaining Milestone 4 work:
+#### Milestone 4A.2: Interaction Cleanup and Played-Meld Centering
 
-- Complete `HandView` / `HandController` separation.
-- Replace static/global HUD calls with event/property-based updates.
-- Implement robust multi-meld layout, wrapping, compression, and creator grouping.
-- Implement opponent meld carousel later.
-- Preserve or improve layout-debug overlay support.
-- Address wiggle animation continuity.
+Status: implemented.
+
+Scope:
+
+- Move selected-meld feedback behind `SelectionFeedback`.
+- Reduce `CardAnimationComponent` coupling to HUD and validation.
+- Add centered played-meld placement.
+- Fix double-animation and merged-meld issues.
+- Preserve the working FXGL rotation fix using `entity.setRotation(0.0)`.
+
+#### Milestone 4B: HUD Redesign
+
+Status: implemented as a prototype/debug HUD.
+
+Scope:
+
+- Show all players at once.
+- Display cumulative score.
+- Display cards remaining.
+- Display `Castigos: X remaining`.
+- Show dealer chip.
+- Show active-turn arrow.
+- Show opened/closed visual state.
+- Use player colors: blue, red, gold, green.
+
+#### Milestone 4B.2: HUD Cleanup and Live Prototype Counts
+
+Status: implemented.
+
+Scope:
+
+- Add `PlayerHudModel`.
+- Add `GameHudController`.
+- Move selected-meld feedback away from direct static HUD updates.
+- Wire the active prototype hand to update cards remaining live.
+- Keep HUD useful as a development/debug tool until real `GameState` exists.
+
+#### Milestone 4C: Meld / Play-Area Layout
+
+Status: implemented as a visual layout prototype.
+
+Scope:
+
+- Add `VisualMeld`.
+- Add `VisualMeldStore`.
+- Add `MeldLayout`.
+- Add `MeldLayoutSlot`.
+- Keep melds visually grouped by creator.
+- Lay out melds in creation order.
+- Reflow existing melds when a new meld is added.
+- Use staggered played-card animation.
+
+#### Milestone 4C.2: Meld Layout Debug Harness and Layout Corrections
+
+Status: implemented.
+
+Scope:
+
+- Add development-only test controls for layout stress testing.
+- Add test kind melds.
+- Add test straight-flush melds.
+- Add stress batch.
+- Clear visual melds.
+- Adjust played-card stagger to `0.1` seconds.
+- Centralize animation defaults in `AnimationSettings`.
+- Improve compressed card spacing.
+- Center hand and meld cards using shared metrics.
+- Derive card dimensions from the sprite sheet contract.
+- Replace transform-scaled card textures with fitted card views.
+
+#### Milestone 4D: Deck and Discard Placement / Click Interactions
+
+Status: not started.
+
+Scope:
+
+- Place deck and discard pile near the right side of the player hand area if feasible.
+- Keep bottom-of-HUD placement as a fallback if the hand area becomes too crowded.
+- Click deck to draw.
+- Click discard pile to begin castigo behavior later.
+- Provide a simple discard interaction, likely button-like first.
+- Defer drag/drop discard until after basic turn flow exists.
+
+#### Milestone 4E: Screen Flow / Splash / Title / Main Menu
+
+Status: not started.
+
+Scope:
+
+- Move animated La Kika title into its own screen.
+- Auto-transition from title screen to main menu.
+- Add main menu buttons:
+  - Play
+  - Settings
+  - Rules
+- Use FXGL scene/menu support as much as practical.
+- For now, `Play` starts a prototype local hot-seat game with default players.
+- Defer settings and rules screens unless they block development.
+
+#### Milestone 4F: Animation Continuity
+
+Status: not started.
+
+Scope:
+
+- Replace jumpy timeline-based wiggle transitions with a stateful card animation component.
+- Preserve animation phase when hover intensity changes.
+- Hand cards wiggle.
+- Hovered hand cards wiggle more intensely.
+- Played meld cards are calm or use very subtle idle motion.
+- Deck/discard should not wiggle unless interactive.
+
+#### Milestone 4G: Full Play-Area View
+
+Status: deferred.
+
+Scope:
+
+- Add a read-only full play-area view.
+- Hide HUD, hand, and controls while viewing.
+- Show all players simultaneously, one row per player.
+- Avoid shrinking cards in full-table view when possible.
+- Use horizontal scrolling for crowded player rows if needed.
+
+#### Milestone 4H: Hot-Seat Privacy and Debug Hand Overlay
+
+Status: not started.
+
+Scope:
+
+- Normal gameplay shows only the active player's hand.
+- Add development-only debug hand overlay.
+- Later add pass-device screen between turns.
 
 ### Milestone 5: Introduce Game State and Actions
+
+Status: not started.
+
+Scope:
 
 - `GameState` / `RoundState`.
 - Player identity.
 - Dealer identity.
+- Player hands.
+- Castigos remaining.
+- Opened/closed status.
 - Actions such as draw, take castigo, create meld, mutate meld, steal joker, discard.
 - Validation before mutation.
 
 ### Milestone 6: Implement Round and Turn Rules
 
+Status: not started.
+
+Scope:
+
 - Deal 13 cards.
 - Rotate dealer.
 - Enforce turn phases.
 - Enforce castigo.
+- Enforce per-player castigo limit.
 - Handle deck exhaustion by adding a new shuffled standard deck with jokers.
 - Enforce opening requirements.
+- Enforce stolen-joker obligations.
 - End round on final discard.
 
 ### Milestone 7: Scoring and Game End
+
+Status: not started.
+
+Scope:
 
 - Score remaining hand cards.
 - Apply exact deal bonus.
@@ -820,17 +1130,31 @@ Remaining Milestone 4 work:
 
 ### Milestone 8: Save/Load
 
+Status: not started.
+
+Scope:
+
 - Snapshot whole game state.
 - Restore full game state.
 - Add JSON serialization.
 
-### Milestone 9: UI/HUD Cleanup
+### Milestone 9: Settings and House Rules
 
-- Remove static HUD update calls.
-- Introduce observer/event/property pattern.
-- Display turn, meld, castigo, opening, dealer, and scoring information.
+Status: not started.
+
+Scope:
+
+- Animation speed settings.
+- Music/sound settings.
+- House-rule configuration.
+- Castigo draw-count variants.
+- Future player/game setup options.
 
 ### Milestone 10: Tests
+
+Status: not started.
+
+Scope:
 
 - Unit tests for deck creation.
 - Unit tests for card snapshots.
@@ -841,6 +1165,9 @@ Remaining Milestone 4 work:
 - Unit tests for dealer rotation and exact deal bonus.
 - Unit tests for scoring.
 - Unit tests for round transitions.
+- Layout calculation tests where practical.
+
+
 
 ## Open Product Questions
 
@@ -862,3 +1189,4 @@ Remaining clarifications to eventually answer:
    - Current direction: deferred read-only toggle screen.
    - Show all players simultaneously.
    - Avoid shrinking cards where possible; prefer scrolling.
+
