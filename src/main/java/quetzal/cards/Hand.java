@@ -89,6 +89,53 @@ public class Hand {
         notifyHandSizeChanged();
     }
 
+
+    /**
+     * Prototype draw behavior for Milestone 4D.
+     *
+     * This intentionally ignores full turn legality. Later this should delegate
+     * to GameState / TurnController.
+     */
+    public void drawOneCardFromDeck(Point2D sourcePosition) {
+        if (deck.getCards().isEmpty()) {
+            deck.addShuffledStandardDeckWithJokers();
+        }
+
+        Card card = model.drawFrom(deck);
+        List<Card> cardsAfterDraw = model.getCards();
+        int newCardIndex = cardsAfterDraw.size() - 1;
+        Point2D target = layout.visualPosition(newCardIndex, cardsAfterDraw, selectedCardIds());
+
+        Entity cardEntity = FXGL.spawn("Card", new SpawnData(sourcePosition.getX(), sourcePosition.getY())
+                .put("card", card)
+                .put("z-index", newCardIndex)
+                .put("hand", this));
+
+        cardEntity.setOpacity(0.0);
+        registerCardEntity(card, cardEntity);
+
+        Entity backEntity = FXGL.entityBuilder(new SpawnData(sourcePosition.getX(), sourcePosition.getY()))
+                .view(new CardBackViewFactory().createCardBackView())
+                .zIndex(500)
+                .buildAndAttach();
+
+        FXGL.animationBuilder()
+                .duration(Duration.seconds(AnimationSettings.PLAYED_CARD_MOVE_SECONDS))
+                .interpolator(Interpolators.SMOOTH.EASE_OUT())
+                .translate(backEntity)
+                .to(target)
+                .buildAndPlay();
+
+        FXGL.runOnce(() -> {
+            backEntity.removeFromWorld();
+            cardEntity.setPosition(target);
+            cardEntity.setOpacity(1.0);
+            organizeCardEntities();
+        }, Duration.seconds(AnimationSettings.PLAYED_CARD_MOVE_SECONDS));
+
+        notifyHandSizeChanged();
+    }
+
     public void addCard(Card card) {
         model.addCard(card);
         notifyHandSizeChanged();

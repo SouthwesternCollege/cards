@@ -28,6 +28,8 @@ public class CardApplication extends GameApplication {
     private GameHUD gameHUD;
     private GameHudController gameHudController;
     private GameControls gameControls;
+    private Deck deck;
+    private DeckDiscardPanel deckDiscardPanel;
     private final Font font = Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), 36);
 
     public static void main(String[] args) {
@@ -117,7 +119,7 @@ public class CardApplication extends GameApplication {
         gameHudController.refresh();
 
         // Create a Deck and shuffle
-        Deck deck = Deck.laKikaPrototypeDeck();
+        deck = Deck.laKikaPrototypeDeck();
         deck.shuffle();
 
         // Initialize hand area
@@ -150,6 +152,23 @@ public class CardApplication extends GameApplication {
     protected void initUI() {
         gameControls = new GameControls(gameLayout, hand);
 
+        deckDiscardPanel = new DeckDiscardPanel(gameLayout, deck, new DeckDiscardActions() {
+            @Override
+            public void drawFromDeck(Point2D sourcePosition) {
+                hand.drawOneCardFromDeck(sourcePosition);
+            }
+
+            @Override
+            public void takeCastigo(Point2D sourcePosition) {
+                // Prototype placeholder. Real castigo resolution belongs to GameState / TurnController.
+                hand.drawOneCardFromDeck(sourcePosition);
+            }
+
+            @Override
+            public void passCastigo() {
+                // Prototype placeholder for out-of-turn castigo prompts.
+            }
+        });
     }
 
     private void addLayoutDebugOverlay() {
