@@ -844,6 +844,50 @@ Card entity position = top-left corner of the rendered card.
 This prevents layout bugs where visual card bounds are shifted relative to entity coordinates.
 
 
+
+### UI-18: Deck and Discard HUD Panel
+
+The application shall display the discard pile and deck in the HUD, beneath player information and above selected-meld feedback.
+
+Layout:
+
+```text
+[Deck] [Discard]
+```
+
+Rules:
+
+- Deck pile is left of the discard pile.
+- Deck stack uses the upper-left card-back sprite from `card-backs-enhancers-seals.png`.
+- Deck stack uses a 2 px offset between visible backs.
+- Deck stack is capped at five visible backs.
+- Lower deck cards should be darkened to strengthen the stacked-depth illusion.
+- The deck DRAW overlay should appear as a centered dark button over the top card.
+- Deck count may be shown during development and may later be reclaimed or overlaid.
+- Discard pile grays out when castigo is unavailable.
+
+### UI-19: Prototype Deck / Discard Click Actions
+
+For the current prototype:
+
+- Clicking the deck draws one card into the hand.
+- Clicking the discard pile is reserved for castigo behavior.
+- Clickable text overlays may be used to clarify the action.
+
+This is a temporary interaction model. Later, draw/castigo/discard behavior should be controlled by turn state and legal action validation.
+
+### UI-20: Castigo Decision Timer
+
+Castigo decisions should have a maximum five-second decision window.
+
+Current design direction:
+
+- Active player chooses between drawing and taking castigo.
+- Drawing means the active player passes on castigo.
+- Out-of-turn players choose between taking castigo and passing.
+- Timer expiration means automatic pass.
+- The countdown should visually gray out from right to left, consistent with the existing button style.
+
 ## Non-Functional Requirements
 
 ### NFR-1: Testability
@@ -1022,16 +1066,27 @@ Scope:
 
 #### Milestone 4D: Deck and Discard Placement / Click Interactions
 
-Status: not started.
+Status: implemented as a prototype interaction layer.
 
-Scope:
+Scope completed:
 
-- Place deck and discard pile near the right side of the player hand area if feasible.
-- Keep bottom-of-HUD placement as a fallback if the hand area becomes too crowded.
-- Click deck to draw.
-- Click discard pile to begin castigo behavior later.
-- Provide a simple discard interaction, likely button-like first.
-- Defer drag/drop discard until after basic turn flow exists.
+- Place deck and discard pile in the HUD beneath player information and above selected-meld feedback.
+- Place discard pile to the left of the deck.
+- Use the upper-left card-back sprite from `card-backs-enhancers-seals.png`.
+- Show a Balatro-style deck stack with a 2 px card offset and a maximum of five visible backs.
+- Show deck count for development/debugging.
+- Make deck/discard piles clickable for now, with text overlays.
+- Gray out discard pile when castigo is unavailable.
+- Add prototype draw-to-hand animation from the deck.
+- Add presentation scaffolding for a timed castigo decision prompt.
+
+Deferred:
+
+- Full turn legality.
+- Real discard pile state.
+- Real castigo resolution.
+- Drag/drop discard.
+- Out-of-turn castigo turn loop.
 
 #### Milestone 4E: Screen Flow / Splash / Title / Main Menu
 

@@ -976,3 +976,32 @@ Card entity position = top-left corner of the rendered card.
 ```
 
 The card view should be created at its final rendered size, not visually scaled with JavaFX transform scaling. This keeps entity coordinates, layout coordinates, hitboxes, and visible card bounds aligned.
+
+
+### Deck / Discard Panel
+
+A HUD presentation area showing the discard pile and the deck.
+
+Current design decisions:
+
+- The deck appears to the left of the discard pile.
+- The panel lives in the HUD beneath player information and above selected-meld feedback.
+- The deck uses a Balatro-style stacked-card visual.
+- The card-back sprite comes from the upper-left sprite in `card-backs-enhancers-seals.png`.
+- Deck stack offset is currently 2 px.
+- Lower deck cards are darkened to improve the illusion of depth.
+- The DRAW overlay appears as a centered dark button on the deck.
+- The discard pile grays out when castigo is unavailable.
+
+### Castigo Decision Timer
+
+A visual countdown for the limited time a player has to choose whether to take a castigo.
+
+Known rule:
+
+- A player has no more than five seconds to decide.
+- Timer expiration means automatic pass.
+- Active player chooses between draw and castigo.
+- Out-of-turn players choose between castigo and pass.
+
+The current UI direction is a right-to-left gray countdown effect consistent with the game's button style.

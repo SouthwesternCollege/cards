@@ -1015,3 +1015,222 @@ The PRD now includes:
 - Milestone 4H
 
 The PRD also includes updated future milestones for game state, round rules, scoring, save/load, settings/house rules, and tests.
+
+---
+
+## ISS-037: Implement prototype deck/discard HUD panel
+
+Status: Done  
+Priority: P1  
+Area: UI / Presentation
+
+### Problem
+
+The player hand area is crowded, so deck and discard placement near the hand may not be practical.
+
+### Decision
+
+Place deck and discard in the HUD, beneath player information and above selected-meld feedback.
+
+### Result
+
+Milestone 4D added a prototype `DeckDiscardPanel`.
+
+Current behavior:
+
+- Discard pile appears left of the deck.
+- Deck uses upper-left card-back sprite from `card-backs-enhancers-seals.png`.
+- Deck stack uses 2 px offsets.
+- Deck stack is capped at five visible backs.
+- Deck count is visible for development.
+- Discard pile grays out when castigo is unavailable.
+- Clicking the deck draws a card into the prototype hand.
+
+---
+
+## ISS-038: Implement castigo decision timer UI
+
+Status: Open  
+Priority: P1  
+Area: UI / Turn Flow
+
+### Problem
+
+Castigos are contested and should have a limited decision window.
+
+### Known Rules
+
+- Each player has no more than five seconds to decide.
+- Active player chooses draw or castigo.
+- Drawing means the active player passes on castigo.
+- Out-of-turn players choose castigo or pass.
+- Timer expiration means automatic pass.
+
+### Current Progress
+
+Milestone 4D added a prototype `CastigoDecisionPrompt` visual scaffold.
+
+### Remaining Work
+
+- Connect the prompt to real turn state.
+- Run out-of-turn castigo offers in player order.
+- Enforce castigo availability and per-player castigo counts.
+- Integrate the right-to-left countdown effect into the final button/prompt style.
+
+---
+
+## ISS-039: Replace prototype draw behavior with legal draw action
+
+Status: Open  
+Priority: P1  
+Area: Game State / Turn Rules
+
+### Problem
+
+Milestone 4D allows clicking the deck to draw a card, but this bypasses real turn legality.
+
+### Proposed Direction
+
+When `GameState` / `TurnController` exists, deck clicks should request a legal draw action instead of calling the hand facade directly.
+
+---
+
+## ISS-040: Refine deck/discard panel visuals
+
+Status: Done  
+Priority: P2  
+Area: UI / Presentation
+
+### Problem
+
+The initial Milestone 4D deck/discard panel needed visual refinement before moving on.
+
+### Changes
+
+- Swapped pile order so the deck is left of the discard pile.
+- Removed the instructional `Click deck to draw` prompt text.
+- Darkened lower deck cards to improve the stacked-depth illusion.
+- Added a dark opaque centered DRAW button overlay on the deck.
+
+---
+
+## ISS-041: Tune deck/discard panel contrast
+
+Status: Done  
+Priority: P3  
+Area: UI / Presentation
+
+### Problem
+
+The deck stack and DRAW overlay needed additional contrast tuning.
+
+### Changes
+
+- Darkened lower deck cards more aggressively.
+- Reduced the opacity of the DRAW button background so it feels lighter while still readable.
+
+---
+
+## ISS-042: Correct deck depth darkening implementation
+
+Status: Done  
+Priority: P3  
+Area: UI / Presentation
+
+### Problem
+
+Lower deck cards were made less opaque, which made them more transparent rather than visually darker.
+
+### Changes
+
+- Restored lower card opacity to full visual presence.
+- Added a black overlay on lower deck cards to darken them while keeping them fully opaque.
+- Reduced the DRAW button background opacity to 25%.
+
+---
+
+## ISS-043: Add deck base slot behind stacked cards
+
+Status: Done  
+Priority: P3  
+Area: UI / Presentation
+
+### Problem
+
+The bottom of the deck stack looked like a black rectangle after adding darkening overlays.
+
+### Changes
+
+- Added an empty-slot style base under the deck, matching the discard pile visual language.
+- Reduced maximum dark overlay strength on lower deck cards.
+- Rounded dark overlays more aggressively to avoid a rectangular block effect.
+
+---
+
+## ISS-044: Anchor deck stack to empty slot
+
+Status: Done  
+Priority: P3  
+Area: UI / Presentation
+
+### Problem
+
+The deck stack did not visually anchor to the empty-slot base, and the darkening overlays created a rounded dark rectangle between the deck and the base slot.
+
+### Changes
+
+- Bottom deck card is now centered over the empty-slot base.
+- Subsequent cards grow upward and to the right.
+- Removed the dark overlay rectangles that caused the unwanted dark rounded block.
+- Centered the DRAW overlay over the top card in the stack.
+
+---
+
+## ISS-045: Restore deck depth using card-back color adjustment
+
+Status: Done  
+Priority: P3  
+Area: UI / Presentation
+
+### Problem
+
+Removing the dark overlay rectangles fixed the unwanted block under the deck, but also removed the stacked-depth effect.
+
+### Decision
+
+Use a `ColorAdjust` effect on lower deck-back nodes instead of drawing separate dark rectangles.
+
+### Result
+
+- Lower deck cards remain fully opaque.
+- Darkening follows the actual card-back node instead of creating an extra rectangular block.
+- Empty pile slots now use arc width/height 20 to better match the card shape.
+
+---
+
+## ISS-046: Remove DRAW button background shadow
+
+Status: Done  
+Priority: P3  
+Area: UI / Presentation
+
+### Problem
+
+The DRAW overlay appeared to have a raised button shadow.
+
+### Change
+
+Removed the `setEffect(...)` call from the DRAW button background rectangle while preserving the text shadow for readability.
+
+---
+
+## ISS-047: Tune DRAW fill and center empty pile labels
+
+Status: Done  
+Priority: P3  
+Area: UI / Presentation
+
+### Changes
+
+- Updated the DRAW overlay background fill to `Color.color(0.0, 0.0, 0.0, 0.5)`.
+- Centered labels inside empty pile slots.
