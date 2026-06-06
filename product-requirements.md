@@ -888,6 +888,73 @@ Current design direction:
 - Timer expiration means automatic pass.
 - The countdown should visually gray out from right to left, consistent with the existing button style.
 
+
+### UI-21: Title Splash and Main Menu Flow
+
+The application shall show a rough title/splash screen before entering the prototype game.
+
+Current behavior:
+
+- Large `LA KIKA` title appears at approximately 25% of screen height.
+- Title drops in from the top.
+- Title holds briefly.
+- Title fades out.
+- Main menu appears automatically.
+
+Main menu buttons:
+
+- Play
+- Settings
+- Rules
+
+For now:
+
+- `Play` starts the prototype local hot-seat game.
+- `Settings` shows a placeholder message.
+- `Rules` shows a placeholder message.
+
+
+
+### UI-21: Stateful Card Wiggle Animation
+
+Hand-card wiggle animation should be stateful.
+
+Rules:
+
+- The wiggle phase should continue over time.
+- Hover should change target amplitude/speed, not restart the animation.
+- Cards should not jump to a new starting angle when hover begins or ends.
+- Disabled or played cards should stop wiggling and reset rotation.
+- Hovered cards may scale up slightly; current prototype value is 5%.
+
+
+### UI-22: Full Play-Area View
+
+The application shall provide a read-only full-table view.
+
+Current prototype behavior:
+
+- Toggle from normal view using the `Table` button.
+- Full-screen overlay hides normal HUD, hand, and controls visually.
+- Shows all four players at once.
+- Uses one horizontal row per player.
+- Uses mock meld data until real `GameState` / `PlayArea` exists.
+- Provides an `EXIT` button to return to normal view.
+- Full-table wrapped rows currently use a vertical step ratio of `0.25`.
+
+
+### UI-23: Development-Only Debug Hand Overlay
+
+The application shall provide a development-only debug overlay for viewing all mock player hands before real hot-seat turn state exists.
+
+Rules:
+
+- The overlay is not gameplay.
+- It must be clearly labeled as debug-only.
+- It may show all four players' hands.
+- It should be toggleable from the play controls.
+- The future player-facing solution is a pass-device screen, not an all-hands view.
+
 ## Non-Functional Requirements
 
 ### NFR-1: Testability
@@ -1090,54 +1157,82 @@ Deferred:
 
 #### Milestone 4E: Screen Flow / Splash / Title / Main Menu
 
-Status: not started.
+Status: implemented as a rough screen-flow prototype.
 
-Scope:
+Scope completed:
 
-- Move animated La Kika title into its own screen.
+- Moved the animated La Kika title out of gameplay initialization.
+- Added a rough title/splash screen layer.
+- Title drops in from the top and fades out.
+- Title font size is approximately 25% of screen height.
 - Auto-transition from title screen to main menu.
-- Add main menu buttons:
+- Added main menu buttons:
   - Play
   - Settings
   - Rules
-- Use FXGL scene/menu support as much as practical.
-- For now, `Play` starts a prototype local hot-seat game with default players.
-- Defer settings and rules screens unless they block development.
+- `Play` starts the current prototype local hot-seat game with default players.
+- `Settings` and `Rules` are placeholder actions for now.
+
+Deferred:
+
+- Elaborate title art.
+- Final FXGL menu integration.
+- Real settings screen.
+- Real rules screen.
+- Player setup screen.
 
 #### Milestone 4F: Animation Continuity
 
-Status: not started.
+Status: implemented.
 
-Scope:
+Scope completed:
 
-- Replace jumpy timeline-based wiggle transitions with a stateful card animation component.
-- Preserve animation phase when hover intensity changes.
-- Hand cards wiggle.
-- Hovered hand cards wiggle more intensely.
-- Played meld cards are calm or use very subtle idle motion.
-- Deck/discard should not wiggle unless interactive.
+- Replaced timeline-restarted wiggle animation with a stateful `CardWiggleComponent`.
+- Preserved animation phase when hover intensity changes.
+- Hand cards wiggle continuously.
+- Hovered hand cards smoothly increase amplitude/speed.
+- Dragged cards temporarily stop wiggling during drag.
+- Played/disabled cards stop wiggling and reset rotation.
+- Deck/discard remain still.
 
 #### Milestone 4G: Full Play-Area View
 
-Status: deferred.
+Status: implemented as a mock read-only overlay.
 
-Scope:
+Scope completed:
 
 - Add a read-only full play-area view.
-- Hide HUD, hand, and controls while viewing.
+- Toggle it from the play button area with a `Table` button.
+- Cover the normal game UI with a full-screen table overlay.
 - Show all players simultaneously, one row per player.
-- Avoid shrinking cards in full-table view when possible.
-- Use horizontal scrolling for crowded player rows if needed.
+- Use mock meld data for stress testing before real multiplayer `GameState` exists.
+- Add an `EXIT` button to return to normal view.
+
+Deferred:
+
+- Connect to real `PlayArea` / `GameState`.
+- Horizontal scrolling for crowded player rows.
+- Full-table interaction; view remains read-only.
 
 #### Milestone 4H: Hot-Seat Privacy and Debug Hand Overlay
 
-Status: not started.
+Status: implemented as development-only mock overlay.
 
-Scope:
+Scope completed:
 
-- Normal gameplay shows only the active player's hand.
-- Add development-only debug hand overlay.
-- Later add pass-device screen between turns.
+- Added a development-only debug hand overlay.
+- Added a `Hands` button to toggle the overlay.
+- Overlay shows all four players' mock hands.
+- Overlay is clearly labeled `DEBUG HAND OVERLAY`.
+- Normal gameplay still only uses the current active prototype hand.
+
+Deferred:
+
+- Real active-player hand ownership.
+- Real hidden opponent hands.
+- Turn rotation.
+- Pass-device screen between turns.
+- Connection to real multiplayer `GameState`.
 
 ### Milestone 5: Introduce Game State and Actions
 

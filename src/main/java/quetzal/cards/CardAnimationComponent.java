@@ -10,8 +10,6 @@ import javafx.util.Duration;
 
 public class CardAnimationComponent extends Component {
 
-    private final double DEFAULT_WIGGLE_AMPLITUDE = 2;  // Default wiggle amplitude
-
     private Point2D initialPosition;  // Initial position of the dragged card
     private Point2D initialMousePosition; // Initial mouse position when clicked
     private boolean isDragging = false;  // Track if a card is being dragged
@@ -26,33 +24,35 @@ public class CardAnimationComponent extends Component {
     private final Hand hand;
     private double cardSpacing; // Space between cards
     private boolean interactionEnabled = true;
-
-    @Override
-    public void onAdded() {
-
-        // Start the wiggle animation when the entity is added
-        startWiggle(DEFAULT_WIGGLE_AMPLITUDE, 2);
-
-        // Add mouse hover event listeners
-        entity.getViewComponent().addEventHandler(MouseEvent.MOUSE_ENTERED, event -> {
-            // Increase the wiggle amplitude on hover
-            increaseWiggle();
-        });
-
-        entity.getViewComponent().addEventHandler(MouseEvent.MOUSE_EXITED, event -> {
-            // Revert to default wiggle amplitude when not hovering
-            revertWiggle();
-        });
-
-
-        // Add mouse click and drag event handlers
-        entity.getViewComponent().addEventHandler(MouseEvent.MOUSE_PRESSED, this::onMousePressed);
-        entity.getViewComponent().addEventHandler(MouseEvent.MOUSE_DRAGGED, this::onMouseDragged);
-        entity.getViewComponent().addEventHandler(MouseEvent.MOUSE_RELEASED, this::onMouseReleased);
-    }
+    private boolean hovered = false;
 
     public CardAnimationComponent(Hand hand) {
         this.hand = hand;
+    }
+
+    @Override
+    public void onAdded() {
+        refreshHoverAnimationState();
+
+        entity.getViewComponent().addEventHandler(MouseEvent.MOUSE_ENTERED, event -> {
+            hovered = true;
+
+            if (interactionEnabled) {
+                setHovered(true);
+            }
+        });
+
+        entity.getViewComponent().addEventHandler(MouseEvent.MOUSE_EXITED, event -> {
+            hovered = false;
+
+            if (interactionEnabled) {
+                setHovered(false);
+            }
+        });
+
+        entity.getViewComponent().addEventHandler(MouseEvent.MOUSE_PRESSED, this::onMousePressed);
+        entity.getViewComponent().addEventHandler(MouseEvent.MOUSE_DRAGGED, this::onMouseDragged);
+        entity.getViewComponent().addEventHandler(MouseEvent.MOUSE_RELEASED, this::onMouseReleased);
     }
 
     public void setInteractionEnabled(boolean interactionEnabled) {
@@ -60,46 +60,31 @@ public class CardAnimationComponent extends Component {
 
         if (!interactionEnabled) {
             isDragging = false;
+            hovered = false;
+            setHovered(false);
+            setWiggleEnabled(false);
+            entity.getComponent(CardComponent.class).resetVisualRotation();
             entity.setRotation(0.0);
+        } else {
+            refreshHoverAnimationState();
         }
     }
 
-    private void increaseWiggle() {
+    private void setHovered(boolean hovered) {
+        entity.getComponent(CardWiggleComponent.class).setHovered(hovered);
+    }
+
+    private void setWiggleEnabled(boolean enabled) {
+        entity.getComponent(CardWiggleComponent.class).setEnabled(enabled);
+    }
+
+    private void refreshHoverAnimationState() {
         if (!interactionEnabled) {
             return;
         }
 
-        // Increased wiggle amplitude on hover
-        double HOVER_WIGGLE_AMPLITUDE = 4;
-        // Increased wiggle amplitude on hover
-        double HOVER_WIGGLE_DURATION = 1;
-        startWiggle(HOVER_WIGGLE_AMPLITUDE, HOVER_WIGGLE_DURATION);
-
-    }
-
-    private void revertWiggle() {
-        if (!interactionEnabled) {
-            return;
-        }
-
-        // Default wiggle amplitude
-        double DEFAULT_WIGGLE_DURATION = 2;
-        startWiggle(DEFAULT_WIGGLE_AMPLITUDE, DEFAULT_WIGGLE_DURATION);
-
-    }
-
-    private void startWiggle(double amplitude, double duration) {
-        // Start a rotation animation with a given amplitude
-        FXGL.animationBuilder()
-                .duration(Duration.seconds(duration))    // Duration of one wiggle cycle
-                .repeatInfinitely()               // Repeat the wiggle indefinitely
-                .autoReverse(true)                // Wiggle back and forth
-                .interpolator(Interpolators.SMOOTH.EASE_OUT())  // Elastic effect for smoothness
-                .rotate(entity)
-                .origin(new Point2D(35, 45))
-                .from(-amplitude)
-                .to(amplitude)
-                .buildAndPlay();
+        setWiggleEnabled(true);
+        setHovered(hovered);
     }
 
     private void raiseCard() {
@@ -111,8 +96,8 @@ public class CardAnimationComponent extends Component {
         }
 
         FXGL.animationBuilder()
-                .duration(Duration.seconds(0.2))  // Duration of the raise animation
-                .interpolator(Interpolators.CIRCULAR.EASE_OUT())  // Smooth bounce effect
+                .duration(Duration.seconds(0.2))
+                .interpolator(Interpolators.CIRCULAR.EASE_OUT())
                 .translate(entity)
                 .to(hand.getCardVisualPosition(index))
                 .buildAndPlay();
@@ -127,13 +112,12 @@ public class CardAnimationComponent extends Component {
         }
 
         FXGL.animationBuilder()
-                .duration(Duration.seconds(0.2))  // Duration of the lower animation
-                .interpolator(Interpolators.SMOOTH.EASE_OUT())  // Smooth effect
+                .duration(Duration.seconds(0.2))
+                .interpolator(Interpolators.SMOOTH.EASE_OUT())
                 .translate(entity)
                 .to(hand.getCardPosition(index))
                 .buildAndPlay();
     }
-
 
     private void toggleCardState() {
         Card card = entity.getComponent(CardComponent.class).getCard();
@@ -144,6 +128,8 @@ public class CardAnimationComponent extends Component {
         } else if (change == SelectionChange.DESELECTED) {
             lowerCard();
         }
+
+        refreshHoverAnimationState();
     }
 
     private void onMousePressed(MouseEvent event) {
@@ -153,15 +139,13 @@ public class CardAnimationComponent extends Component {
 
         cardSpacing = hand.getCardSpacing();
         if (event.getButton() == MouseButton.PRIMARY) {
-            // Store the initial position of the card when the drag starts
             initialPosition = entity.getPosition();
-
-            // Store the initial mouse position
             initialMousePosition = new Point2D(event.getSceneX(), event.getSceneY());
 
-            // Calculate the offset to keep the card centered on the mouse
             offsetX = event.getSceneX() - entity.getX();
             offsetY = event.getSceneY() - entity.getY();
+
+            setWiggleEnabled(false);
         }
     }
 
@@ -170,28 +154,22 @@ public class CardAnimationComponent extends Component {
             return;
         }
 
-        // Calculate the distance the mouse has moved from its initial position
         double distanceMoved = initialMousePosition.distance(event.getSceneX(), event.getSceneY());
 
-        // Threshold distance to start dragging
         final double DRAG_THRESHOLD = 1;
 
-        // Start dragging only if the mouse has moved beyond the threshold
         if (!isDragging && distanceMoved > DRAG_THRESHOLD) {
             isDragging = true;
 
             Card draggedCard = entity.getComponent(CardComponent.class).getCard();
             lastDragIndex = hand.getCards().indexOf(draggedCard);
 
-            // Bring the card to the front by increasing its zIndex
             entity.getViewComponent().setZIndex(100);
             entity.setZIndex(100);
         }
 
         if (isDragging) {
-            // Move only the dragged card directly with the mouse.
             entity.setPosition(event.getSceneX() - offsetX, event.getSceneY() - offsetY);
-
             reorganizeHandDuringDrag();
         }
     }
@@ -212,6 +190,8 @@ public class CardAnimationComponent extends Component {
                 toggleCardState();
             }
         }
+
+        refreshHoverAnimationState();
     }
 
     private void reorganizeHandDuringDrag() {
@@ -231,5 +211,4 @@ public class CardAnimationComponent extends Component {
         hand.sortCardsByPosition(hand.getCards());
         hand.organizeCardEntities();
     }
-
 }

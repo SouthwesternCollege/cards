@@ -1005,3 +1005,55 @@ Known rule:
 - Out-of-turn players choose between castigo and pass.
 
 The current UI direction is a right-to-left gray countdown effect consistent with the game's button style.
+
+### Title Splash
+
+A rough introductory screen shown before the main menu.
+
+Current visual direction:
+
+- Large `LA KIKA` text.
+- Font size approximately 25% of screen height.
+- Title drops in from the top.
+- Title fades out.
+- Main menu appears automatically.
+
+### Main Menu
+
+The screen shown after the title splash.
+
+Current buttons:
+
+- Play
+- Settings
+- Rules
+
+Current behavior:
+
+- Play starts the prototype game.
+- Settings and Rules are placeholders.
+
+
+### Card Wiggle Component
+
+A presentation component responsible for stateful card wiggle animation.
+
+Design principle:
+
+```text
+Hover changes amplitude and speed; it does not restart the animation.
+```
+
+This preserves phase continuity and prevents the card from jumping to a new angle when the mouse enters or exits.
+
+
+### Full Play-Area View
+
+A read-only overlay that shows all players' played melds simultaneously.
+
+Current prototype notes:
+
+- It is toggled with the `Table` button.
+- It shows one row per player.
+- It uses mock meld data until the real `PlayArea` exists.
+- It is intended for inspection and layout testing, not interaction.

@@ -1234,3 +1234,234 @@ Area: UI / Presentation
 
 - Updated the DRAW overlay background fill to `Color.color(0.0, 0.0, 0.0, 0.5)`.
 - Centered labels inside empty pile slots.
+
+---
+
+## ISS-048: Add rough title splash and main menu flow
+
+Status: Done  
+Priority: P2  
+Area: UI / Screen Flow
+
+### Problem
+
+The title animation was embedded directly in gameplay initialization, so the prototype game started underneath the title.
+
+### Decision
+
+Separate the rough title/main-menu flow from prototype game startup.
+
+### Result
+
+Milestone 4E added:
+
+- `TitleScreenController`
+- `MainMenuView`
+- Title animation that drops in from the top and fades out.
+- Main menu with Play / Settings / Rules.
+- Play button starts the current prototype game setup.
+- Settings and Rules are placeholder actions.
+
+### Remaining Work
+
+- Finalize title art.
+- Build real settings screen.
+- Build real rules screen.
+- Add future player setup screen.
+
+---
+
+## ISS-048: Replace timeline wiggle with stateful component
+
+Status: Done  
+Priority: P1  
+Area: UI / Animation
+
+### Problem
+
+The previous card wiggle implementation restarted an infinite rotation animation when hover began or ended.
+
+That caused cards to jump to the starting angle of the new animation.
+
+### Decision
+
+Introduce `CardWiggleComponent`.
+
+### Result
+
+- Wiggle phase is continuous.
+- Hover changes target amplitude/speed smoothly.
+- Dragging temporarily disables wiggle.
+- Played/disabled cards stop wiggling and reset rotation.
+- `CardAnimationComponent` no longer starts or restarts wiggle timelines.
+
+---
+
+## ISS-049: Restore center-pivot wiggle rotation
+
+Status: Done  
+Priority: P1  
+Area: UI / Animation
+
+### Problem
+
+The first stateful wiggle patch used `entity.setRotation(...)`, which rotates around the entity origin. Visually, cards appeared to rotate from the upper-left corner.
+
+The old timeline animation had explicitly used a center-ish origin.
+
+### Decision
+
+Keep the stateful wiggle phase/amplitude logic, but apply the visual rotation through a JavaFX `Rotate` transform owned by `CardComponent`.
+
+The rotate pivot is set to:
+
+```java
+CardViewMetrics.renderedWidth() / 2.0
+CardViewMetrics.renderedHeight() / 2.0
+```
+
+### Result
+
+The wiggle should preserve the new continuous hover behavior while rotating visually around the card center.
+
+---
+
+## ISS-050: Tune hover animation and subtle regular wiggle
+
+Status: Done  
+Priority: P3  
+Area: UI / Animation
+
+### Problem
+
+The stateful center-pivot wiggle worked correctly, but the hover wiggle was visually too aggressive.
+
+### Changes
+
+- Reduced regular wiggle amplitude by 50%.
+- Reduced regular wiggle frequency by 50%.
+- Added a 5% center-pivot scale-up on hover.
+- Added a small bounce-like hover scale pulse.
+- Kept played/disabled cards resetting to normal rotation and scale.
+
+---
+
+## ISS-051: Preserve hover animation after card selection
+
+Status: Done  
+Priority: P3  
+Area: UI / Animation
+
+### Problem
+
+After selecting a card, the card could lose its hover animation until the cursor left and re-entered the card.
+
+### Cause
+
+Selection raises/lowers the card with a translate animation, but the JavaFX mouse-enter event does not necessarily fire again when the card remains under the cursor.
+
+### Change
+
+`CardAnimationComponent` now tracks hover state explicitly and reapplies the current hover animation state after selection and mouse release.
+
+---
+
+## ISS-052: Implement mock full play-area view
+
+Status: Done  
+Priority: P2  
+Area: UI / Presentation
+
+### Problem
+
+The game needs a full-table view, but real multiplayer play-area state does not exist yet.
+
+### Decision
+
+Add a read-only full-screen overlay with mock meld data.
+
+### Result
+
+Milestone 4G added:
+
+- `FullPlayAreaView`
+- `FullPlayAreaLayout`
+- `MockPlayAreaFactory`
+- `Table` button in the play controls
+- `EXIT` button in the full-table overlay
+
+### Remaining Work
+
+- Connect the full view to real `GameState` / `PlayArea`.
+- Add horizontal scrolling or row overflow handling.
+- Remove or isolate mock data when real state exists.
+
+---
+
+## ISS-053: Increase full-table wrapped-row overlap
+
+Status: Done  
+Priority: P3  
+Area: UI / Full Play-Area View
+
+### Problem
+
+When a player has many mock melds in the full-table view, wrapped rows can be clipped.
+
+### Decision
+
+Keep this behavior isolated to `FullPlayAreaLayout` rather than changing the normal interactive `MeldLayout`.
+
+### Change
+
+`FullPlayAreaLayout` now uses a vertical row-step ratio of `0.25`.
+
+Normal `MeldLayout` remains unchanged.
+
+---
+
+## ISS-054: Add development-only debug hand overlay
+
+Status: Done  
+Priority: P2  
+Area: UI / Hot-Seat Privacy
+
+### Problem
+
+Hot-seat play will require hidden non-active hands, but real player hand state and turn rotation do not exist yet.
+
+### Decision
+
+Add a development-only overlay that shows all four mock hands.
+
+### Result
+
+Milestone 4H added:
+
+- `DebugHandOverlay`
+- `MockHandFactory`
+- `Hands` button in the play controls
+
+### Important Note
+
+This is strictly a development tool. It must not become normal gameplay.
+
+### Remaining Work
+
+- Build real active-player hand ownership.
+- Hide non-active hands in real gameplay.
+- Add the future pass-device screen.
+
+---
+
+## ISS-055: Carry forward full-table row overlap ratio 0.25
+
+Status: Done  
+Priority: P3  
+Area: UI / Full Play-Area View
+
+### Change
+
+The full-table row overlap ratio was adjusted from `0.50` to `0.25` based on visual testing.
+
+This remains isolated to `FullPlayAreaLayout`.

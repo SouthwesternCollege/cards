@@ -26,6 +26,7 @@ public class GameFactory implements EntityFactory {
         return FXGL.entityBuilder(data)
                 .type(EntityType.CARD)
                 .with(new CardComponent(card))
+                .with(new CardWiggleComponent())
                 .with(new CardAnimationComponent(data.get("hand")))
                 .zIndex(data.get("z-index"))
                 .build();

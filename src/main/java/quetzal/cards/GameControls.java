@@ -19,15 +19,27 @@ public class GameControls {
     private final Hand hand;
     private final Rectangle2D buttonArea;
     private final HBox buttonBar;
+    private final Runnable onTableView;
+    private final Runnable onDebugHands;
 
-    public GameControls(GameLayout gameLayout, Hand hand) {
+    public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView, Runnable onDebugHands) {
         this.hand = hand;
+        this.onTableView = onTableView == null ? () -> { } : onTableView;
+        this.onDebugHands = onDebugHands == null ? () -> { } : onDebugHands;
         this.buttonArea = gameLayout.getButtonArea();
         this.buttonBar = createButtonBar();
 
         positionButtonBar();
 
         FXGL.getGameScene().addUINode(buttonBar);
+    }
+
+    public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView) {
+        this(gameLayout, hand, onTableView, null);
+    }
+
+    public GameControls(GameLayout gameLayout, Hand hand) {
+        this(gameLayout, hand, null, null);
     }
 
     private HBox createButtonBar() {
@@ -54,6 +66,12 @@ public class GameControls {
         Button clearMeldsButton = gameButton(new Text("Clear"), Color.color(0.25, 0.25, 0.25));
         clearMeldsButton.setOnAction(event -> hand.debugClearVisualMelds());
 
+        Button tableButton = gameButton(new Text("Table"), Color.color(0.16, 0.16, 0.48));
+        tableButton.setOnAction(event -> onTableView.run());
+
+        Button debugHandsButton = gameButton(new Text("Hands"), Color.color(0.55, 0.38, 0.06));
+        debugHandsButton.setOnAction(event -> onDebugHands.run());
+
         return new HBox(
                 BUTTON_SPACING,
                 playButton,
@@ -63,7 +81,9 @@ public class GameControls {
                 addKindTestButton,
                 addStraightTestButton,
                 stressMeldsButton,
-                clearMeldsButton
+                clearMeldsButton,
+                tableButton,
+                debugHandsButton
         );
     }
 
