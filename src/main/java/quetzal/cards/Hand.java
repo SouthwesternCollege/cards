@@ -235,6 +235,39 @@ public class Hand {
         return removed;
     }
 
+
+    public void displayCreatedMeld(PlayerId createdBy, List<Card> cardsToPlay) {
+        if (createdBy == null) {
+            throw new IllegalArgumentException("Created-by player cannot be null.");
+        }
+
+        if (cardsToPlay == null || cardsToPlay.isEmpty()) {
+            throw new IllegalArgumentException("Cards to play cannot be empty.");
+        }
+
+        visualMeldStore.add(new VisualMeld(createdBy, cardsToPlay));
+
+        for (Card card : cardsToPlay) {
+            Entity cardEntity = getEntityFor(card);
+            model.setSelectable(card, false);
+            model.removeCard(card);
+
+            if (cardEntity != null) {
+                disableHandInteraction(cardEntity);
+            }
+        }
+
+        reflowPlayedMeldsFor(createdBy);
+
+        model.clearSelected();
+        selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
+        notifyHandSizeChanged();
+
+        if (!model.getCards().isEmpty()) {
+            organizeCardEntities();
+        }
+    }
+
     public void playSelectedCards() {
         if (model.getSelectedCards().isEmpty()) {
             return;
@@ -385,7 +418,11 @@ public class Hand {
     }
 
     private void reflowPlayedMelds() {
-        List<MeldLayoutSlot> playedSlots = meldLayout.slots(visualMeldStore.meldsFor(localPlayerId), playerPlayedArea);
+        reflowPlayedMeldsFor(localPlayerId);
+    }
+
+    private void reflowPlayedMeldsFor(PlayerId playerId) {
+        List<MeldLayoutSlot> playedSlots = meldLayout.slots(visualMeldStore.meldsFor(playerId), playerPlayedArea);
 
         for (MeldLayoutSlot slot : playedSlots) {
             Entity cardEntity = getEntityFor(slot.card());

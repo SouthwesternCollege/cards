@@ -123,7 +123,7 @@ public class CardApplication extends GameApplication {
 
         fullPlayAreaView = new FullPlayAreaView(WIDTH, HEIGHT);
         debugHandOverlay = new DebugHandOverlay(WIDTH, HEIGHT);
-        gameControls = new GameControls(gameLayout, hand, fullPlayAreaView::toggle, debugHandOverlay::toggle, this::discardSelectedCard);
+        gameControls = new GameControls(gameLayout, hand, fullPlayAreaView::toggle, debugHandOverlay::toggle, this::discardSelectedCard, this::playSelectedMeld);
 
         deckDiscardPanel = new DeckDiscardPanel(gameLayout, deck, new DeckDiscardActions() {
             @Override
@@ -147,6 +147,27 @@ public class CardApplication extends GameApplication {
     }
 
 
+
+
+    private void playSelectedMeld() {
+        List<Card> selectedCards = hand.getSelectedCards();
+
+        if (selectedCards.isEmpty()) {
+            System.out.println("Select cards to play.");
+            return;
+        }
+
+        List<CardId> selectedCardIds = selectedCards.stream()
+                .map(Card::id)
+                .toList();
+
+        ActionResult result = gameController.apply(new CreateMeldAction(
+                gameController.state().roundState().activePlayerId(),
+                selectedCardIds
+        ));
+
+        handleActionResult(result, null);
+    }
 
     private void discardSelectedCard() {
         List<Card> selectedCards = hand.getSelectedCards();
@@ -200,6 +221,12 @@ public class CardApplication extends GameApplication {
             }
 
             deckDiscardPanel.setTopDiscardCard(cardDiscardedEvent.card());
+        }
+
+        if (event instanceof MeldCreatedEvent meldCreatedEvent) {
+            if (meldCreatedEvent.playerId().equals(renderedPlayerId)) {
+                hand.displayCreatedMeld(meldCreatedEvent.playerId(), meldCreatedEvent.meld().cards());
+            }
         }
 
         if (event instanceof ActivePlayerChangedEvent activePlayerChangedEvent) {

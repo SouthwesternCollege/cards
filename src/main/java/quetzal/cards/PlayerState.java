@@ -91,6 +91,26 @@ public final class PlayerState {
         throw new IllegalArgumentException("Card is not in player's hand: " + cardId.value());
     }
 
+    public List<Card> cardsByIdInOrder(List<CardId> cardIds) {
+        List<Card> result = new ArrayList<>();
+
+        for (CardId cardId : cardIds) {
+            result.add(cardById(cardId));
+        }
+
+        return result;
+    }
+
+    public Card cardById(CardId cardId) {
+        for (Card card : hand) {
+            if (card.id().equals(cardId)) {
+                return card;
+            }
+        }
+
+        throw new IllegalArgumentException("Card is not in player's hand: " + cardId.value());
+    }
+
     public void setOpened(boolean opened) {
         this.opened = opened;
     }

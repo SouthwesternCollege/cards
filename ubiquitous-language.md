@@ -1189,3 +1189,32 @@ current player's MELD phase
 → discard
 → next player's DRAW_OR_CASTIGO phase
 ```
+
+
+### PlayArea
+
+The rules-level collection of melds currently in play.
+
+Current scope:
+
+- stores created melds
+- does not yet handle mutation
+- does not yet handle joker stealing
+
+### MeldState
+
+A rules-level meld.
+
+Current fields:
+
+- creator player
+- meld type
+- cards in the meld
+
+### CreateMeldAction
+
+A request for the active player to create a new meld from selected cards.
+
+### MeldCreatedEvent
+
+An event emitted after a valid meld is added to the rules-level `PlayArea`.

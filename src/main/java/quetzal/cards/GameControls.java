@@ -22,12 +22,14 @@ public class GameControls {
     private final Runnable onTableView;
     private final Runnable onDebugHands;
     private final Runnable onDiscard;
+    private final Runnable onPlayMeld;
 
-    public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView, Runnable onDebugHands, Runnable onDiscard) {
+    public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView, Runnable onDebugHands, Runnable onDiscard, Runnable onPlayMeld) {
         this.hand = hand;
         this.onTableView = onTableView == null ? () -> { } : onTableView;
         this.onDebugHands = onDebugHands == null ? () -> { } : onDebugHands;
         this.onDiscard = onDiscard == null ? () -> { } : onDiscard;
+        this.onPlayMeld = onPlayMeld == null ? () -> { } : onPlayMeld;
         this.buttonArea = gameLayout.getButtonArea();
         this.buttonBar = createButtonBar();
 
@@ -36,21 +38,25 @@ public class GameControls {
         FXGL.getGameScene().addUINode(buttonBar);
     }
 
+    public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView, Runnable onDebugHands, Runnable onDiscard) {
+        this(gameLayout, hand, onTableView, onDebugHands, onDiscard, null);
+    }
+
     public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView, Runnable onDebugHands) {
-        this(gameLayout, hand, onTableView, onDebugHands, null);
+        this(gameLayout, hand, onTableView, onDebugHands, null, null);
     }
 
     public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView) {
-        this(gameLayout, hand, onTableView, null, null);
+        this(gameLayout, hand, onTableView, null, null, null);
     }
 
     public GameControls(GameLayout gameLayout, Hand hand) {
-        this(gameLayout, hand, null, null, null);
+        this(gameLayout, hand, null, null, null, null);
     }
 
     private HBox createButtonBar() {
         Button playButton = gameButton(new Text("Play Hand"), Color.color(0.9, 0, 0));
-        playButton.setOnAction(event -> hand.playSelectedCards());
+        playButton.setOnAction(event -> onPlayMeld.run());
 
         Button discardButton = gameButton(new Text("Discard"), Color.color(0, 0.3, 0.9));
         discardButton.setOnAction(event -> onDiscard.run());

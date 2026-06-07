@@ -1068,6 +1068,31 @@ GameController owns whose turn it is.
 The UI only renders the active player reported by GameState.
 ```
 
+
+### ARCH-05: Rules-Level Play Area
+
+Created melds are now rules-level state.
+
+Current flow:
+
+```text
+Play Hand clicked
+→ UI collects selected CardIds
+→ CreateMeldAction
+→ GameController validates selected cards
+→ GameController removes cards from PlayerState.hand
+→ GameController adds MeldState to PlayArea
+→ MeldCreatedEvent
+→ UI animates cards into the played area
+```
+
+Design rule:
+
+```text
+PlayArea owns what melds exist.
+VisualMeldStore is only a presentation cache.
+```
+
 ## Non-Functional Requirements
 
 ### NFR-1: Testability
@@ -1552,3 +1577,28 @@ Current limitation:
 - `Hand` remains a transitional presentation facade.
 - Castigo is not yet part of the turn transition.
 - Round end is not yet detected.
+
+
+#### Milestone 5E: Rules-Level Play Area and Meld Creation
+
+Status: implemented.
+
+Scope completed:
+
+- Added `PlayArea`.
+- Added `MeldState`.
+- Added `CreateMeldAction`.
+- Added `MeldCreatedEvent`.
+- Added `PlayArea` ownership to `GameState`.
+- Routed the Play Hand button through `GameController`.
+- `GameController` now validates selected cards with `LaKikaMeldValidator`.
+- Valid melds move from `PlayerState.hand` into rules-level `PlayArea`.
+- UI animates created melds from `MeldCreatedEvent`.
+
+Current limitation:
+
+- Meld mutation is not implemented yet.
+- Joker stealing is not implemented yet.
+- Opening requirements are not enforced yet.
+- Round-end detection is not implemented yet.
+- The normal played-meld view still uses `VisualMeldStore` as a presentation cache fed by events.

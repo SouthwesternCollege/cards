@@ -3,40 +3,31 @@ package quetzal.cards;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Rules-level play area.
+ *
+ * Current Milestone 5E scope: store created melds. Mutation and joker stealing
+ * come later.
+ */
 public final class PlayArea {
 
-    private final List<Meld> melds = new ArrayList<>();
+    private final List<MeldState> melds = new ArrayList<>();
 
-    public List<Meld> melds() {
-        return List.copyOf(melds);
-    }
-
-    public void addMeld(Meld meld) {
+    public void addMeld(MeldState meld) {
         if (meld == null) {
             throw new IllegalArgumentException("Meld cannot be null.");
-        }
-
-        if (contains(meld.id())) {
-            throw new IllegalArgumentException("Play area already contains meld: " + meld.id());
         }
 
         melds.add(meld);
     }
 
-    public Meld getMeld(MeldId meldId) {
+    public List<MeldState> melds() {
+        return List.copyOf(melds);
+    }
+
+    public List<MeldState> meldsCreatedBy(PlayerId playerId) {
         return melds.stream()
-                .filter(meld -> meld.id().equals(meldId))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Meld is not in play area: " + meldId));
-    }
-
-    public boolean contains(MeldId meldId) {
-        return melds.stream().anyMatch(meld -> meld.id().equals(meldId));
-    }
-
-    public Meld removeMeld(MeldId meldId) {
-        Meld meld = getMeld(meldId);
-        melds.remove(meld);
-        return meld;
+                .filter(meld -> meld.createdBy().equals(playerId))
+                .toList();
     }
 }

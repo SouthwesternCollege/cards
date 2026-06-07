@@ -1692,3 +1692,58 @@ show pass-device prompt
 next player confirms readiness
 render next player's hand
 ```
+
+---
+
+## ISS-063: Add rules-level play area and meld creation
+
+Status: Done  
+Priority: P1  
+Area: Domain Architecture / Meld Rules
+
+### Problem
+
+Played melds were still primarily a visual/presentation concern.
+
+### Decision
+
+Add rules-level `PlayArea` and route meld creation through `GameController`.
+
+### Result
+
+Milestone 5E added:
+
+- `PlayArea`
+- `MeldState`
+- `CreateMeldAction`
+- `MeldCreatedEvent`
+
+The Play Hand button now submits `CreateMeldAction`.
+
+`GameController` validates the selected cards with `LaKikaMeldValidator`, removes the cards from the active player's hand, creates a `MeldState`, and adds it to `PlayArea`.
+
+The UI uses `MeldCreatedEvent` to animate the cards into the played area.
+
+### Remaining Work
+
+- Add meld mutation actions.
+- Add joker stealing actions.
+- Enforce opening requirements.
+- Detect round end.
+- Replace remaining presentation caches with views of `GameState` where appropriate.
+
+---
+
+## ISS-064: Enforce opening requirements
+
+Status: Open  
+Priority: P1  
+Area: Meld Rules / Round Rules
+
+### Problem
+
+Meld creation is now rules-level, but opening requirements are not yet enforced.
+
+### Proposed Direction
+
+Before a player has opened, `GameController` should reject meld creation unless the submitted melds satisfy that round's opening requirement.

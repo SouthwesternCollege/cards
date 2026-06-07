@@ -16,6 +16,7 @@ public final class GameController {
     private static final int DEFAULT_CASTIGOS_PER_GAME = 10;
 
     private final GameState gameState;
+    private final MeldValidator meldValidator = new LaKikaMeldValidator();
 
     private GameController(GameState gameState) {
         this.gameState = gameState;
@@ -48,7 +49,7 @@ public final class GameController {
                 TurnPhase.DRAW_OR_CASTIGO
         );
 
-        GameState state = new GameState(players, deck, new DiscardPile(), roundState);
+        GameState state = new GameState(players, deck, new DiscardPile(), new PlayArea(), roundState);
         GameController controller = new GameController(state);
         controller.dealInitialHands(DEFAULT_HAND_SIZE);
 
@@ -67,6 +68,10 @@ public final class GameController {
 
         if (action instanceof DiscardAction discardAction) {
             return discard(discardAction);
+        }
+
+        if (action instanceof CreateMeldAction createMeldAction) {
+            return createMeld(createMeldAction);
         }
 
         return ActionResult.failure("Unsupported action: " + action.getClass().getSimpleName());
@@ -128,6 +133,39 @@ public final class GameController {
                 new ActivePlayerChangedEvent(previousActivePlayer, nextActivePlayer),
                 new TurnPhaseChangedEvent(previousPhase, roundState.turnPhase())
         );
+    }
+
+
+    private ActionResult createMeld(CreateMeldAction action) {
+        PlayerId playerId = action.playerId();
+        RoundState roundState = gameState.roundState();
+
+        if (!playerId.equals(roundState.activePlayerId())) {
+            return ActionResult.failure("Only the active player may create a meld.");
+        }
+
+        if (roundState.turnPhase() != TurnPhase.MELD) {
+            return ActionResult.failure("Cannot create a meld during phase: " + roundState.turnPhase());
+        }
+
+        PlayerState player = gameState.player(playerId);
+        List<Card> selectedCards = player.cardsByIdInOrder(action.cardIds());
+        MeldValidationResult validationResult = meldValidator.validate(selectedCards);
+
+        if (!validationResult.valid()) {
+            return ActionResult.failure(validationResult.displayText());
+        }
+
+        List<Card> cardsForMeld = validationResult.normalizedCards();
+
+        for (Card card : cardsForMeld) {
+            player.removeCard(card.id());
+        }
+
+        MeldState meld = new MeldState(playerId, validationResult.meldType(), cardsForMeld);
+        gameState.playArea().addMeld(meld);
+
+        return ActionResult.success(new MeldCreatedEvent(playerId, meld));
     }
 
     public GameState state() {
