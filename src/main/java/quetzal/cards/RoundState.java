@@ -72,4 +72,26 @@ public final class RoundState {
 
         this.turnPhase = turnPhase;
     }
+
+    public RoundStateSnapshot toSnapshot() {
+        return new RoundStateSnapshot(
+                roundNumber,
+                dealerId.value(),
+                activePlayerId.value(),
+                turnPhase.name()
+        );
+    }
+
+    public static RoundState fromSnapshot(RoundStateSnapshot snapshot) {
+        if (snapshot == null) {
+            throw new IllegalArgumentException("Round snapshot cannot be null.");
+        }
+
+        return new RoundState(
+                snapshot.roundNumber(),
+                new PlayerId(snapshot.dealerPlayerId()),
+                new PlayerId(snapshot.activePlayerId()),
+                TurnPhase.valueOf(snapshot.turnPhase())
+        );
+    }
 }

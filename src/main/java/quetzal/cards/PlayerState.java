@@ -209,6 +209,46 @@ public final class PlayerState {
         this.castigosRemaining = castigosRemaining;
     }
 
+    public PlayerStateSnapshot toSnapshot() {
+        return new PlayerStateSnapshot(
+                playerId.value(),
+                displayName,
+                hand.stream()
+                        .map(Card::toSnapshot)
+                        .toList(),
+                cumulativeScore,
+                castigosRemaining,
+                opened,
+                customOrderCardIds.stream()
+                        .map(CardId::value)
+                        .toList()
+        );
+    }
+
+    public static PlayerState fromSnapshot(PlayerStateSnapshot snapshot) {
+        if (snapshot == null) {
+            throw new IllegalArgumentException("Player snapshot cannot be null.");
+        }
+
+        PlayerState player = new PlayerState(
+                new PlayerId(snapshot.playerId()),
+                snapshot.displayName(),
+                snapshot.cumulativeScore(),
+                snapshot.castigosRemaining(),
+                snapshot.opened()
+        );
+
+        for (CardSnapshot cardSnapshot : snapshot.hand()) {
+            player.addCard(Card.fromSnapshot(cardSnapshot));
+        }
+
+        player.customOrderCardIds = snapshot.customOrderCardIds().stream()
+                .map(CardId::new)
+                .toList();
+
+        return player;
+    }
+
     public PlayerHudState toHudState(PlayerId dealerId, PlayerId activePlayerId) {
         return new PlayerHudState(
                 playerId,

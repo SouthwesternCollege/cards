@@ -121,4 +121,32 @@ public class Deck extends CardCollection {
         List<Card> cards = getCards();
         Collections.shuffle(cards, random);
     }
+
+    public DeckSnapshot toSnapshot() {
+        return new DeckSnapshot(
+                getCards().stream()
+                        .map(Card::toSnapshot)
+                        .toList()
+        );
+    }
+
+    public static Deck fromSnapshot(DeckSnapshot snapshot) {
+        if (snapshot == null) {
+            throw new IllegalArgumentException("Deck snapshot cannot be null.");
+        }
+
+        Deck deck = new Deck(1, 0);
+        deck.getCards().clear();
+
+        int maxCardId = 0;
+
+        for (CardSnapshot cardSnapshot : snapshot.cards()) {
+            Card card = Card.fromSnapshot(cardSnapshot);
+            deck.addCard(card);
+            maxCardId = Math.max(maxCardId, card.id().value());
+        }
+
+        deck.nextCardId = Math.max(1, maxCardId + 1);
+        return deck;
+    }
 }

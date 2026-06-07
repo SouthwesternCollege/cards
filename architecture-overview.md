@@ -412,3 +412,73 @@ all other opponent melds → hidden until carousel controls exist
 ```
 
 This keeps presentation perspective separate from turn rules. Milestone 6 can focus on action legality without also fixing whose melds are shown.
+
+## Entity Registry Ownership Note
+
+`CardEntityRegistry` currently stores both visible hand card entities and played meld card entities.
+
+Important rule:
+
+```text
+Clearing the visible hand must remove only hand card entities.
+It must not clear the entire registry.
+```
+
+Reason:
+
+```text
+Played meld entities persist across turns.
+Perspective rendering needs the registry to find, hide, and reflow those entities.
+```
+
+This is another sign that `Hand` is transitional and should eventually split into separate views/controllers:
+
+```text
+HandView
+PlayedMeldView
+CardEntityRegistry or separate registries per view
+```
+
+
+## Milestone 5J Save-Ready Snapshots
+
+The domain model now has a plain-data snapshot graph.
+
+Current snapshot flow:
+
+```text
+GameState
+→ GameStateSnapshot
+→ GameState
+```
+
+Supported domain snapshots:
+
+```text
+GameStateSnapshot
+PlayerStateSnapshot
+RoundStateSnapshot
+DeckSnapshot
+DiscardPileSnapshot
+PlayAreaSnapshot
+MeldStateSnapshot
+CardSnapshot
+```
+
+Design boundary:
+
+```text
+Snapshots are domain data.
+Snapshots must not contain FXGL entities, JavaFX nodes, layout coordinates, or animation state.
+```
+
+This prepares for future work:
+
+```text
+JSON save files
+save/load UI
+replay/testing
+eventual network synchronization
+```
+
+Milestone 5J intentionally does not implement persistence. It proves that the live domain state can become plain data and be reconstructed.

@@ -86,6 +86,34 @@ public final class GameState {
         throw new IllegalArgumentException("Unknown player id: " + playerId.value());
     }
 
+    public GameStateSnapshot toSnapshot() {
+        return new GameStateSnapshot(
+                players.stream()
+                        .map(PlayerState::toSnapshot)
+                        .toList(),
+                deck.toSnapshot(),
+                discardPile.toSnapshot(),
+                playArea.toSnapshot(),
+                roundState.toSnapshot()
+        );
+    }
+
+    public static GameState fromSnapshot(GameStateSnapshot snapshot) {
+        if (snapshot == null) {
+            throw new IllegalArgumentException("Game state snapshot cannot be null.");
+        }
+
+        return new GameState(
+                snapshot.players().stream()
+                        .map(PlayerState::fromSnapshot)
+                        .toList(),
+                Deck.fromSnapshot(snapshot.deck()),
+                DiscardPile.fromSnapshot(snapshot.discardPile()),
+                PlayArea.fromSnapshot(snapshot.playArea()),
+                RoundState.fromSnapshot(snapshot.roundState())
+        );
+    }
+
     public List<PlayerHudState> toHudStates() {
         List<PlayerHudState> hudStates = new ArrayList<>();
 

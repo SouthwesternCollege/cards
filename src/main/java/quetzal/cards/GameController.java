@@ -57,6 +57,10 @@ public final class GameController {
     }
 
 
+    public static GameController fromSnapshot(GameStateSnapshot snapshot) {
+        return new GameController(GameState.fromSnapshot(snapshot));
+    }
+
     public ActionResult apply(GameAction action) {
         if (action == null) {
             return ActionResult.failure("Action cannot be null.");

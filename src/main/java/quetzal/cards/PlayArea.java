@@ -30,4 +30,26 @@ public final class PlayArea {
                 .filter(meld -> meld.createdBy().equals(playerId))
                 .toList();
     }
+
+    public PlayAreaSnapshot toSnapshot() {
+        return new PlayAreaSnapshot(
+                melds.stream()
+                        .map(MeldState::toSnapshot)
+                        .toList()
+        );
+    }
+
+    public static PlayArea fromSnapshot(PlayAreaSnapshot snapshot) {
+        if (snapshot == null) {
+            throw new IllegalArgumentException("Play area snapshot cannot be null.");
+        }
+
+        PlayArea playArea = new PlayArea();
+
+        for (MeldStateSnapshot meldSnapshot : snapshot.melds()) {
+            playArea.addMeld(MeldState.fromSnapshot(meldSnapshot));
+        }
+
+        return playArea;
+    }
 }

@@ -2185,3 +2185,111 @@ visible opponent = next player after active player
 - Add opponent carousel controls.
 - Feed played-meld presentation more directly from `PlayArea`.
 - Improve labels for whose melds are currently shown.
+
+---
+
+## ISS-080: Preserve played meld entity registry during hand clearing
+
+Status: Done  
+Priority: P1  
+Area: UI / Played Meld Presentation
+
+### Problem
+
+After Milestone 5I.1, opponent melds could disappear from the opponent area while old melds remained overlaid in the current player's meld area.
+
+### Cause
+
+`Hand.clearVisibleHand()` cleared the entire `CardEntityRegistry`.
+
+That registry contains both:
+
+- current visible hand card entities
+- played meld card entities
+
+After the registry was cleared, played meld entities still existed in the scene, but the code could no longer find them to hide or reflow them when the active-player perspective changed.
+
+### Decision
+
+`clearVisibleHand()` now removes only the current hand cards from the registry.
+
+Played meld entities remain registered so perspective changes can hide/reflow them correctly.
+
+### Result
+
+Played meld perspective rendering can now distinguish:
+
+- active player's melds in the current-player meld area
+- visible opponent's melds in the opponent meld area
+- other players' melds hidden
+
+---
+
+## ISS-081: Add save-ready domain snapshots
+
+Status: Done  
+Priority: P1  
+Area: Save Architecture / Domain State
+
+### Problem
+
+The game had increasingly rich domain state but no plain-data representation suitable for future save/load, replay, testing, or network synchronization.
+
+### Decision
+
+Add snapshot records and conversion methods without implementing file persistence yet.
+
+### Result
+
+Milestone 5J added:
+
+- `DeckSnapshot`
+- `PlayerStateSnapshot`
+- `RoundStateSnapshot`
+- `DiscardPileSnapshot`
+- `MeldStateSnapshot`
+- `PlayAreaSnapshot`
+- `GameStateSnapshot`
+
+`CardSnapshot` already existed and is now part of the larger snapshot graph.
+
+Domain objects now support:
+
+```java
+toSnapshot()
+fromSnapshot(...)
+```
+
+`GameController` now supports:
+
+```java
+GameController.fromSnapshot(GameStateSnapshot snapshot)
+```
+
+### Remaining Work
+
+- JSON serialization.
+- File save/load UI.
+- Versioned save formats.
+- Snapshot testing.
+
+---
+
+## ISS-082: Add versioned save format
+
+Status: Open  
+Priority: P2  
+Area: Save Architecture / Persistence
+
+### Problem
+
+Snapshots are now plain data, but there is no versioned file format yet.
+
+### Proposed Direction
+
+A later save/load milestone should add:
+
+- save format version
+- JSON serialization
+- migration strategy for old saves
+- file picker or fixed prototype save slot

@@ -40,4 +40,26 @@ public final class DiscardPile {
     public int size() {
         return cards.size();
     }
+
+    public DiscardPileSnapshot toSnapshot() {
+        return new DiscardPileSnapshot(
+                cards.stream()
+                        .map(Card::toSnapshot)
+                        .toList()
+        );
+    }
+
+    public static DiscardPile fromSnapshot(DiscardPileSnapshot snapshot) {
+        if (snapshot == null) {
+            throw new IllegalArgumentException("Discard pile snapshot cannot be null.");
+        }
+
+        DiscardPile discardPile = new DiscardPile();
+
+        for (CardSnapshot cardSnapshot : snapshot.cards()) {
+            discardPile.add(Card.fromSnapshot(cardSnapshot));
+        }
+
+        return discardPile;
+    }
 }

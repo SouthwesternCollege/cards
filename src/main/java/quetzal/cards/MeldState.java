@@ -29,4 +29,28 @@ public record MeldState(
 
         cards = List.copyOf(cards);
     }
+
+    public MeldStateSnapshot toSnapshot() {
+        return new MeldStateSnapshot(
+                createdBy.value(),
+                meldType.name(),
+                cards.stream()
+                        .map(Card::toSnapshot)
+                        .toList()
+        );
+    }
+
+    public static MeldState fromSnapshot(MeldStateSnapshot snapshot) {
+        if (snapshot == null) {
+            throw new IllegalArgumentException("Meld snapshot cannot be null.");
+        }
+
+        return new MeldState(
+                new PlayerId(snapshot.createdByPlayerId()),
+                MeldType.valueOf(snapshot.meldType()),
+                snapshot.cards().stream()
+                        .map(Card::fromSnapshot)
+                        .toList()
+        );
+    }
 }

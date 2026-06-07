@@ -1602,28 +1602,33 @@ Current limitation:
 
 #### Milestone 5J: Save-Ready Snapshots
 
-Status: planned.
+Status: implemented.
 
 This preserves the original Milestone 5H goal: save states become realistic.
 
-Recommended scope:
+Scope completed:
 
-- Add snapshot records for game state:
-  - `GameStateSnapshot`
+- Added snapshot records:
+  - `CardSnapshot`
+  - `DeckSnapshot`
   - `PlayerStateSnapshot`
   - `RoundStateSnapshot`
   - `DiscardPileSnapshot`
+  - `MeldStateSnapshot`
   - `PlayAreaSnapshot`
-- Convert live domain state to snapshot data.
-- Restore domain state from snapshot data.
-- Keep JSON/file persistence for a later save/load milestone.
+  - `GameStateSnapshot`
+- Added `toSnapshot()` conversion from live domain objects.
+- Added `fromSnapshot(...)` reconstruction for domain objects.
+- Added `GameController.fromSnapshot(GameStateSnapshot snapshot)`.
+- Preserved deck card ids and advanced `Deck.nextCardId` after restoration.
 
 Out of scope:
 
-- Full save/load UI.
+- JSON serialization.
+- File save/load.
+- Save/load UI.
 - File picker.
 - Cloud saves.
-- Serialization format polish.
 
 
 ### Milestone 6: Implement Round and Turn Rules
