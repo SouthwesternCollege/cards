@@ -1617,7 +1617,7 @@ The UI animates the visible card to the discard pile and displays the real top d
 
 ## ISS-060: Advance active player after discard
 
-Status: Open  
+Status: Done  
 Priority: P1  
 Area: Turn Flow
 
@@ -1631,4 +1631,64 @@ Milestone 5D should implement normal phase progression:
 
 ```text
 DRAW_OR_CASTIGO → MELD → DISCARD → next player's DRAW_OR_CASTIGO
+```
+
+---
+
+## ISS-061: Advance active player after discard
+
+Status: Done  
+Priority: P1  
+Area: Turn Flow
+
+### Problem
+
+Milestone 5C could discard a card, but the active player did not advance afterward.
+
+### Decision
+
+A successful discard now completes the current prototype turn.
+
+### Result
+
+Milestone 5D added:
+
+- `ActivePlayerChangedEvent`
+- `GameState.nextPlayerAfter(PlayerId)`
+
+After discard:
+
+- discarded card moves to `DiscardPile`
+- active player advances in player order
+- phase resets to `DRAW_OR_CASTIGO`
+- visible hand switches to the new active player's hand after the discard animation
+
+### Remaining Work
+
+- Add pass-device privacy screen.
+- Add real castigo decision timing into the turn transition.
+- Detect round end after final discard.
+- Move event handling out of `CardApplication`.
+
+---
+
+## ISS-062: Add pass-device screen for hot-seat privacy
+
+Status: Open  
+Priority: P2  
+Area: UI / Hot-Seat Privacy
+
+### Problem
+
+The active player's hand now switches after discard, but there is no privacy screen between players.
+
+### Proposed Direction
+
+Later, after a turn ends:
+
+```text
+hide all hands
+show pass-device prompt
+next player confirms readiness
+render next player's hand
 ```

@@ -11,6 +11,7 @@ import javafx.geometry.Point2D;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.util.Duration;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -29,6 +30,7 @@ public class CardApplication extends GameApplication {
     private FullPlayAreaView fullPlayAreaView;
     private DebugHandOverlay debugHandOverlay;
     private GameController gameController;
+    private PlayerId renderedPlayerId;
     private boolean prototypeGameStarted = false;
 
     public static void main(String[] args) {
@@ -99,7 +101,8 @@ public class CardApplication extends GameApplication {
         gameHudController.refresh();
 
         Rectangle2D playerHandArea = gameLayout.getPlayerHandArea();
-        PlayerId localPlayerId = gameController.state().roundState().activePlayerId();
+        renderedPlayerId = gameController.state().roundState().activePlayerId();
+        PlayerId localPlayerId = renderedPlayerId;
 
         SelectionFeedback selectionFeedback = new HudMeldSelectionFeedback(
                 new LaKikaMeldValidator(),
@@ -186,22 +189,31 @@ public class CardApplication extends GameApplication {
 
     private void handleGameEvent(GameEvent event, Point2D sourcePosition) {
         if (event instanceof CardDrawnEvent cardDrawnEvent) {
-            PlayerId visiblePlayerId = gameController.state().roundState().activePlayerId();
-
-            if (cardDrawnEvent.playerId().equals(visiblePlayerId)) {
+            if (cardDrawnEvent.playerId().equals(renderedPlayerId)) {
                 hand.addCardFromSource(cardDrawnEvent.card(), sourcePosition);
             }
         }
 
         if (event instanceof CardDiscardedEvent cardDiscardedEvent) {
-            PlayerId visiblePlayerId = gameController.state().roundState().activePlayerId();
-
-            if (cardDiscardedEvent.playerId().equals(visiblePlayerId)) {
+            if (cardDiscardedEvent.playerId().equals(renderedPlayerId)) {
                 hand.discardSelectedCardVisual(cardDiscardedEvent.card(), sourcePosition);
             }
 
             deckDiscardPanel.setTopDiscardCard(cardDiscardedEvent.card());
         }
+
+        if (event instanceof ActivePlayerChangedEvent activePlayerChangedEvent) {
+            FXGL.runOnce(
+                    () -> renderActivePlayerHand(activePlayerChangedEvent.newPlayerId()),
+                    Duration.seconds(AnimationSettings.PLAYED_CARD_MOVE_SECONDS + 0.05)
+            );
+        }
+    }
+
+    private void renderActivePlayerHand(PlayerId playerId) {
+        renderedPlayerId = playerId;
+        hand.renderHand(gameController.handFor(playerId));
+        gameHudController.refreshFromGameState(gameController.state());
     }
 
     private void addLayoutDebugOverlay() {

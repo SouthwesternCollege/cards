@@ -117,10 +117,15 @@ public final class GameController {
         gameState.discardPile().add(discardedCard);
 
         TurnPhase previousPhase = roundState.turnPhase();
-        roundState.setTurnPhase(TurnPhase.DISCARD);
+        PlayerId previousActivePlayer = roundState.activePlayerId();
+        PlayerId nextActivePlayer = gameState.nextPlayerAfter(previousActivePlayer);
+
+        roundState.setActivePlayerId(nextActivePlayer);
+        roundState.setTurnPhase(TurnPhase.DRAW_OR_CASTIGO);
 
         return ActionResult.success(
                 new CardDiscardedEvent(playerId, discardedCard),
+                new ActivePlayerChangedEvent(previousActivePlayer, nextActivePlayer),
                 new TurnPhaseChangedEvent(previousPhase, roundState.turnPhase())
         );
     }

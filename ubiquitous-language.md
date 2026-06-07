@@ -1170,3 +1170,22 @@ Current prototype rules:
 ### CardDiscardedEvent
 
 An event emitted after a card moves from a player's rules-level hand to the rules-level discard pile.
+
+
+### ActivePlayerChangedEvent
+
+A game event emitted when the active player changes.
+
+The UI uses this event to switch the visible hand to the new active player.
+
+### Turn Transition
+
+The rules-level movement from one turn state to the next.
+
+Current prototype transition after discard:
+
+```text
+current player's MELD phase
+→ discard
+→ next player's DRAW_OR_CASTIGO phase
+```

@@ -1044,6 +1044,30 @@ The discard pile belongs to GameState.
 The discard pile view displays GameState.
 ```
 
+
+### ARCH-04: Turn Transition After Discard
+
+A successful discard now completes the current prototype turn.
+
+Current flow:
+
+```text
+DiscardAction
+→ GameController removes card from active player's hand
+→ GameController adds card to DiscardPile
+→ GameController advances active player
+→ GameController resets phase to DRAW_OR_CASTIGO
+→ UI animates discard
+→ UI renders next active player's hand
+```
+
+Design rule:
+
+```text
+GameController owns whose turn it is.
+The UI only renders the active player reported by GameState.
+```
+
 ## Non-Functional Requirements
 
 ### NFR-1: Testability
@@ -1505,3 +1529,26 @@ Current limitation:
 - The active player does not advance yet.
 - Castigo still uses prototype behavior.
 - Discard failure feedback is still console-only.
+
+
+#### Milestone 5D: Turn Phase Transitions and Active Player Advance
+
+Status: implemented.
+
+Scope completed:
+
+- Added `ActivePlayerChangedEvent`.
+- Added `GameState.nextPlayerAfter(PlayerId)`.
+- After successful discard, `GameController` now advances to the next active player.
+- After successful discard, the turn phase resets to `DRAW_OR_CASTIGO`.
+- UI handles `ActivePlayerChangedEvent`.
+- Visible hand switches to the new active player's dealt hand after the discard animation completes.
+- HUD refreshes from real `GameState` after active-player change.
+
+Current limitation:
+
+- There is no pass-device privacy screen yet.
+- The active-player hand switch is immediate after discard animation.
+- `Hand` remains a transitional presentation facade.
+- Castigo is not yet part of the turn transition.
+- Round end is not yet detected.

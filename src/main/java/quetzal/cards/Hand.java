@@ -73,6 +73,27 @@ public class Hand {
     }
 
 
+
+    public void renderHand(List<Card> cards) {
+        clearVisibleHand();
+        populateHand(cards);
+    }
+
+    public void clearVisibleHand() {
+        for (Card card : model.getCards()) {
+            Entity entity = getEntityFor(card);
+
+            if (entity != null) {
+                entity.removeFromWorld();
+            }
+        }
+
+        model.clear();
+        entityRegistry.clear();
+        selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
+        notifyHandSizeChanged();
+    }
+
     public void populateHand(List<Card> cards) {
         if (cards == null) {
             throw new IllegalArgumentException("Cards cannot be null.");
@@ -592,6 +613,10 @@ public class Hand {
     }
 
     public Entity getEntityFor(Card card) {
-        return entityRegistry.get(card);
+        try {
+            return entityRegistry.get(card);
+        } catch (IllegalStateException exception) {
+            return null;
+        }
     }
 }

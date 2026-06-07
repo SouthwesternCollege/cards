@@ -95,6 +95,12 @@ public class HandModel extends CardCollection {
         return getCards().get(index);
     }
 
+    public void clear() {
+        getCards().clear();
+        selectedCards.clear();
+        unselectableCards.clear();
+    }
+
     public void sortByRank() {
         getCards().sort(
                 Comparator.comparingInt((Card card) -> card.isJoker() ? Integer.MAX_VALUE : card.rank().sequenceValue())

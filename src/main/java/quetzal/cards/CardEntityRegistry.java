@@ -35,6 +35,10 @@ public final class CardEntityRegistry {
         entitiesByCardId.remove(card.id());
     }
 
+    public void clear() {
+        entitiesByCardId.clear();
+    }
+
     public List<Entity> getAllFor(List<Card> cards) {
         List<Entity> entities = new ArrayList<>();
 

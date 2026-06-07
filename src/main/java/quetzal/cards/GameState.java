@@ -65,6 +65,17 @@ public final class GameState {
         return roundState;
     }
 
+    public PlayerId nextPlayerAfter(PlayerId playerId) {
+        for (int i = 0; i < players.size(); i++) {
+            if (players.get(i).playerId().equals(playerId)) {
+                int nextIndex = (i + 1) % players.size();
+                return players.get(nextIndex).playerId();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown player id: " + playerId.value());
+    }
+
     public List<PlayerHudState> toHudStates() {
         List<PlayerHudState> hudStates = new ArrayList<>();
 
