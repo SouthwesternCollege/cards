@@ -1285,3 +1285,28 @@ Current behavior:
 
 - click `Order` = restore saved custom order and animate the button
 - click-and-hold `Order` = save current custom order and animate the button
+
+### Pass-Device Overlay
+
+A player-facing hot-seat privacy overlay shown between turns.
+
+Current behavior:
+
+- appears after discard-driven active-player change
+- hides the visible hand
+- prompts the next player to press `READY`
+- renders the next player's hand only after confirmation
+
+This differs from the debug hand overlay, which is development-only and intentionally exposes all hands.
+
+### Played-Meld Perspective
+
+The active-player-relative way the table is displayed.
+
+Current behavior:
+
+- the current active player's melds appear in the current-player meld area
+- one opponent's melds appear in the opponent meld area
+- the default visible opponent is the next player after the active player
+
+This is a presentation concept, not a turn-rule concept.

@@ -30,21 +30,23 @@ public class Hand {
     private final MeldLayout meldLayout;
     private final VisualMeldStore visualMeldStore;
     private final CardEntityRegistry entityRegistry;
+    private final Rectangle2D opponentPlayedArea;
     private final Rectangle2D playerPlayedArea;
     private final Deck deck;
     private final MeldValidator meldValidator = new LaKikaMeldValidator();
     private final SelectionFeedback selectionFeedback;
     private final HandChangeListener handChangeListener;
     private final HandOrderChangeListener handOrderChangeListener;
-    private final PlayerId localPlayerId = new PlayerId(1);
+    private PlayerId perspectivePlayerId = new PlayerId(1);
+    private PlayerId visibleOpponentPlayerId = new PlayerId(2);
     private int nextDebugCardId = 10_000;
 
     public Hand(Rectangle2D handArea, Rectangle2D playerPlayedArea, Deck deck) {
-        this(handArea, playerPlayedArea, deck, new NoOpSelectionFeedback(), new NoOpHandChangeListener(), orderedCards -> { });
+        this(handArea, defaultOpponentPlayedArea(handArea, playerPlayedArea), playerPlayedArea, deck, new NoOpSelectionFeedback(), new NoOpHandChangeListener(), orderedCards -> { });
     }
 
     public Hand(Rectangle2D handArea, Rectangle2D playerPlayedArea, Deck deck, SelectionFeedback selectionFeedback) {
-        this(handArea, playerPlayedArea, deck, selectionFeedback, new NoOpHandChangeListener(), orderedCards -> { });
+        this(handArea, defaultOpponentPlayedArea(handArea, playerPlayedArea), playerPlayedArea, deck, selectionFeedback, new NoOpHandChangeListener(), orderedCards -> { });
     }
 
     public Hand(
@@ -54,11 +56,12 @@ public class Hand {
             SelectionFeedback selectionFeedback,
             HandChangeListener handChangeListener
     ) {
-        this(handArea, playerPlayedArea, deck, selectionFeedback, handChangeListener, orderedCards -> { });
+        this(handArea, defaultOpponentPlayedArea(handArea, playerPlayedArea), playerPlayedArea, deck, selectionFeedback, handChangeListener, orderedCards -> { });
     }
 
     public Hand(
             Rectangle2D handArea,
+            Rectangle2D opponentPlayedArea,
             Rectangle2D playerPlayedArea,
             Deck deck,
             SelectionFeedback selectionFeedback,
@@ -70,6 +73,7 @@ public class Hand {
         this.meldLayout = new MeldLayout();
         this.visualMeldStore = new VisualMeldStore();
         this.entityRegistry = new CardEntityRegistry();
+        this.opponentPlayedArea = opponentPlayedArea;
         this.playerPlayedArea = playerPlayedArea;
         this.deck = deck;
         this.selectionFeedback = selectionFeedback == null ? new NoOpSelectionFeedback() : selectionFeedback;
@@ -85,6 +89,29 @@ public class Hand {
         this(handArea, new Rectangle2D(handArea.getMinX(), handArea.getMinY() - 260, handArea.getWidth(), 220), deck);
     }
 
+    private static Rectangle2D defaultOpponentPlayedArea(Rectangle2D handArea, Rectangle2D playerPlayedArea) {
+        return new Rectangle2D(
+                playerPlayedArea.getMinX(),
+                Math.max(0, playerPlayedArea.getMinY() - playerPlayedArea.getHeight()),
+                playerPlayedArea.getWidth(),
+                playerPlayedArea.getHeight()
+        );
+    }
+
+    public void setPlayAreaPerspective(PlayerId perspectivePlayerId, PlayerId visibleOpponentPlayerId) {
+        if (perspectivePlayerId == null) {
+            throw new IllegalArgumentException("Perspective player cannot be null.");
+        }
+
+        if (visibleOpponentPlayerId == null) {
+            throw new IllegalArgumentException("Visible opponent player cannot be null.");
+        }
+
+        this.perspectivePlayerId = perspectivePlayerId;
+        this.visibleOpponentPlayerId = visibleOpponentPlayerId;
+        reflowVisiblePlayedMelds();
+    }
+
 
 
     public void renderHand(List<Card> cards) {
@@ -93,16 +120,19 @@ public class Hand {
     }
 
     public void clearVisibleHand() {
-        for (Card card : model.getCards()) {
+        List<Card> visibleHandCards = new ArrayList<>(model.getCards());
+
+        for (Card card : visibleHandCards) {
             Entity entity = getEntityFor(card);
 
             if (entity != null) {
                 entity.removeFromWorld();
             }
+
+            entityRegistry.remove(card);
         }
 
         model.clear();
-        entityRegistry.clear();
         selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
         notifyHandSizeChanged();
     }
@@ -270,7 +300,7 @@ public class Hand {
             }
         }
 
-        reflowPlayedMeldsFor(createdBy);
+        reflowVisiblePlayedMelds();
 
         model.clearSelected();
         selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
@@ -295,9 +325,7 @@ public class Hand {
         }
 
         List<Card> cardsToPlay = orderedCardsForPlayedMeld(selectedSnapshot, validationResult);
-        Set<CardId> newlyPlayedCardIds = cardIds(cardsToPlay);
-
-        visualMeldStore.add(new VisualMeld(localPlayerId, cardsToPlay));
+        visualMeldStore.add(new VisualMeld(perspectivePlayerId, cardsToPlay));
 
         for (Card card : cardsToPlay) {
             Entity cardEntity = getEntityFor(card);
@@ -306,7 +334,7 @@ public class Hand {
             disableHandInteraction(cardEntity);
         }
 
-        reflowPlayedMelds();
+        reflowVisiblePlayedMelds();
 
         model.clearSelected();
         selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
@@ -382,7 +410,7 @@ public class Hand {
             }
         }
 
-        reflowPlayedMelds();
+        reflowVisiblePlayedMelds();
     }
 
     /**
@@ -393,9 +421,12 @@ public class Hand {
         for (VisualMeld meld : visualMeldStore.all()) {
             for (Card card : meld.cards()) {
                 Entity entity = getEntityFor(card);
+
                 if (entity != null) {
                     entity.removeFromWorld();
                 }
+
+                entityRegistry.remove(card);
             }
         }
 
@@ -423,19 +454,33 @@ public class Hand {
             disableHandInteraction(cardEntity);
         }
 
-        visualMeldStore.add(new VisualMeld(localPlayerId, cards));
+        visualMeldStore.add(new VisualMeld(perspectivePlayerId, cards));
 
         if (reflowAfterAdd) {
-            reflowPlayedMelds();
+            reflowVisiblePlayedMelds();
         }
     }
 
-    private void reflowPlayedMelds() {
-        reflowPlayedMeldsFor(localPlayerId);
+    private void reflowVisiblePlayedMelds() {
+        hideAllPlayedMelds();
+        reflowPlayedMeldsFor(perspectivePlayerId, playerPlayedArea);
+        reflowPlayedMeldsFor(visibleOpponentPlayerId, opponentPlayedArea);
     }
 
-    private void reflowPlayedMeldsFor(PlayerId playerId) {
-        List<MeldLayoutSlot> playedSlots = meldLayout.slots(visualMeldStore.meldsFor(playerId), playerPlayedArea);
+    private void hideAllPlayedMelds() {
+        for (VisualMeld meld : visualMeldStore.all()) {
+            for (Card card : meld.cards()) {
+                Entity entity = getEntityFor(card);
+
+                if (entity != null) {
+                    entity.setVisible(false);
+                }
+            }
+        }
+    }
+
+    private void reflowPlayedMeldsFor(PlayerId playerId, Rectangle2D area) {
+        List<MeldLayoutSlot> playedSlots = meldLayout.slots(visualMeldStore.meldsFor(playerId), area);
 
         for (MeldLayoutSlot slot : playedSlots) {
             Entity cardEntity = getEntityFor(slot.card());
@@ -444,6 +489,7 @@ public class Hand {
                 continue;
             }
 
+            cardEntity.setVisible(true);
             animatePlayedCard(cardEntity, slot);
         }
     }

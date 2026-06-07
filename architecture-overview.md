@@ -365,3 +365,50 @@ open X = sceneWidth - DRAWER_WIDTH
 ```
 
 This makes the drawer slide in from the right edge instead of appearing abruptly.
+
+
+## Milestone 5I Hot-Seat Privacy
+
+Hot-seat privacy is now represented by a pass-device overlay.
+
+Current flow:
+
+```text
+DiscardAction succeeds
+→ GameController emits ActivePlayerChangedEvent
+→ GameActionPresentationAdapter waits for discard animation
+→ visible hand is cleared
+→ PassDeviceOverlay appears
+→ next player presses READY
+→ next active player's hand renders
+```
+
+Design boundary:
+
+```text
+GameController owns active-player state.
+PassDeviceOverlay owns player-facing privacy transition.
+DebugHandOverlay remains development-only and must not be used as gameplay privacy UI.
+```
+
+
+## Milestone 5I.1 Active-Player Play Area Perspective
+
+The played-meld display now follows the active player.
+
+Current perspective model:
+
+```text
+perspective player = current active player
+visible opponent = next player after active player
+```
+
+Rendering rule:
+
+```text
+perspective player's melds → current-player meld area
+visible opponent's melds → opponent meld area
+all other opponent melds → hidden until carousel controls exist
+```
+
+This keeps presentation perspective separate from turn rules. Milestone 6 can focus on action legality without also fixing whose melds are shown.

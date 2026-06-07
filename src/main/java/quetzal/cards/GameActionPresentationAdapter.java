@@ -166,6 +166,7 @@ public final class GameActionPresentationAdapter {
 
     private void renderActivePlayerHand(PlayerId playerId) {
         renderedPlayerId = playerId;
+        hand.setPlayAreaPerspective(playerId, gameController.state().nextPlayerAfter(playerId));
         hand.renderHand(gameController.handFor(playerId));
         refreshViews();
     }

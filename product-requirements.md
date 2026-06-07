@@ -1559,23 +1559,46 @@ Milestone 5H polish follow-up:
 
 #### Milestone 5I: Hot-Seat Visual Privacy
 
-Status: planned.
+Status: implemented.
 
 This preserves the original Milestone 5G goal: hot-seat visual privacy becomes possible.
 
-Recommended scope:
+Scope completed:
 
-- Add a pass-device screen between turns.
-- Hide all hands when a turn ends.
-- Prompt the next player to confirm readiness.
-- Reveal only the next active player's hand after confirmation.
-- Keep debug hand overlay development-only.
+- Added `PassDeviceOverlay`.
+- After a successful discard and active-player change, the visible hand is cleared.
+- A full-screen pass-device privacy overlay appears.
+- The overlay tells the next active player to press `READY`.
+- The next player's hand is rendered only after confirmation.
+- The debug hand overlay remains development-only.
 
-Out of scope:
+Current limitation:
 
-- AI opponents.
-- Networked multiplayer.
-- Final animation polish.
+- The pass-device overlay is prototype-level styling.
+- The pass-device flow currently triggers only on normal discard-driven turn advance.
+- Castigo and round-end flows are not yet integrated.
+
+
+#### Milestone 5I.1: Active-Player Play Area Perspective
+
+Status: implemented.
+
+Scope completed:
+
+- Played-meld rendering now has an active-player perspective.
+- `Hand` now receives both:
+  - opponent played-meld area
+  - current-player played-meld area
+- The current active player's melds render in the current-player meld area.
+- The visible opponent meld area defaults to the next player after the active player.
+- On active-player change, the play-area perspective updates before the next hand renders.
+- Debug-created melds now belong to the current perspective player instead of a hard-coded local player.
+
+Current limitation:
+
+- Opponent carousel controls are not implemented yet.
+- The default visible opponent is always the next player after the active player.
+- Played-meld presentation still uses `VisualMeldStore` as a presentation cache.
 
 #### Milestone 5J: Save-Ready Snapshots
 

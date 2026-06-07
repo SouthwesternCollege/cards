@@ -2114,3 +2114,74 @@ Two details needed adjustment after Milestone 5H:
 The `Order` button confirmation now specifically means "custom order saved."
 
 The debug drawer now slides in smoothly from the right edge of the screen.
+
+---
+
+## ISS-078: Add pass-device overlay for hot-seat privacy
+
+Status: Done  
+Priority: P1  
+Area: UI / Hot-Seat Privacy
+
+### Problem
+
+After active-player advance, the next player's hand appeared automatically. In hot-seat play, this exposes private hand information before the device has been passed.
+
+### Decision
+
+Add a pass-device privacy overlay.
+
+### Result
+
+Milestone 5I added `PassDeviceOverlay`.
+
+After discard-driven turn advance:
+
+```text
+discard animation completes
+→ visible hand is cleared
+→ pass-device overlay appears
+→ next player presses READY
+→ next active player's hand renders
+```
+
+### Remaining Work
+
+- Integrate castigo turn transitions.
+- Integrate round-end detection.
+- Polish pass-device screen visuals.
+
+---
+
+## ISS-079: Add active-player play area perspective
+
+Status: Done  
+Priority: P1  
+Area: UI / Played Meld Presentation
+
+### Problem
+
+After hot-seat turn transition, the visible hand changed to the next active player, but the played meld areas did not update to that player's perspective.
+
+### Decision
+
+Played-meld rendering now tracks:
+
+```text
+perspective player = current active player
+visible opponent = next player after active player
+```
+
+### Result
+
+`Hand` now receives both played-meld areas and reflows visible melds based on perspective:
+
+- active player's melds render in the current-player meld area
+- next opponent's melds render in the opponent meld area
+- other opponents' melds are hidden until carousel controls exist
+
+### Remaining Work
+
+- Add opponent carousel controls.
+- Feed played-meld presentation more directly from `PlayArea`.
+- Improve labels for whose melds are currently shown.

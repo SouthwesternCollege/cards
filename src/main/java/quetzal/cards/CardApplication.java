@@ -113,6 +113,7 @@ public class CardApplication extends GameApplication {
 
         hand = new Hand(
                 playerHandArea,
+                gameLayout.getOpponentPlayedArea(),
                 gameLayout.getPlayerPlayedArea(),
                 deck,
                 selectionFeedback,
@@ -120,6 +121,7 @@ public class CardApplication extends GameApplication {
                 this::reorderActiveHand
         );
 
+        hand.setPlayAreaPerspective(localPlayerId, gameController.state().nextPlayerAfter(localPlayerId));
         hand.populateHand(gameController.handFor(localPlayerId));
 
         fullPlayAreaView = new FullPlayAreaView(WIDTH, HEIGHT);
