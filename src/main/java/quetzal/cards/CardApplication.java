@@ -28,6 +28,7 @@ public class CardApplication extends GameApplication {
     private DeckDiscardPanel deckDiscardPanel;
     private FullPlayAreaView fullPlayAreaView;
     private DebugHandOverlay debugHandOverlay;
+    private DebugDrawer debugDrawer;
     private GameController gameController;
     private GameActionPresentationAdapter actionPresentationAdapter;
     private boolean prototypeGameStarted = false;
@@ -122,11 +123,21 @@ public class CardApplication extends GameApplication {
 
         fullPlayAreaView = new FullPlayAreaView(WIDTH, HEIGHT);
         debugHandOverlay = new DebugHandOverlay(WIDTH, HEIGHT, gameController);
+        debugDrawer = new DebugDrawer(
+                WIDTH,
+                HEIGHT,
+                fullPlayAreaView::toggle,
+                debugHandOverlay::toggle,
+                hand::debugAddKindMeld,
+                hand::debugAddStraightFlushMeld,
+                hand::debugAddManyMelds,
+                hand::debugClearVisualMelds
+        );
+
         gameControls = new GameControls(
                 gameLayout,
                 hand,
-                fullPlayAreaView::toggle,
-                debugHandOverlay::toggle,
+                debugDrawer::toggle,
                 this::discardSelectedCard,
                 this::playSelectedMeld,
                 this::sortActiveHandByRank,

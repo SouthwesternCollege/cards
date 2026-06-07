@@ -1256,6 +1256,8 @@ Current behavior:
 
 ### Debug Drawer
 
+Milestone 5H implementation: a right-side development-only drawer launched from the `Debug` button.
+
 A planned collapsible side panel for development-only tools.
 
 It differs from a full overlay:
@@ -1274,3 +1276,12 @@ Current prototype behavior:
 - visible hand cards briefly pop/wiggle in sequence
 - the animation is presentation-only
 - the saved order itself lives in `PlayerState`
+
+### Order Button Confirmation
+
+A short pop/wiggle animation on the `Order` button confirming that the custom order command was accepted.
+
+Current behavior:
+
+- click `Order` = restore saved custom order and animate the button
+- click-and-hold `Order` = save current custom order and animate the button

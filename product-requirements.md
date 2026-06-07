@@ -1528,28 +1528,34 @@ Current limitation:
 
 #### Milestone 5H: Debug Drawer Cleanup
 
-Status: planned.
+Status: implemented.
 
-Recommended scope:
+Scope completed:
 
-- Add a collapsible/sliding debug drawer.
-- Move development-only controls out of the main game control row.
-- Keep full-screen debug overlays for table view and hand overlay.
-- Use the drawer as the access point for:
-  - Table View
-  - Debug Hands
+- Added `DebugDrawer`.
+- Moved development-only controls out of the main game control row.
+- Main controls now contain gameplay-facing controls plus a single `Debug` button.
+- Debug drawer currently contains:
+  - Table
+  - Hands
   - +Kind
   - +Run
   - Stress
   - Clear
-  - future debug toggles
-- Keep gameplay controls focused on real player actions.
+- Full-screen overlays remain for table view and debug hands.
+- Added pop/wiggle confirmation animation to the `Order` button when saving custom order.
+- Drawer now slides in from the right edge of the screen.
 
-Out of scope:
+Current limitation:
 
-- Keyboard shortcuts.
-- Replacing full-screen overlays.
-- Polishing final UI/UX.
+- Drawer styling is prototype-level.
+- Drawer is development-only.
+- Debug tools are still available during gameplay prototype flow.
+
+Milestone 5H polish follow-up:
+
+- `Order` button animates only on click-and-hold save, not on click restore.
+- `DebugDrawer` uses absolute right-edge slide animation from offscreen to visible.
 
 #### Milestone 5I: Hot-Seat Visual Privacy
 

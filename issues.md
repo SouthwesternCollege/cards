@@ -2033,3 +2033,84 @@ mouse position
 ```
 
 This should keep the grabbed point visually under the cursor while dragging.
+
+---
+
+## ISS-075: Add debug drawer cleanup
+
+Status: Done  
+Priority: P2  
+Area: Debug Tools / UI Organization
+
+### Problem
+
+The game control row was overcrowded because development tools were mixed with normal gameplay controls.
+
+### Decision
+
+Add a development-only debug drawer.
+
+### Result
+
+Milestone 5H added `DebugDrawer` and moved the following controls into it:
+
+- Table
+- Hands
+- +Kind
+- +Run
+- Stress
+- Clear
+
+The main game control row now keeps one `Debug` button as the access point.
+
+### Note
+
+The debug drawer is development-only and should not be treated as final gameplay UI.
+
+---
+
+## ISS-076: Add Order button confirmation animation
+
+Status: Done  
+Priority: P3  
+Area: Hand UX / Controls
+
+### Problem
+
+The `Order` button changed/restored custom order without local button feedback.
+
+### Decision
+
+Add a short pop/wiggle animation to the `Order` button on both save and restore.
+
+### Result
+
+The player receives immediate control-level confirmation that the order command was accepted.
+
+---
+
+## ISS-077: Polish Order button confirmation and debug drawer slide
+
+Status: Done  
+Priority: P3  
+Area: UI Polish / Debug Tools
+
+### Problem
+
+Two details needed adjustment after Milestone 5H:
+
+- The `Order` button animated on both save and restore.
+- The debug drawer appeared abruptly instead of clearly sliding in from the right edge.
+
+### Decision
+
+- Animate the `Order` button only when saving custom order via click-and-hold.
+- Use absolute right-edge drawer translation:
+  - closed: `sceneWidth`
+  - open: `sceneWidth - DRAWER_WIDTH`
+
+### Result
+
+The `Order` button confirmation now specifically means "custom order saved."
+
+The debug drawer now slides in smoothly from the right edge of the screen.

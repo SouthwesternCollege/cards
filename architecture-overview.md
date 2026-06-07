@@ -305,3 +305,63 @@ entityPosition = mousePosition - renderedCardCenter - grabOffset
 ```
 
 This keeps the visual grab point stable even when hover-scale effects are disabled for dragging.
+
+
+## Milestone 5H Debug Drawer
+
+Debug tools have been moved out of the main control row.
+
+Current structure:
+
+```text
+Main controls:
+    Play Hand
+    Discard
+    Rank
+    Suit
+    Order
+    Debug
+
+Debug drawer:
+    Table
+    Hands
+    +Kind
+    +Run
+    Stress
+    Clear
+```
+
+Design reason:
+
+```text
+Gameplay controls should reflect real player actions.
+Debug controls should remain available but visually separate.
+```
+
+The implementation is a hybrid:
+
+```text
+Debug drawer = compact access point
+Debug overlays = full-screen inspection views
+```
+
+## Milestone 5H Polish
+
+`Order` button confirmation now communicates only one thing:
+
+```text
+click-and-hold Order
+→ save current custom order
+→ animate button
+```
+
+A simple click restores the saved order but does not animate the button.
+
+`DebugDrawer` now uses absolute screen-edge translation:
+
+```text
+closed X = sceneWidth
+open X = sceneWidth - DRAWER_WIDTH
+```
+
+This makes the drawer slide in from the right edge instead of appearing abruptly.

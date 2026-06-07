@@ -1,7 +1,10 @@
 package quetzal.cards;
 
 import com.almasb.fxgl.dsl.FXGL;
+import javafx.animation.Interpolator;
 import javafx.animation.PauseTransition;
+import javafx.animation.ScaleTransition;
+import javafx.animation.RotateTransition;
 import javafx.geometry.Insets;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.control.Button;
@@ -21,8 +24,7 @@ public class GameControls {
     private final Hand hand;
     private final Rectangle2D buttonArea;
     private final HBox buttonBar;
-    private final Runnable onTableView;
-    private final Runnable onDebugHands;
+    private final Runnable onDebugDrawer;
     private final Runnable onDiscard;
     private final Runnable onPlayMeld;
     private final Runnable onSortRank;
@@ -30,10 +32,9 @@ public class GameControls {
     private final Runnable onRestoreCustomOrder;
     private final Runnable onSaveCustomOrder;
 
-    public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView, Runnable onDebugHands, Runnable onDiscard, Runnable onPlayMeld, Runnable onSortRank, Runnable onSortSuit, Runnable onRestoreCustomOrder, Runnable onSaveCustomOrder) {
+    public GameControls(GameLayout gameLayout, Hand hand, Runnable onDebugDrawer, Runnable onDiscard, Runnable onPlayMeld, Runnable onSortRank, Runnable onSortSuit, Runnable onRestoreCustomOrder, Runnable onSaveCustomOrder) {
         this.hand = hand;
-        this.onTableView = onTableView == null ? () -> { } : onTableView;
-        this.onDebugHands = onDebugHands == null ? () -> { } : onDebugHands;
+        this.onDebugDrawer = onDebugDrawer == null ? () -> { } : onDebugDrawer;
         this.onDiscard = onDiscard == null ? () -> { } : onDiscard;
         this.onPlayMeld = onPlayMeld == null ? () -> { } : onPlayMeld;
         this.onSortRank = onSortRank == null ? () -> { } : onSortRank;
@@ -48,20 +49,16 @@ public class GameControls {
         FXGL.getGameScene().addUINode(buttonBar);
     }
 
-    public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView, Runnable onDebugHands, Runnable onDiscard) {
-        this(gameLayout, hand, onTableView, onDebugHands, onDiscard, null, null, null, null, null);
+    public GameControls(GameLayout gameLayout, Hand hand, Runnable onDebugDrawer, Runnable onDiscard, Runnable onPlayMeld) {
+        this(gameLayout, hand, onDebugDrawer, onDiscard, onPlayMeld, null, null, null, null);
     }
 
-    public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView, Runnable onDebugHands) {
-        this(gameLayout, hand, onTableView, onDebugHands, null, null, null, null, null, null);
-    }
-
-    public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView) {
-        this(gameLayout, hand, onTableView, null, null, null, null, null, null, null);
+    public GameControls(GameLayout gameLayout, Hand hand, Runnable onDebugDrawer) {
+        this(gameLayout, hand, onDebugDrawer, null, null, null, null, null, null);
     }
 
     public GameControls(GameLayout gameLayout, Hand hand) {
-        this(gameLayout, hand, null, null, null, null, null, null, null, null);
+        this(gameLayout, hand, null, null, null, null, null, null, null);
     }
 
     private HBox createButtonBar() {
@@ -80,23 +77,11 @@ public class GameControls {
         Button orderButton = gameButton(new Text("Order"), Color.color(0.55, 0.32, 0.7));
         wireOrderButton(orderButton);
 
-        Button addKindTestButton = gameButton(new Text("+Kind"), Color.color(0.25, 0.45, 0.25));
-        addKindTestButton.setOnAction(event -> hand.debugAddKindMeld());
-
-        Button addStraightTestButton = gameButton(new Text("+Run"), Color.color(0.25, 0.45, 0.45));
-        addStraightTestButton.setOnAction(event -> hand.debugAddStraightFlushMeld());
-
-        Button stressMeldsButton = gameButton(new Text("Stress"), Color.color(0.45, 0.25, 0.45));
-        stressMeldsButton.setOnAction(event -> hand.debugAddManyMelds());
-
-        Button clearMeldsButton = gameButton(new Text("Clear"), Color.color(0.25, 0.25, 0.25));
-        clearMeldsButton.setOnAction(event -> hand.debugClearVisualMelds());
-
-        Button tableButton = gameButton(new Text("Table"), Color.color(0.16, 0.16, 0.48));
-        tableButton.setOnAction(event -> onTableView.run());
-
-        Button debugHandsButton = gameButton(new Text("Hands"), Color.color(0.55, 0.38, 0.06));
-        debugHandsButton.setOnAction(event -> onDebugHands.run());
+        Button debugButton = gameButton(new Text("Debug"), Color.color(0.28, 0.22, 0.46));
+        debugButton.setOnAction(event -> {
+            playButtonConfirmation(debugButton);
+            onDebugDrawer.run();
+        });
 
         return new HBox(
                 BUTTON_SPACING,
@@ -105,12 +90,7 @@ public class GameControls {
                 sortRankButton,
                 sortSuitButton,
                 orderButton,
-                addKindTestButton,
-                addStraightTestButton,
-                stressMeldsButton,
-                clearMeldsButton,
-                tableButton,
-                debugHandsButton
+                debugButton
         );
     }
 
@@ -122,6 +102,7 @@ public class GameControls {
         holdTimer.setOnFinished(event -> {
             holdTriggered[0] = true;
             onSaveCustomOrder.run();
+            playButtonConfirmation(orderButton);
         });
 
         orderButton.setOnMousePressed(event -> {
@@ -145,6 +126,40 @@ public class GameControls {
     private void positionButtonBar() {
         buttonBar.setTranslateX(buttonArea.getMinX() + BUTTON_AREA_PADDING_X);
         buttonBar.setTranslateY(buttonArea.getMinY() + BUTTON_AREA_PADDING_Y);
+    }
+
+
+    private void playButtonConfirmation(Button button) {
+        ScaleTransition pop = new ScaleTransition(Duration.seconds(0.07), button);
+        pop.setToX(1.10);
+        pop.setToY(1.10);
+        pop.setInterpolator(Interpolator.EASE_OUT);
+
+        RotateTransition wiggleLeft = new RotateTransition(Duration.seconds(0.05), button);
+        wiggleLeft.setToAngle(-3.0);
+        wiggleLeft.setInterpolator(Interpolator.EASE_OUT);
+
+        RotateTransition wiggleRight = new RotateTransition(Duration.seconds(0.05), button);
+        wiggleRight.setToAngle(3.0);
+        wiggleRight.setInterpolator(Interpolator.EASE_BOTH);
+
+        ScaleTransition settleScale = new ScaleTransition(Duration.seconds(0.10), button);
+        settleScale.setToX(1.0);
+        settleScale.setToY(1.0);
+        settleScale.setInterpolator(Interpolator.EASE_IN);
+
+        RotateTransition settleRotate = new RotateTransition(Duration.seconds(0.08), button);
+        settleRotate.setToAngle(0.0);
+        settleRotate.setInterpolator(Interpolator.EASE_IN);
+
+        pop.setOnFinished(event -> wiggleLeft.play());
+        wiggleLeft.setOnFinished(event -> wiggleRight.play());
+        wiggleRight.setOnFinished(event -> {
+            settleScale.play();
+            settleRotate.play();
+        });
+
+        pop.play();
     }
 
     private Button gameButton(Text text, Color color) {
