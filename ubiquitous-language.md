@@ -1109,3 +1109,40 @@ Future responsibility:
 
 - validate and apply `GameAction` objects
 - produce events for the presentation layer
+
+
+### GameAction
+
+A rules-level request to change the game.
+
+Example:
+
+```java
+new DrawFromDeckAction(playerId)
+```
+
+### ActionResult
+
+The result of asking `GameController` to apply an action.
+
+An action result can be successful or failed. Successful results may contain domain events.
+
+### GameEvent
+
+A rules-level fact produced by applying an action.
+
+The presentation layer uses game events to decide what to animate.
+
+### DrawFromDeckAction
+
+A request for the active player to draw one card from the deck.
+
+Current rules:
+
+- Only the active player may draw.
+- Drawing is allowed only during `DRAW_OR_CASTIGO`.
+- A successful draw advances the phase to `MELD`.
+
+### CardDrawnEvent
+
+An event emitted after a card has been drawn into a player's rules-level hand.

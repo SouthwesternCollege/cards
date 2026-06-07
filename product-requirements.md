@@ -993,6 +993,33 @@ GameController validates and applies actions.
 UI animates resulting events.
 ```
 
+
+### ARCH-02: Action Pipeline
+
+The UI should request game changes using `GameAction` objects.
+
+Current Milestone 5B flow:
+
+```text
+Deck clicked
+→ DrawFromDeckAction
+→ GameController.apply(...)
+→ ActionResult
+→ CardDrawnEvent
+→ UI animates the drawn card
+→ HUD refreshes from GameState
+```
+
+This is the first controller-driven action path.
+
+Design rule:
+
+```text
+UI requests actions.
+GameController owns validation and mutation.
+UI reacts to events.
+```
+
 ## Non-Functional Requirements
 
 ### NFR-1: Testability
@@ -1402,3 +1429,29 @@ Remaining clarifications to eventually answer:
    - Show all players simultaneously.
    - Avoid shrinking cards where possible; prefer scrolling.
 
+
+
+#### Milestone 5B: Action Interface and Controller-Driven Draw
+
+Status: implemented.
+
+Scope completed:
+
+- Added `GameAction`.
+- Added `DrawFromDeckAction`.
+- Added `ActionResult`.
+- Added `GameEvent`.
+- Added `CardDrawnEvent`.
+- Added `TurnPhaseChangedEvent`.
+- Added `GameController.apply(GameAction action)`.
+- Routed deck-click draw through `GameController`.
+- `GameController` now enforces that only the active player may draw.
+- `GameController` now enforces that draw happens only during `DRAW_OR_CASTIGO`.
+- Drawing from the deck now advances the turn phase to `MELD`.
+- UI animates the draw based on `CardDrawnEvent`.
+
+Current limitation:
+
+- Discard, castigo, and meld creation still use prototype paths.
+- The failed-action display is currently only a console message.
+- Event handling is still inside `CardApplication` and should later move to a dedicated presentation adapter.

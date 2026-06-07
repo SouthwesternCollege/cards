@@ -113,21 +113,20 @@ public class Hand {
     }
 
 
-    /**
-     * Prototype draw behavior for Milestone 4D.
-     *
-     * This intentionally ignores full turn legality. Later this should delegate
-     * to GameState / TurnController.
-     */
-    public void drawOneCardFromDeck(Point2D sourcePosition) {
-        if (deck.getCards().isEmpty()) {
-            deck.addShuffledStandardDeckWithJokers();
+
+    public void addCardFromSource(Card card, Point2D sourcePosition) {
+        if (card == null) {
+            throw new IllegalArgumentException("Card cannot be null.");
         }
 
-        Card card = model.drawFrom(deck);
-        List<Card> cardsAfterDraw = model.getCards();
-        int newCardIndex = cardsAfterDraw.size() - 1;
-        Point2D target = layout.visualPosition(newCardIndex, cardsAfterDraw, selectedCardIds());
+        if (sourcePosition == null) {
+            throw new IllegalArgumentException("Source position cannot be null.");
+        }
+
+        model.addCard(card);
+        List<Card> cardsAfterAdd = model.getCards();
+        int newCardIndex = cardsAfterAdd.size() - 1;
+        Point2D target = layout.visualPosition(newCardIndex, cardsAfterAdd, selectedCardIds());
 
         Entity cardEntity = FXGL.spawn("Card", new SpawnData(sourcePosition.getX(), sourcePosition.getY())
                 .put("card", card)
@@ -157,6 +156,20 @@ public class Hand {
         }, Duration.seconds(AnimationSettings.PLAYED_CARD_MOVE_SECONDS));
 
         notifyHandSizeChanged();
+    }
+
+    /**
+     * Prototype draw behavior for Milestone 4D.
+     *
+     * This intentionally ignores full turn legality. Later this should delegate
+     * to GameState / TurnController.
+     */
+    public void drawOneCardFromDeck(Point2D sourcePosition) {
+        if (deck.getCards().isEmpty()) {
+            deck.addShuffledStandardDeckWithJokers();
+        }
+
+        addCardFromSource(deck.drawCard(), sourcePosition);
     }
 
     public void addCard(Card card) {

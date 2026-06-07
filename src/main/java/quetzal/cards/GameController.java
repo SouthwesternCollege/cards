@@ -55,6 +55,47 @@ public final class GameController {
         return controller;
     }
 
+
+    public ActionResult apply(GameAction action) {
+        if (action == null) {
+            return ActionResult.failure("Action cannot be null.");
+        }
+
+        if (action instanceof DrawFromDeckAction drawAction) {
+            return drawFromDeck(drawAction);
+        }
+
+        return ActionResult.failure("Unsupported action: " + action.getClass().getSimpleName());
+    }
+
+    private ActionResult drawFromDeck(DrawFromDeckAction action) {
+        PlayerId playerId = action.playerId();
+        RoundState roundState = gameState.roundState();
+
+        if (!playerId.equals(roundState.activePlayerId())) {
+            return ActionResult.failure("Only the active player may draw.");
+        }
+
+        if (roundState.turnPhase() != TurnPhase.DRAW_OR_CASTIGO) {
+            return ActionResult.failure("Cannot draw during phase: " + roundState.turnPhase());
+        }
+
+        if (gameState.deck().getCards().isEmpty()) {
+            gameState.deck().addShuffledStandardDeckWithJokers();
+        }
+
+        Card drawnCard = gameState.deck().drawCard();
+        gameState.player(playerId).addCard(drawnCard);
+
+        TurnPhase previousPhase = roundState.turnPhase();
+        roundState.setTurnPhase(TurnPhase.MELD);
+
+        return ActionResult.success(
+                new CardDrawnEvent(playerId, drawnCard),
+                new TurnPhaseChangedEvent(previousPhase, roundState.turnPhase())
+        );
+    }
+
     public GameState state() {
         return gameState;
     }

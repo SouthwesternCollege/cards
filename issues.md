@@ -1510,7 +1510,7 @@ The visible hand renders the active player's dealt cards.
 
 ## ISS-057: Route prototype actions through GameController
 
-Status: Open  
+Status: In Progress  
 Priority: P1  
 Area: Domain Architecture / UI Integration
 
@@ -1533,3 +1533,45 @@ GameController.apply(GameAction action)
 ```
 
 and route one action at a time through the controller.
+
+---
+
+## ISS-058: Add action interface and controller-driven draw
+
+Status: Done  
+Priority: P1  
+Area: Domain Architecture / UI Integration
+
+### Problem
+
+After Milestone 5A, the game had real initial state, but deck-click draw still mutated the visual hand directly.
+
+### Decision
+
+Add a small action pipeline and route draw through `GameController`.
+
+### Result
+
+Milestone 5B added:
+
+- `GameAction`
+- `DrawFromDeckAction`
+- `ActionResult`
+- `GameEvent`
+- `CardDrawnEvent`
+- `TurnPhaseChangedEvent`
+- `GameController.apply(GameAction action)`
+
+Deck-click draw now requests a `DrawFromDeckAction`.
+
+`GameController` validates and mutates `GameState`.
+
+The UI animates the result using `CardDrawnEvent`.
+
+### Remaining Work
+
+- Move event handling out of `CardApplication` into a dedicated adapter.
+- Add visible failed-action feedback.
+- Route discard through `GameController`.
+- Route meld creation through `GameController`.
+- Add castigo actions later.

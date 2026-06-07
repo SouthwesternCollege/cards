@@ -123,7 +123,9 @@ public class CardApplication extends GameApplication {
         deckDiscardPanel = new DeckDiscardPanel(gameLayout, deck, new DeckDiscardActions() {
             @Override
             public void drawFromDeck(Point2D sourcePosition) {
-                hand.drawOneCardFromDeck(sourcePosition);
+                ActionResult result = gameController.apply(new DrawFromDeckAction(gameController.state().roundState().activePlayerId()));
+                handleActionResult(result, sourcePosition);
+                deckDiscardPanel.refresh();
             }
 
             @Override
@@ -137,6 +139,34 @@ public class CardApplication extends GameApplication {
                 // Prototype placeholder for out-of-turn castigo prompts.
             }
         });
+    }
+
+
+    private void handleActionResult(ActionResult result, Point2D sourcePosition) {
+        if (result == null) {
+            return;
+        }
+
+        if (!result.success()) {
+            System.out.println("Action failed: " + result.message());
+            return;
+        }
+
+        for (GameEvent event : result.events()) {
+            handleGameEvent(event, sourcePosition);
+        }
+
+        gameHudController.refreshFromGameState(gameController.state());
+    }
+
+    private void handleGameEvent(GameEvent event, Point2D sourcePosition) {
+        if (event instanceof CardDrawnEvent cardDrawnEvent) {
+            PlayerId visiblePlayerId = gameController.state().roundState().activePlayerId();
+
+            if (cardDrawnEvent.playerId().equals(visiblePlayerId)) {
+                hand.addCardFromSource(cardDrawnEvent.card(), sourcePosition);
+            }
+        }
     }
 
     private void addLayoutDebugOverlay() {
