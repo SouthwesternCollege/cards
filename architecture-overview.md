@@ -187,3 +187,121 @@ Known transitional areas:
 - Opening requirements are not enforced.
 - Full-table view still uses mock melds instead of real `PlayArea`.
 - Debug controls are mixed into regular controls.
+
+
+### ARCH-08: Hand Order as Game State
+
+Hand order is now a rules-level/persistent player preference, not only a visual arrangement.
+
+Current model:
+
+```text
+PlayerState.hand
+= current rules-level hand order
+
+PlayerState.customOrderCardIds
+= saved custom order
+```
+
+Current hand-order actions:
+
+- `SortHandByRankAction`
+- `SortHandBySuitAction`
+- `ReorderHandAction`
+- `SaveCustomHandOrderAction`
+- `RestoreCustomHandOrderAction`
+
+Current behavior:
+
+```text
+Rank / Suit
+→ changes current hand order only
+
+Drag reorder
+→ changes current hand order
+
+Order click
+→ restores saved custom order
+
+Order click-and-hold
+→ saves current hand order as custom order
+```
+
+The original dealt order becomes the first saved custom order.
+
+Design rule:
+
+```text
+Visible hand order and debug hand overlay order should both derive from GameState.
+```
+
+### Planned Debug Drawer
+
+Debug tools should not remain in the normal gameplay control row.
+
+Planned hybrid approach:
+
+```text
+Debug drawer = compact access point for development tools
+Debug overlays = large/full-screen inspection views
+```
+
+The drawer should eventually contain:
+
+- Table View
+- Debug Hands
+- +Kind
+- +Run
+- Stress
+- Clear
+- future debug toggles
+
+
+## Milestone 5G Follow-Up Notes
+
+Hand ordering is now controller-driven but drag interaction remains presentation-driven during the gesture.
+
+Important distinction:
+
+```text
+During drag:
+    Hand updates visual ordering locally for smooth feedback.
+
+On mouse release:
+    Hand commits the final card order through ReorderHandAction.
+```
+
+This prevents GameState/event refreshes from fighting the drag animation.
+
+Custom-order save feedback is implemented through `CardWiggleComponent` so it does not conflict with the existing hover/idle wiggle ownership.
+
+Milestone mapping was clarified:
+
+```text
+5G = Hand Order State and Custom Ordering
+5H = Debug Drawer Cleanup
+5I = Hot-Seat Visual Privacy
+5J = Save-Ready Snapshots
+```
+
+## Drag Anchor Note
+
+Card dragging now uses a center-relative grab offset.
+
+Reason:
+
+```text
+Cards visually scale/rotate around their center.
+Dragging previously used a top-left offset.
+Hover scale resets at drag start.
+Top-left offset could therefore feel stale and cause drift.
+```
+
+The corrected model is:
+
+```text
+grabOffset = mousePosition - cardCenter
+entityPosition = mousePosition - renderedCardCenter - grabOffset
+```
+
+This keeps the visual grab point stable even when hover-scale effects are disabled for dragging.

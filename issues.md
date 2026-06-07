@@ -1854,3 +1854,182 @@ After major architecture milestones, update:
 - `product-requirements.md`
 - `issues.md`
 - `ubiquitous-language.md`, if new terms were introduced
+
+---
+
+## ISS-069: Add stateful hand ordering and custom order
+
+Status: Done  
+Priority: P1  
+Area: Domain Architecture / Hand UX
+
+### Problem
+
+The visible hand order could diverge from `GameState`, so the debug hand overlay did not reflect sorting or drag reordering.
+
+### Decision
+
+Make hand order part of rules-level/player state.
+
+### Result
+
+Milestone 5G added:
+
+- `SortHandByRankAction`
+- `SortHandBySuitAction`
+- `ReorderHandAction`
+- `SaveCustomHandOrderAction`
+- `RestoreCustomHandOrderAction`
+- `HandOrderChangedEvent`
+- `CustomHandOrderSavedEvent`
+
+The `Order` button now supports:
+
+- click = restore saved custom order
+- click-and-hold = save current hand order as custom order
+
+The initial dealt order is saved as the first custom order.
+
+### Remaining Work
+
+- Add visible feedback for saved/restored order.
+- Clean up the crowded controls row.
+- Continue splitting `Hand` into clearer view/controller pieces.
+
+---
+
+## ISS-070: Add debug drawer
+
+Status: Open  
+Priority: P2  
+Area: Debug Tools / UI Organization
+
+### Problem
+
+The game control row is overcrowded because development tools are mixed with gameplay controls.
+
+### Decision
+
+Use a hybrid approach:
+
+```text
+Debug drawer = access point for development tools
+Debug overlays = full-screen inspection views
+```
+
+### Proposed Scope
+
+Move the following into a collapsible debug drawer:
+
+- Table
+- Hands
+- +Kind
+- +Run
+- Stress
+- Clear
+- future debug toggles
+
+---
+
+## ISS-071: Add custom-order saved feedback
+
+Status: Done  
+Priority: P3  
+Area: Hand UX / Animation
+
+### Problem
+
+Saving custom hand order had no visible confirmation.
+
+### Decision
+
+Trigger a short pop/wiggle pulse across visible hand cards when `CustomHandOrderSavedEvent` is handled.
+
+### Result
+
+The player receives immediate visual confirmation that the custom order was saved.
+
+---
+
+## ISS-072: Restore smooth drag reorder behavior
+
+Status: Done  
+Priority: P2  
+Area: Hand UX / Input
+
+### Problem
+
+After hand ordering became controller-driven, drag reorder behavior became less smooth.
+
+### Cause
+
+The domain order was being updated while dragging, which caused event-driven hand reorganization during the drag gesture.
+
+### Decision
+
+Keep drag reflow visual while dragging, but commit the new hand order to `GameState` only after mouse release.
+
+### Result
+
+Dragging should again feel like the original behavior:
+
+```text
+dragged card follows mouse
+other cards smoothly reposition around it
+order commits after release
+```
+
+---
+
+## ISS-073: Reorganize PRD milestone section
+
+Status: Done  
+Priority: P2  
+Area: Documentation / PRD
+
+### Problem
+
+Recent milestone entries were appended after the Open Product Questions section, making the PRD hard to navigate.
+
+### Decision
+
+Move Milestone 5 entries back into the milestone section and preserve the original intended milestones as later renamed milestones:
+
+- original 5G hot-seat privacy → Milestone 5I
+- original 5H save-state readiness → Milestone 5J
+
+### Result
+
+The PRD milestone sequence is now organized again.
+
+---
+
+## ISS-074: Fix drag anchor drift after hover scale reset
+
+Status: Done  
+Priority: P2  
+Area: Hand UX / Input
+
+### Problem
+
+When dragging a card, the card could trail behind the mouse as it moved away from the original click point.
+
+### Likely Cause
+
+The drag offset was computed from the entity top-left. The visible card uses center-pivot scale/rotation, and hover scale is reset when drag begins. That means the visual card can shift relative to the stale top-left offset.
+
+### Decision
+
+Compute the drag grab point relative to the rendered card center.
+
+### Result
+
+The dragged card position is now calculated from:
+
+```text
+mouse position
+- rendered card center
+- grab offset from card center
+```
+
+This should keep the grabbed point visually under the cursor while dragging.

@@ -74,6 +74,26 @@ public final class GameController {
             return createMeld(createMeldAction);
         }
 
+        if (action instanceof SortHandByRankAction sortAction) {
+            return sortHandByRank(sortAction);
+        }
+
+        if (action instanceof SortHandBySuitAction sortAction) {
+            return sortHandBySuit(sortAction);
+        }
+
+        if (action instanceof ReorderHandAction reorderAction) {
+            return reorderHand(reorderAction);
+        }
+
+        if (action instanceof SaveCustomHandOrderAction saveAction) {
+            return saveCustomHandOrder(saveAction);
+        }
+
+        if (action instanceof RestoreCustomHandOrderAction restoreAction) {
+            return restoreCustomHandOrder(restoreAction);
+        }
+
         return ActionResult.failure("Unsupported action: " + action.getClass().getSimpleName());
     }
 
@@ -168,6 +188,67 @@ public final class GameController {
         return ActionResult.success(new MeldCreatedEvent(playerId, meld));
     }
 
+
+    private ActionResult sortHandByRank(SortHandByRankAction action) {
+        PlayerId playerId = action.playerId();
+
+        if (!playerId.equals(gameState.roundState().activePlayerId())) {
+            return ActionResult.failure("Only the active player may sort their hand.");
+        }
+
+        PlayerState player = gameState.player(playerId);
+        player.sortHandByRank();
+        return ActionResult.success(new HandOrderChangedEvent(playerId, player.hand()));
+    }
+
+    private ActionResult sortHandBySuit(SortHandBySuitAction action) {
+        PlayerId playerId = action.playerId();
+
+        if (!playerId.equals(gameState.roundState().activePlayerId())) {
+            return ActionResult.failure("Only the active player may sort their hand.");
+        }
+
+        PlayerState player = gameState.player(playerId);
+        player.sortHandBySuit();
+        return ActionResult.success(new HandOrderChangedEvent(playerId, player.hand()));
+    }
+
+    private ActionResult reorderHand(ReorderHandAction action) {
+        PlayerId playerId = action.playerId();
+
+        if (!playerId.equals(gameState.roundState().activePlayerId())) {
+            return ActionResult.failure("Only the active player may reorder their hand.");
+        }
+
+        PlayerState player = gameState.player(playerId);
+        player.reorderHand(action.orderedCardIds());
+        return ActionResult.success(new HandOrderChangedEvent(playerId, player.hand()));
+    }
+
+    private ActionResult saveCustomHandOrder(SaveCustomHandOrderAction action) {
+        PlayerId playerId = action.playerId();
+
+        if (!playerId.equals(gameState.roundState().activePlayerId())) {
+            return ActionResult.failure("Only the active player may save their custom hand order.");
+        }
+
+        PlayerState player = gameState.player(playerId);
+        player.saveCurrentHandOrderAsCustom();
+        return ActionResult.success(new CustomHandOrderSavedEvent(playerId));
+    }
+
+    private ActionResult restoreCustomHandOrder(RestoreCustomHandOrderAction action) {
+        PlayerId playerId = action.playerId();
+
+        if (!playerId.equals(gameState.roundState().activePlayerId())) {
+            return ActionResult.failure("Only the active player may restore their custom hand order.");
+        }
+
+        PlayerState player = gameState.player(playerId);
+        player.restoreCustomHandOrder();
+        return ActionResult.success(new HandOrderChangedEvent(playerId, player.hand()));
+    }
+
     public GameState state() {
         return gameState;
     }
@@ -193,6 +274,10 @@ public final class GameController {
 
                 player.addCard(gameState.deck().drawCard());
             }
+        }
+
+        for (PlayerState player : gameState.players()) {
+            player.saveCurrentHandOrderAsCustom();
         }
     }
 }

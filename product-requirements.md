@@ -165,6 +165,13 @@ DealerRotation
 ExactDealBonus
 ```
 
+
+### 7. Debug and Presentation Views Should Follow GameState
+
+Debug views may begin as mock views before domain state exists. Once the relevant domain state exists, debug and presentation views should read from `GameState` or events derived from it.
+
+Example: `DebugHandOverlay` began as mock data, but now reads real `PlayerState.hand` order from `GameState`.
+
 ## Functional Requirements
 
 ### FR-1: Card Model
@@ -1397,6 +1404,8 @@ Deferred:
 
 ### Milestone 5: Introduce Game State and Actions
 
+Milestone 5 is the architectural pivot from visual prototype behavior toward controller-driven game state.
+
 #### Milestone 5A: Game State Skeleton and Real Deal State
 
 Status: implemented.
@@ -1412,27 +1421,181 @@ Scope completed:
 - Dealt 13 cards to each player through `GameController`.
 - Made HUD player rows initialize from real `GameState`.
 - Rendered only the active player's hand from real dealt state.
-- Preserved existing visual/debug tools.
+
+#### Milestone 5B: Action Interface and Controller-Driven Draw
+
+Status: implemented.
+
+Scope completed:
+
+- Added `GameAction`.
+- Added `DrawFromDeckAction`.
+- Added `ActionResult`.
+- Added `GameEvent`.
+- Added `CardDrawnEvent`.
+- Added `TurnPhaseChangedEvent`.
+- Added `GameController.apply(GameAction action)`.
+- Routed deck-click draw through `GameController`.
+- Enforced active-player draw and draw phase.
+- Successful draw advances the phase to `MELD`.
+
+#### Milestone 5C: Rules-Level Discard Pile and Discard Action
+
+Status: implemented.
+
+Scope completed:
+
+- Added `DiscardPile`.
+- Added `DiscardAction`.
+- Added `CardDiscardedEvent`.
+- Added rules-level discard pile ownership to `GameState`.
+- Routed the Discard button through `GameController`.
+- Moved discarded cards from `PlayerState.hand` to `DiscardPile`.
+- Made the discard pile display the real top discarded card.
+
+#### Milestone 5D: Turn Phase Transitions and Active Player Advance
+
+Status: implemented.
+
+Scope completed:
+
+- Added `ActivePlayerChangedEvent`.
+- Added `GameState.nextPlayerAfter(PlayerId)`.
+- After successful discard, `GameController` advances to the next active player.
+- After successful discard, the turn phase resets to `DRAW_OR_CASTIGO`.
+- UI handles `ActivePlayerChangedEvent`.
+- Visible hand switches to the new active player's dealt hand after discard animation.
+
+#### Milestone 5E: Rules-Level Play Area and Meld Creation
+
+Status: implemented.
+
+Scope completed:
+
+- Added `PlayArea`.
+- Added `MeldState`.
+- Added `CreateMeldAction`.
+- Added `MeldCreatedEvent`.
+- Added `PlayArea` ownership to `GameState`.
+- Routed the Play Hand button through `GameController`.
+- `GameController` validates selected cards with `LaKikaMeldValidator`.
+- Valid melds move from `PlayerState.hand` into rules-level `PlayArea`.
+- UI animates created melds from `MeldCreatedEvent`.
+
+#### Milestone 5F: Event-to-UI Presentation Adapter
+
+Status: implemented.
+
+Scope completed:
+
+- Added `GameActionPresentationAdapter`.
+- Moved `ActionResult` handling out of `CardApplication`.
+- Moved `GameEvent` dispatch out of `CardApplication`.
+- Centralized UI reactions for card draw, discard, meld creation, active-player change, hand-order change, and debug overlay refresh.
+
+#### Milestone 5G: Hand Order State and Custom Ordering
+
+Status: implemented.
+
+Scope completed:
+
+- Added rules-level current hand ordering through `PlayerState.hand`.
+- Added saved custom order per player.
+- Initial custom order is the dealt order.
+- Added hand-order actions:
+  - `SortHandByRankAction`
+  - `SortHandBySuitAction`
+  - `ReorderHandAction`
+  - `SaveCustomHandOrderAction`
+  - `RestoreCustomHandOrderAction`
+- Added hand-order events:
+  - `HandOrderChangedEvent`
+  - `CustomHandOrderSavedEvent`
+- Routed Rank and Suit buttons through `GameController`.
+- Routed drag-based hand reorder through `GameController`.
+- Added `Order` button:
+  - click = restore saved custom order
+  - click-and-hold = save current hand order as custom order
+- Added short pop/wiggle feedback when custom order is saved.
+- Restored smoother drag behavior by committing order only after mouse release.
+- Debug hand overlay now reflects the same order as `GameState`.
 
 Current limitation:
 
-- Prototype draw/castigo/discard/meld actions are not yet routed through `GameController`.
-- `Hand` remains a transitional presentation facade.
-- `PlayArea` and discard pile are not yet rules-level state.
+- Saved/restored order feedback is still minimal.
+- The controls row is overcrowded and debug controls still need to move.
+- `Hand` remains transitional and still owns drag gesture mechanics.
 
+#### Milestone 5H: Debug Drawer Cleanup
 
-Status: not started.
+Status: planned.
 
-Scope:
+Recommended scope:
 
-- `GameState` / `RoundState`.
-- Player identity.
-- Dealer identity.
-- Player hands.
-- Castigos remaining.
-- Opened/closed status.
-- Actions such as draw, take castigo, create meld, mutate meld, steal joker, discard.
-- Validation before mutation.
+- Add a collapsible/sliding debug drawer.
+- Move development-only controls out of the main game control row.
+- Keep full-screen debug overlays for table view and hand overlay.
+- Use the drawer as the access point for:
+  - Table View
+  - Debug Hands
+  - +Kind
+  - +Run
+  - Stress
+  - Clear
+  - future debug toggles
+- Keep gameplay controls focused on real player actions.
+
+Out of scope:
+
+- Keyboard shortcuts.
+- Replacing full-screen overlays.
+- Polishing final UI/UX.
+
+#### Milestone 5I: Hot-Seat Visual Privacy
+
+Status: planned.
+
+This preserves the original Milestone 5G goal: hot-seat visual privacy becomes possible.
+
+Recommended scope:
+
+- Add a pass-device screen between turns.
+- Hide all hands when a turn ends.
+- Prompt the next player to confirm readiness.
+- Reveal only the next active player's hand after confirmation.
+- Keep debug hand overlay development-only.
+
+Out of scope:
+
+- AI opponents.
+- Networked multiplayer.
+- Final animation polish.
+
+#### Milestone 5J: Save-Ready Snapshots
+
+Status: planned.
+
+This preserves the original Milestone 5H goal: save states become realistic.
+
+Recommended scope:
+
+- Add snapshot records for game state:
+  - `GameStateSnapshot`
+  - `PlayerStateSnapshot`
+  - `RoundStateSnapshot`
+  - `DiscardPileSnapshot`
+  - `PlayAreaSnapshot`
+- Convert live domain state to snapshot data.
+- Restore domain state from snapshot data.
+- Keep JSON/file persistence for a later save/load milestone.
+
+Out of scope:
+
+- Full save/load UI.
+- File picker.
+- Cloud saves.
+- Serialization format polish.
+
 
 ### Milestone 6: Implement Round and Turn Rules
 
@@ -1524,142 +1687,3 @@ Remaining clarifications to eventually answer:
    - Current direction: deferred read-only toggle screen.
    - Show all players simultaneously.
    - Avoid shrinking cards where possible; prefer scrolling.
-
-
-
-#### Milestone 5B: Action Interface and Controller-Driven Draw
-
-Status: implemented.
-
-Scope completed:
-
-- Added `GameAction`.
-- Added `DrawFromDeckAction`.
-- Added `ActionResult`.
-- Added `GameEvent`.
-- Added `CardDrawnEvent`.
-- Added `TurnPhaseChangedEvent`.
-- Added `GameController.apply(GameAction action)`.
-- Routed deck-click draw through `GameController`.
-- `GameController` now enforces that only the active player may draw.
-- `GameController` now enforces that draw happens only during `DRAW_OR_CASTIGO`.
-- Drawing from the deck now advances the turn phase to `MELD`.
-- UI animates the draw based on `CardDrawnEvent`.
-
-Current limitation:
-
-- Discard, castigo, and meld creation still use prototype paths.
-- The failed-action display is currently only a console message.
-- Event handling is still inside `CardApplication` and should later move to a dedicated presentation adapter.
-
-
-#### Milestone 5C: Rules-Level Discard Pile and Discard Action
-
-Status: implemented.
-
-Scope completed:
-
-- Added `DiscardPile`.
-- Added `DiscardAction`.
-- Added `CardDiscardedEvent`.
-- Added rules-level discard pile ownership to `GameState`.
-- Routed the Discard button through `GameController`.
-- Enforced exactly one selected card at the UI boundary.
-- Enforced active-player discard in `GameController`.
-- Enforced discard only after draw for the current prototype path.
-- Moved discarded card from `PlayerState.hand` to `DiscardPile`.
-- Animated discarded visible card to the discard pile.
-- Made the discard pile display the real top discarded card.
-
-Current limitation:
-
-- The turn phase transition after discard is temporary.
-- The active player does not advance yet.
-- Castigo still uses prototype behavior.
-- Discard failure feedback is still console-only.
-
-
-#### Milestone 5D: Turn Phase Transitions and Active Player Advance
-
-Status: implemented.
-
-Scope completed:
-
-- Added `ActivePlayerChangedEvent`.
-- Added `GameState.nextPlayerAfter(PlayerId)`.
-- After successful discard, `GameController` now advances to the next active player.
-- After successful discard, the turn phase resets to `DRAW_OR_CASTIGO`.
-- UI handles `ActivePlayerChangedEvent`.
-- Visible hand switches to the new active player's dealt hand after the discard animation completes.
-- HUD refreshes from real `GameState` after active-player change.
-
-Current limitation:
-
-- There is no pass-device privacy screen yet.
-- The active-player hand switch is immediate after discard animation.
-- `Hand` remains a transitional presentation facade.
-- Castigo is not yet part of the turn transition.
-- Round end is not yet detected.
-
-
-#### Milestone 5E: Rules-Level Play Area and Meld Creation
-
-Status: implemented.
-
-Scope completed:
-
-- Added `PlayArea`.
-- Added `MeldState`.
-- Added `CreateMeldAction`.
-- Added `MeldCreatedEvent`.
-- Added `PlayArea` ownership to `GameState`.
-- Routed the Play Hand button through `GameController`.
-- `GameController` now validates selected cards with `LaKikaMeldValidator`.
-- Valid melds move from `PlayerState.hand` into rules-level `PlayArea`.
-- UI animates created melds from `MeldCreatedEvent`.
-
-Current limitation:
-
-- Meld mutation is not implemented yet.
-- Joker stealing is not implemented yet.
-- Opening requirements are not enforced yet.
-- Round-end detection is not implemented yet.
-- The normal played-meld view still uses `VisualMeldStore` as a presentation cache fed by events.
-
-
-#### Milestone 5F: Event-to-UI Presentation Adapter
-
-Status: implemented.
-
-Scope completed:
-
-- Added `GameActionPresentationAdapter`.
-- Moved `ActionResult` handling out of `CardApplication`.
-- Moved `GameEvent` dispatch out of `CardApplication`.
-- Centralized UI reactions for:
-  - `CardDrawnEvent`
-  - `CardDiscardedEvent`
-  - `MeldCreatedEvent`
-  - `ActivePlayerChangedEvent`
-- Centralized HUD refresh and deck/discard panel refresh after successful actions.
-
-Current limitation:
-
-- `CardApplication` still creates actions from button callbacks.
-- Failed-action feedback is still console-only.
-- The adapter still knows concrete views directly.
-- A future cleanup may introduce a thinner `GameActionDispatcher` or controller-facing facade.
-
----
-
-### ARCH-07: Debug Views Must Read GameState Once GameState Exists
-
-Debug views may begin as mock views before domain state exists.
-
-Once the relevant domain state exists, debug views should read from `GameState` instead of maintaining mock state.
-
-Applied example:
-
-- `DebugHandOverlay` began as a mock hand viewer in Milestone 4H.
-- After Milestone 5A introduced real player hands, the overlay became stale.
-- It is now corrected to render real `PlayerState.hand` data from `GameState`.

@@ -1,7 +1,10 @@
 package quetzal.cards;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Rules-level state for one player.
@@ -14,6 +17,7 @@ public final class PlayerState {
     private final PlayerId playerId;
     private final String displayName;
     private final List<Card> hand = new ArrayList<>();
+    private List<CardId> customOrderCardIds = new ArrayList<>();
 
     private int cumulativeScore;
     private int castigosRemaining;
@@ -109,6 +113,84 @@ public final class PlayerState {
         }
 
         throw new IllegalArgumentException("Card is not in player's hand: " + cardId.value());
+    }
+
+
+    public List<CardId> handOrderIds() {
+        List<CardId> ids = new ArrayList<>();
+
+        for (Card card : hand) {
+            ids.add(card.id());
+        }
+
+        return List.copyOf(ids);
+    }
+
+    public void saveCurrentHandOrderAsCustom() {
+        customOrderCardIds = new ArrayList<>(handOrderIds());
+    }
+
+    public void restoreCustomHandOrder() {
+        reorderByCustomOrder(customOrderCardIds);
+    }
+
+    public void reorderHand(List<CardId> orderedCardIds) {
+        if (orderedCardIds == null) {
+            throw new IllegalArgumentException("Ordered card ids cannot be null.");
+        }
+
+        if (orderedCardIds.size() != hand.size()) {
+            throw new IllegalArgumentException("Ordered card ids must match the current hand size.");
+        }
+
+        Set<CardId> currentIds = new HashSet<>(handOrderIds());
+        Set<CardId> requestedIds = new HashSet<>(orderedCardIds);
+
+        if (!currentIds.equals(requestedIds)) {
+            throw new IllegalArgumentException("Ordered card ids must contain exactly the cards in the player's hand.");
+        }
+
+        List<Card> reordered = cardsByIdInOrder(orderedCardIds);
+        hand.clear();
+        hand.addAll(reordered);
+    }
+
+    public void sortHandByRank() {
+        hand.sort(
+                Comparator.comparingInt((Card card) -> card.isJoker() ? Integer.MAX_VALUE : card.rank().sequenceValue())
+                        .thenComparing(card -> card.isJoker() ? null : card.suit(), Comparator.nullsLast(Comparator.naturalOrder()))
+        );
+    }
+
+    public void sortHandBySuit() {
+        hand.sort(
+                Comparator.comparing((Card card) -> card.isJoker() ? null : card.suit(), Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparingInt(card -> card.isJoker() ? Integer.MAX_VALUE : card.rank().sequenceValue())
+        );
+    }
+
+    private void reorderByCustomOrder(List<CardId> savedOrder) {
+        List<Card> reordered = new ArrayList<>();
+        Set<CardId> added = new HashSet<>();
+
+        for (CardId cardId : savedOrder) {
+            for (Card card : hand) {
+                if (card.id().equals(cardId)) {
+                    reordered.add(card);
+                    added.add(card.id());
+                    break;
+                }
+            }
+        }
+
+        for (Card card : hand) {
+            if (!added.contains(card.id())) {
+                reordered.add(card);
+            }
+        }
+
+        hand.clear();
+        hand.addAll(reordered);
     }
 
     public void setOpened(boolean opened) {

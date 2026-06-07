@@ -1,6 +1,7 @@
 package quetzal.cards;
 
 import com.almasb.fxgl.dsl.FXGL;
+import javafx.animation.PauseTransition;
 import javafx.geometry.Insets;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.control.Button;
@@ -9,6 +10,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
+import javafx.util.Duration;
 
 public class GameControls {
 
@@ -23,13 +25,21 @@ public class GameControls {
     private final Runnable onDebugHands;
     private final Runnable onDiscard;
     private final Runnable onPlayMeld;
+    private final Runnable onSortRank;
+    private final Runnable onSortSuit;
+    private final Runnable onRestoreCustomOrder;
+    private final Runnable onSaveCustomOrder;
 
-    public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView, Runnable onDebugHands, Runnable onDiscard, Runnable onPlayMeld) {
+    public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView, Runnable onDebugHands, Runnable onDiscard, Runnable onPlayMeld, Runnable onSortRank, Runnable onSortSuit, Runnable onRestoreCustomOrder, Runnable onSaveCustomOrder) {
         this.hand = hand;
         this.onTableView = onTableView == null ? () -> { } : onTableView;
         this.onDebugHands = onDebugHands == null ? () -> { } : onDebugHands;
         this.onDiscard = onDiscard == null ? () -> { } : onDiscard;
         this.onPlayMeld = onPlayMeld == null ? () -> { } : onPlayMeld;
+        this.onSortRank = onSortRank == null ? () -> { } : onSortRank;
+        this.onSortSuit = onSortSuit == null ? () -> { } : onSortSuit;
+        this.onRestoreCustomOrder = onRestoreCustomOrder == null ? () -> { } : onRestoreCustomOrder;
+        this.onSaveCustomOrder = onSaveCustomOrder == null ? () -> { } : onSaveCustomOrder;
         this.buttonArea = gameLayout.getButtonArea();
         this.buttonBar = createButtonBar();
 
@@ -39,19 +49,19 @@ public class GameControls {
     }
 
     public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView, Runnable onDebugHands, Runnable onDiscard) {
-        this(gameLayout, hand, onTableView, onDebugHands, onDiscard, null);
+        this(gameLayout, hand, onTableView, onDebugHands, onDiscard, null, null, null, null, null);
     }
 
     public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView, Runnable onDebugHands) {
-        this(gameLayout, hand, onTableView, onDebugHands, null, null);
+        this(gameLayout, hand, onTableView, onDebugHands, null, null, null, null, null, null);
     }
 
     public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView) {
-        this(gameLayout, hand, onTableView, null, null, null);
+        this(gameLayout, hand, onTableView, null, null, null, null, null, null, null);
     }
 
     public GameControls(GameLayout gameLayout, Hand hand) {
-        this(gameLayout, hand, null, null, null, null);
+        this(gameLayout, hand, null, null, null, null, null, null, null, null);
     }
 
     private HBox createButtonBar() {
@@ -62,10 +72,13 @@ public class GameControls {
         discardButton.setOnAction(event -> onDiscard.run());
 
         Button sortRankButton = gameButton(new Text("Rank"), Color.color(0.8, 0.7, 0));
-        sortRankButton.setOnAction(event -> hand.sortByRank());
+        sortRankButton.setOnAction(event -> onSortRank.run());
 
         Button sortSuitButton = gameButton(new Text("Suit"), Color.color(0.8, 0.7, 0));
-        sortSuitButton.setOnAction(event -> hand.sortBySuit());
+        sortSuitButton.setOnAction(event -> onSortSuit.run());
+
+        Button orderButton = gameButton(new Text("Order"), Color.color(0.55, 0.32, 0.7));
+        wireOrderButton(orderButton);
 
         Button addKindTestButton = gameButton(new Text("+Kind"), Color.color(0.25, 0.45, 0.25));
         addKindTestButton.setOnAction(event -> hand.debugAddKindMeld());
@@ -91,6 +104,7 @@ public class GameControls {
                 discardButton,
                 sortRankButton,
                 sortSuitButton,
+                orderButton,
                 addKindTestButton,
                 addStraightTestButton,
                 stressMeldsButton,
@@ -98,6 +112,34 @@ public class GameControls {
                 tableButton,
                 debugHandsButton
         );
+    }
+
+
+    private void wireOrderButton(Button orderButton) {
+        final boolean[] holdTriggered = {false};
+        final PauseTransition holdTimer = new PauseTransition(Duration.seconds(0.65));
+
+        holdTimer.setOnFinished(event -> {
+            holdTriggered[0] = true;
+            onSaveCustomOrder.run();
+        });
+
+        orderButton.setOnMousePressed(event -> {
+            holdTriggered[0] = false;
+            holdTimer.playFromStart();
+        });
+
+        orderButton.setOnMouseReleased(event -> {
+            holdTimer.stop();
+
+            if (!holdTriggered[0]) {
+                onRestoreCustomOrder.run();
+            }
+        });
+
+        orderButton.setOnMouseExited(event -> {
+            holdTimer.stop();
+        });
     }
 
     private void positionButtonBar() {

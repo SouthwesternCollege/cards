@@ -101,6 +101,14 @@ public class HandModel extends CardCollection {
         unselectableCards.clear();
     }
 
+    public void replaceCardsPreservingSelection(List<Card> orderedCards) {
+        getCards().clear();
+        getCards().addAll(orderedCards);
+
+        selectedCards.removeIf(card -> !getCards().contains(card));
+        unselectableCards.removeIf(cardId -> getCards().stream().noneMatch(card -> card.id().equals(cardId)));
+    }
+
     public void sortByRank() {
         getCards().sort(
                 Comparator.comparingInt((Card card) -> card.isJoker() ? Integer.MAX_VALUE : card.rank().sequenceValue())

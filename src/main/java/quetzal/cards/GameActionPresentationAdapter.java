@@ -95,6 +95,16 @@ public final class GameActionPresentationAdapter {
 
         if (event instanceof ActivePlayerChangedEvent activePlayerChangedEvent) {
             handleActivePlayerChanged(activePlayerChangedEvent);
+            return;
+        }
+
+        if (event instanceof HandOrderChangedEvent handOrderChangedEvent) {
+            handleHandOrderChanged(handOrderChangedEvent);
+            return;
+        }
+
+        if (event instanceof CustomHandOrderSavedEvent customHandOrderSavedEvent) {
+            handleCustomHandOrderSaved(customHandOrderSavedEvent);
         }
     }
 
@@ -123,6 +133,18 @@ public final class GameActionPresentationAdapter {
                 () -> renderActivePlayerHand(event.newPlayerId()),
                 Duration.seconds(AnimationSettings.PLAYED_CARD_MOVE_SECONDS + 0.05)
         );
+    }
+
+    private void handleHandOrderChanged(HandOrderChangedEvent event) {
+        if (event.playerId().equals(renderedPlayerId)) {
+            hand.applyHandOrder(event.orderedCards());
+        }
+    }
+
+    private void handleCustomHandOrderSaved(CustomHandOrderSavedEvent event) {
+        if (event.playerId().equals(renderedPlayerId)) {
+            hand.playCustomOrderSavedFeedback();
+        }
     }
 
     private void renderActivePlayerHand(PlayerId playerId) {

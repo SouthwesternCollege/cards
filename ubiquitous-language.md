@@ -1235,3 +1235,42 @@ Current responsibilities:
 - refresh HUD and deck/discard panel after successful actions
 
 This class does not validate rules. Rule validation belongs to `GameController`.
+
+
+### Hand Order
+
+The current ordering of cards in a player's hand.
+
+Hand order is now represented by `PlayerState.hand`, so the visible hand and debug hand overlay can agree.
+
+### Custom Hand Order
+
+A saved preferred ordering for a player's hand.
+
+Current behavior:
+
+- initial custom order is the dealt order
+- click `Order` to restore saved custom order
+- click-and-hold `Order` to save current hand order as custom order
+- newly drawn cards that are not in saved custom order are appended when restoring
+
+### Debug Drawer
+
+A planned collapsible side panel for development-only tools.
+
+It differs from a full overlay:
+
+- drawer: compact tool access
+- overlay: large inspection screen
+
+The intended design is hybrid: use the drawer to launch debug overlays.
+
+### Custom Order Saved Feedback
+
+A short visual confirmation that the player's current hand order has been saved as their custom order.
+
+Current prototype behavior:
+
+- visible hand cards briefly pop/wiggle in sequence
+- the animation is presentation-only
+- the saved order itself lives in `PlayerState`

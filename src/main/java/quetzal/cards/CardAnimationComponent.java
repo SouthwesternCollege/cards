@@ -15,9 +15,10 @@ public class CardAnimationComponent extends Component {
     private boolean isDragging = false;  // Track if a card is being dragged
     private int lastDragIndex = -1;
 
-    // Offset to ensure the card stays centered on the mouse
-    private double offsetX;
-    private double offsetY;
+    // Offset from the rendered card center to the exact point grabbed by the mouse.
+    // This avoids drag drift when hover scale is reset at the beginning of a drag.
+    private double grabOffsetFromCenterX;
+    private double grabOffsetFromCenterY;
 
     // Transitional dependency: this component still delegates interaction to Hand.
     // It no longer validates melds or updates the HUD directly.
@@ -139,11 +140,13 @@ public class CardAnimationComponent extends Component {
 
         cardSpacing = hand.getCardSpacing();
         if (event.getButton() == MouseButton.PRIMARY) {
-            initialPosition = entity.getPosition();
-            initialMousePosition = new Point2D(event.getSceneX(), event.getSceneY());
+            Point2D mouseWorld = mouseWorldPosition();
 
-            offsetX = event.getSceneX() - entity.getX();
-            offsetY = event.getSceneY() - entity.getY();
+            initialPosition = entity.getPosition();
+            initialMousePosition = mouseWorld;
+
+            grabOffsetFromCenterX = mouseWorld.getX() - cardCenterX();
+            grabOffsetFromCenterY = mouseWorld.getY() - cardCenterY();
 
             setWiggleEnabled(false);
         }
@@ -154,7 +157,8 @@ public class CardAnimationComponent extends Component {
             return;
         }
 
-        double distanceMoved = initialMousePosition.distance(event.getSceneX(), event.getSceneY());
+        Point2D mouseWorld = mouseWorldPosition();
+        double distanceMoved = initialMousePosition.distance(mouseWorld);
 
         final double DRAG_THRESHOLD = 1;
 
@@ -169,7 +173,10 @@ public class CardAnimationComponent extends Component {
         }
 
         if (isDragging) {
-            entity.setPosition(event.getSceneX() - offsetX, event.getSceneY() - offsetY);
+            entity.setPosition(
+                    mouseWorld.getX() - CardViewMetrics.renderedWidth() / 2.0 - grabOffsetFromCenterX,
+                    mouseWorld.getY() - CardViewMetrics.renderedHeight() / 2.0 - grabOffsetFromCenterY
+            );
             reorganizeHandDuringDrag();
         }
     }
@@ -182,6 +189,7 @@ public class CardAnimationComponent extends Component {
         if (isDragging) {
             hand.sortCardsByPosition(hand.getCards());
             hand.organizeCardEntities();
+            hand.commitCurrentHandOrder();
 
             lastDragIndex = -1;
             isDragging = false;
@@ -205,6 +213,18 @@ public class CardAnimationComponent extends Component {
             lastDragIndex = currentDragIndex;
             hand.organizeCardEntitiesExcept(draggedCard);
         }
+    }
+
+    private Point2D mouseWorldPosition() {
+        return FXGL.getInput().getMousePositionWorld();
+    }
+
+    private double cardCenterX() {
+        return entity.getX() + CardViewMetrics.renderedWidth() / 2.0;
+    }
+
+    private double cardCenterY() {
+        return entity.getY() + CardViewMetrics.renderedHeight() / 2.0;
     }
 
     protected void organizeCards() {

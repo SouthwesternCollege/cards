@@ -35,15 +35,16 @@ public class Hand {
     private final MeldValidator meldValidator = new LaKikaMeldValidator();
     private final SelectionFeedback selectionFeedback;
     private final HandChangeListener handChangeListener;
+    private final HandOrderChangeListener handOrderChangeListener;
     private final PlayerId localPlayerId = new PlayerId(1);
     private int nextDebugCardId = 10_000;
 
     public Hand(Rectangle2D handArea, Rectangle2D playerPlayedArea, Deck deck) {
-        this(handArea, playerPlayedArea, deck, new NoOpSelectionFeedback(), new NoOpHandChangeListener());
+        this(handArea, playerPlayedArea, deck, new NoOpSelectionFeedback(), new NoOpHandChangeListener(), orderedCards -> { });
     }
 
     public Hand(Rectangle2D handArea, Rectangle2D playerPlayedArea, Deck deck, SelectionFeedback selectionFeedback) {
-        this(handArea, playerPlayedArea, deck, selectionFeedback, new NoOpHandChangeListener());
+        this(handArea, playerPlayedArea, deck, selectionFeedback, new NoOpHandChangeListener(), orderedCards -> { });
     }
 
     public Hand(
@@ -52,6 +53,17 @@ public class Hand {
             Deck deck,
             SelectionFeedback selectionFeedback,
             HandChangeListener handChangeListener
+    ) {
+        this(handArea, playerPlayedArea, deck, selectionFeedback, handChangeListener, orderedCards -> { });
+    }
+
+    public Hand(
+            Rectangle2D handArea,
+            Rectangle2D playerPlayedArea,
+            Deck deck,
+            SelectionFeedback selectionFeedback,
+            HandChangeListener handChangeListener,
+            HandOrderChangeListener handOrderChangeListener
     ) {
         this.model = new HandModel();
         this.layout = new HandLayout(handArea);
@@ -62,6 +74,7 @@ public class Hand {
         this.deck = deck;
         this.selectionFeedback = selectionFeedback == null ? new NoOpSelectionFeedback() : selectionFeedback;
         this.handChangeListener = handChangeListener == null ? new NoOpHandChangeListener() : handChangeListener;
+        this.handOrderChangeListener = handOrderChangeListener == null ? orderedCards -> { } : handOrderChangeListener;
     }
 
     /**
@@ -631,6 +644,24 @@ public class Hand {
         return layout.visualPosition(index, model.getCards(), selectedCardIds());
     }
 
+
+    public void applyHandOrder(List<Card> orderedCards) {
+        if (orderedCards == null) {
+            throw new IllegalArgumentException("Ordered cards cannot be null.");
+        }
+
+        model.replaceCardsPreservingSelection(orderedCards);
+        selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
+        organizeCardEntities();
+        notifyHandSizeChanged();
+    }
+
+    public List<CardId> currentHandOrderIds() {
+        return model.getCards().stream()
+                .map(Card::id)
+                .toList();
+    }
+
     public void sortByRank() {
         model.sortByRank();
         organizeCardEntities();
@@ -643,6 +674,42 @@ public class Hand {
 
     public void sortCardsByPosition(List<Card> cards) {
         cards.sort(Comparator.comparingDouble(card -> getEntityFor(card).getX()));
+    }
+
+    public void commitCurrentHandOrder() {
+        handOrderChangeListener.handOrderChanged(new ArrayList<>(model.getCards()));
+    }
+
+    public void playCustomOrderSavedFeedback() {
+        int index = 0;
+
+        for (Card card : model.getCards()) {
+            Entity entity = getEntityFor(card);
+
+            if (entity == null) {
+                continue;
+            }
+
+            CardComponent cardComponent = entity.getComponent(CardComponent.class);
+            double delay = index * 0.025;
+
+            FXGL.runOnce(() -> {
+                cardComponent.setVisualScale(1.10);
+                cardComponent.setVisualRotation(-4.0);
+            }, Duration.seconds(delay));
+
+            FXGL.runOnce(() -> {
+                cardComponent.setVisualScale(1.04);
+                cardComponent.setVisualRotation(4.0);
+            }, Duration.seconds(delay + 0.06));
+
+            FXGL.runOnce(() -> {
+                cardComponent.resetVisualScale();
+                cardComponent.resetVisualRotation();
+            }, Duration.seconds(delay + 0.13));
+
+            index++;
+        }
     }
 
     public void registerCardEntity(Card card, Entity entity) {

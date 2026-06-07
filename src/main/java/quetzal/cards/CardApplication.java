@@ -114,14 +114,26 @@ public class CardApplication extends GameApplication {
                 gameLayout.getPlayerPlayedArea(),
                 deck,
                 selectionFeedback,
-                handChangeListener
+                handChangeListener,
+                this::reorderActiveHand
         );
 
         hand.populateHand(gameController.handFor(localPlayerId));
 
         fullPlayAreaView = new FullPlayAreaView(WIDTH, HEIGHT);
         debugHandOverlay = new DebugHandOverlay(WIDTH, HEIGHT, gameController);
-        gameControls = new GameControls(gameLayout, hand, fullPlayAreaView::toggle, debugHandOverlay::toggle, this::discardSelectedCard, this::playSelectedMeld);
+        gameControls = new GameControls(
+                gameLayout,
+                hand,
+                fullPlayAreaView::toggle,
+                debugHandOverlay::toggle,
+                this::discardSelectedCard,
+                this::playSelectedMeld,
+                this::sortActiveHandByRank,
+                this::sortActiveHandBySuit,
+                this::restoreCustomHandOrder,
+                this::saveCustomHandOrder
+        );
 
         deckDiscardPanel = new DeckDiscardPanel(gameLayout, deck, new DeckDiscardActions() {
             @Override
@@ -153,6 +165,47 @@ public class CardApplication extends GameApplication {
 
 
 
+
+
+    private void sortActiveHandByRank() {
+        ActionResult result = gameController.apply(new SortHandByRankAction(
+                gameController.state().roundState().activePlayerId()
+        ));
+        actionPresentationAdapter.handleActionResult(result, null);
+    }
+
+    private void sortActiveHandBySuit() {
+        ActionResult result = gameController.apply(new SortHandBySuitAction(
+                gameController.state().roundState().activePlayerId()
+        ));
+        actionPresentationAdapter.handleActionResult(result, null);
+    }
+
+    private void reorderActiveHand(List<Card> orderedCards) {
+        List<CardId> orderedCardIds = orderedCards.stream()
+                .map(Card::id)
+                .toList();
+
+        ActionResult result = gameController.apply(new ReorderHandAction(
+                gameController.state().roundState().activePlayerId(),
+                orderedCardIds
+        ));
+        actionPresentationAdapter.handleActionResult(result, null);
+    }
+
+    private void restoreCustomHandOrder() {
+        ActionResult result = gameController.apply(new RestoreCustomHandOrderAction(
+                gameController.state().roundState().activePlayerId()
+        ));
+        actionPresentationAdapter.handleActionResult(result, null);
+    }
+
+    private void saveCustomHandOrder() {
+        ActionResult result = gameController.apply(new SaveCustomHandOrderAction(
+                gameController.state().roundState().activePlayerId()
+        ));
+        actionPresentationAdapter.handleActionResult(result, null);
+    }
 
     private void playSelectedMeld() {
         List<Card> selectedCards = hand.getSelectedCards();
