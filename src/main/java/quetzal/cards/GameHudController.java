@@ -38,4 +38,16 @@ public final class GameHudController {
         model.setCardsRemaining(playerId, cardsRemaining);
         hud.setPlayerStates(model.playerStates());
     }
+
+    public void refreshFromGameState(GameState gameState) {
+        if (gameState == null) {
+            throw new IllegalArgumentException("Game state cannot be null.");
+        }
+
+        for (PlayerHudState state : gameState.toHudStates()) {
+            model.setPlayerState(state);
+        }
+
+        refresh();
+    }
 }

@@ -955,6 +955,44 @@ Rules:
 - It should be toggleable from the play controls.
 - The future player-facing solution is a pass-device screen, not an all-hands view.
 
+
+### ARCH-01: Game State Boundary
+
+Rules-level game state should be independent of JavaFX and FXGL.
+
+`GameState` owns what is true in the game:
+
+- players
+- round state
+- dealer
+- active player
+- turn phase
+- deck
+- player hands
+
+Presentation classes own how that truth is shown:
+
+- entities
+- nodes
+- layout
+- animation
+- input handling
+
+Current Milestone 5A rule:
+
+```text
+GameController owns initial dealing.
+UI renders the active player's dealt hand.
+```
+
+Future rule:
+
+```text
+UI requests actions.
+GameController validates and applies actions.
+UI animates resulting events.
+```
+
 ## Non-Functional Requirements
 
 ### NFR-1: Testability
@@ -1235,6 +1273,30 @@ Deferred:
 - Connection to real multiplayer `GameState`.
 
 ### Milestone 5: Introduce Game State and Actions
+
+#### Milestone 5A: Game State Skeleton and Real Deal State
+
+Status: implemented.
+
+Scope completed:
+
+- Added `GameState`.
+- Added `PlayerState`.
+- Added `RoundState`.
+- Added `TurnPhase`.
+- Added `GameController`.
+- Initialized a four-player prototype game.
+- Dealt 13 cards to each player through `GameController`.
+- Made HUD player rows initialize from real `GameState`.
+- Rendered only the active player's hand from real dealt state.
+- Preserved existing visual/debug tools.
+
+Current limitation:
+
+- Prototype draw/castigo/discard/meld actions are not yet routed through `GameController`.
+- `Hand` remains a transitional presentation facade.
+- `PlayArea` and discard pile are not yet rules-level state.
+
 
 Status: not started.
 

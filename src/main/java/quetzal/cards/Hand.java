@@ -72,6 +72,29 @@ public class Hand {
         this(handArea, new Rectangle2D(handArea.getMinX(), handArea.getMinY() - 260, handArea.getWidth(), 220), deck);
     }
 
+
+    public void populateHand(List<Card> cards) {
+        if (cards == null) {
+            throw new IllegalArgumentException("Cards cannot be null.");
+        }
+
+        for (int i = 0; i < cards.size(); i++) {
+            Card card = cards.get(i);
+            model.addCard(card);
+            Point2D spawnPosition = layout.basePosition(i, cards.size());
+
+            Entity cardEntity = FXGL.spawn("Card", new SpawnData(spawnPosition.getX(), spawnPosition.getY())
+                    .put("card", card)
+                    .put("z-index", i)
+                    .put("hand", this));
+
+            registerCardEntity(card, cardEntity);
+        }
+
+        organizeCardEntities();
+        notifyHandSizeChanged();
+    }
+
     public void populateHand(int size) {
         for (int i = 0; i < size; i++) {
             Card card = model.drawFrom(deck);

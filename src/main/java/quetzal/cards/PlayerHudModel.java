@@ -27,6 +27,14 @@ public final class PlayerHudModel {
         return new PlayerHudModel(PlayerHudState.prototypePlayers(playerCount));
     }
 
+    public static PlayerHudModel fromGameState(GameState gameState) {
+        if (gameState == null) {
+            throw new IllegalArgumentException("Game state cannot be null.");
+        }
+
+        return new PlayerHudModel(gameState.toHudStates());
+    }
+
     public List<PlayerHudState> playerStates() {
         return List.copyOf(playerStates);
     }

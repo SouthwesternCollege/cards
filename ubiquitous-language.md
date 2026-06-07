@@ -1057,3 +1057,55 @@ Current prototype notes:
 - It shows one row per player.
 - It uses mock meld data until the real `PlayArea` exists.
 - It is intended for inspection and layout testing, not interaction.
+
+
+### GameState
+
+The rules-level source of truth for the current game.
+
+It should know what is true in the game, but it should not know how anything is drawn.
+
+### PlayerState
+
+Rules-level state for one player.
+
+Current fields include:
+
+- player id
+- display name
+- hand
+- cumulative score
+- castigos remaining
+- opened status
+
+### RoundState
+
+Rules-level state for the current round.
+
+Current fields include:
+
+- round number
+- dealer
+- active player
+- turn phase
+
+### TurnPhase
+
+The current phase of the turn.
+
+Milestone 5A introduces this vocabulary. Later milestones will enforce legal actions by phase.
+
+### GameController
+
+The controlled mutation boundary for `GameState`.
+
+Current responsibility:
+
+- initialize a prototype game
+- deal initial hands
+- expose HUD state
+
+Future responsibility:
+
+- validate and apply `GameAction` objects
+- produce events for the presentation layer

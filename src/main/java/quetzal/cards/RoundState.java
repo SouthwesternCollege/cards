@@ -1,20 +1,18 @@
 package quetzal.cards;
 
-import java.util.HashSet;
-import java.util.Set;
-
+/**
+ * Rules-level state for the current round.
+ */
 public final class RoundState {
 
     private final int roundNumber;
-    private final PlayerId dealerId;
-    private final PlayerId activePlayerId;
-    private final OpeningRequirement openingRequirement;
-    private final Set<PlayerId> openedPlayers = new HashSet<>();
+    private PlayerId dealerId;
+    private PlayerId activePlayerId;
     private TurnPhase turnPhase;
 
-    public RoundState(int roundNumber, PlayerId dealerId, PlayerId activePlayerId, OpeningRequirement openingRequirement) {
+    public RoundState(int roundNumber, PlayerId dealerId, PlayerId activePlayerId, TurnPhase turnPhase) {
         if (roundNumber < 1 || roundNumber > 6) {
-            throw new IllegalArgumentException("Round number must be between 1 and 6.");
+            throw new IllegalArgumentException("La Kika has six rounds; round number must be 1-6.");
         }
 
         if (dealerId == null) {
@@ -25,15 +23,14 @@ public final class RoundState {
             throw new IllegalArgumentException("Active player id cannot be null.");
         }
 
-        if (openingRequirement == null) {
-            throw new IllegalArgumentException("Opening requirement cannot be null.");
+        if (turnPhase == null) {
+            throw new IllegalArgumentException("Turn phase cannot be null.");
         }
 
         this.roundNumber = roundNumber;
         this.dealerId = dealerId;
         this.activePlayerId = activePlayerId;
-        this.openingRequirement = openingRequirement;
-        this.turnPhase = TurnPhase.DRAW_OR_CASTIGO;
+        this.turnPhase = turnPhase;
     }
 
     public int roundNumber() {
@@ -48,12 +45,24 @@ public final class RoundState {
         return activePlayerId;
     }
 
-    public OpeningRequirement openingRequirement() {
-        return openingRequirement;
-    }
-
     public TurnPhase turnPhase() {
         return turnPhase;
+    }
+
+    public void setDealerId(PlayerId dealerId) {
+        if (dealerId == null) {
+            throw new IllegalArgumentException("Dealer id cannot be null.");
+        }
+
+        this.dealerId = dealerId;
+    }
+
+    public void setActivePlayerId(PlayerId activePlayerId) {
+        if (activePlayerId == null) {
+            throw new IllegalArgumentException("Active player id cannot be null.");
+        }
+
+        this.activePlayerId = activePlayerId;
     }
 
     public void setTurnPhase(TurnPhase turnPhase) {
@@ -62,17 +71,5 @@ public final class RoundState {
         }
 
         this.turnPhase = turnPhase;
-    }
-
-    public boolean hasOpened(PlayerId playerId) {
-        return openedPlayers.contains(playerId);
-    }
-
-    public void markOpened(PlayerId playerId) {
-        if (playerId == null) {
-            throw new IllegalArgumentException("Player id cannot be null.");
-        }
-
-        openedPlayers.add(playerId);
     }
 }

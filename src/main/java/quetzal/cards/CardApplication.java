@@ -26,6 +26,7 @@ public class CardApplication extends GameApplication {
     private DeckDiscardPanel deckDiscardPanel;
     private FullPlayAreaView fullPlayAreaView;
     private DebugHandOverlay debugHandOverlay;
+    private GameController gameController;
     private boolean prototypeGameStarted = false;
 
     public static void main(String[] args) {
@@ -87,16 +88,16 @@ public class CardApplication extends GameApplication {
 
         addLayoutDebugOverlay();
 
-        PlayerHudModel playerHudModel = PlayerHudModel.prototype(4);
+        gameController = GameController.newPrototypeGame();
+        deck = gameController.deck();
+
+        PlayerHudModel playerHudModel = PlayerHudModel.fromGameState(gameController.state());
         gameHUD = new GameHUD(gameLayout, playerHudModel);
         gameHudController = new GameHudController(playerHudModel, gameHUD);
         gameHudController.refresh();
 
-        deck = Deck.laKikaPrototypeDeck();
-        deck.shuffle();
-
         Rectangle2D playerHandArea = gameLayout.getPlayerHandArea();
-        PlayerId localPlayerId = new PlayerId(1);
+        PlayerId localPlayerId = gameController.state().roundState().activePlayerId();
 
         SelectionFeedback selectionFeedback = new HudMeldSelectionFeedback(
                 new LaKikaMeldValidator(),
@@ -113,7 +114,7 @@ public class CardApplication extends GameApplication {
                 handChangeListener
         );
 
-        hand.populateHand(13);
+        hand.populateHand(gameController.handFor(localPlayerId));
 
         fullPlayAreaView = new FullPlayAreaView(WIDTH, HEIGHT);
         debugHandOverlay = new DebugHandOverlay(WIDTH, HEIGHT);

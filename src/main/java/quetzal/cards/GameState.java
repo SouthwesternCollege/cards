@@ -1,0 +1,67 @@
+package quetzal.cards;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Top-level rules-level state for the game.
+ *
+ * GameState is the source of truth for what is true in the game. It should not
+ * know about FXGL entities, JavaFX nodes, animation, or screen layout.
+ */
+public final class GameState {
+
+    private final List<PlayerState> players;
+    private final Deck deck;
+    private final RoundState roundState;
+
+    public GameState(List<PlayerState> players, Deck deck, RoundState roundState) {
+        if (players == null || players.isEmpty()) {
+            throw new IllegalArgumentException("Players cannot be empty.");
+        }
+
+        if (deck == null) {
+            throw new IllegalArgumentException("Deck cannot be null.");
+        }
+
+        if (roundState == null) {
+            throw new IllegalArgumentException("Round state cannot be null.");
+        }
+
+        this.players = new ArrayList<>(players);
+        this.deck = deck;
+        this.roundState = roundState;
+    }
+
+    public List<PlayerState> players() {
+        return List.copyOf(players);
+    }
+
+    public PlayerState player(PlayerId playerId) {
+        for (PlayerState player : players) {
+            if (player.playerId().equals(playerId)) {
+                return player;
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown player id: " + playerId.value());
+    }
+
+    public Deck deck() {
+        return deck;
+    }
+
+    public RoundState roundState() {
+        return roundState;
+    }
+
+    public List<PlayerHudState> toHudStates() {
+        List<PlayerHudState> hudStates = new ArrayList<>();
+
+        for (PlayerState player : players) {
+            hudStates.add(player.toHudState(roundState.dealerId(), roundState.activePlayerId()));
+        }
+
+        return hudStates;
+    }
+}

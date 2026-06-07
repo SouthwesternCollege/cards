@@ -1465,3 +1465,71 @@ Area: UI / Full Play-Area View
 The full-table row overlap ratio was adjusted from `0.50` to `0.25` based on visual testing.
 
 This remains isolated to `FullPlayAreaLayout`.
+
+---
+
+## ISS-056: Add GameState skeleton and real initial deal
+
+Status: Done  
+Priority: P1  
+Area: Domain Architecture
+
+### Problem
+
+The prototype UI had placeholder player data and direct hand/deck mutation, making it hard to reason about real game rules.
+
+### Decision
+
+Introduce a small rules-level state foundation before implementing the full action system.
+
+### Result
+
+Milestone 5A added:
+
+- `GameState`
+- `PlayerState`
+- `RoundState`
+- `TurnPhase`
+- `GameController`
+
+The prototype game now initializes four players and deals 13 cards to each player through `GameController`.
+
+The HUD initializes from real `GameState`.
+
+The visible hand renders the active player's dealt cards.
+
+### Remaining Work
+
+- Route draw/discard/castigo actions through `GameController`.
+- Add rules-level discard pile.
+- Add rules-level play area.
+- Add `GameAction`, `ActionResult`, and `GameEvent`.
+- Remove remaining direct deck/hand mutation from UI paths.
+
+---
+
+## ISS-057: Route prototype actions through GameController
+
+Status: Open  
+Priority: P1  
+Area: Domain Architecture / UI Integration
+
+### Problem
+
+Milestone 5A establishes initial real state, but existing prototype actions still bypass the controller.
+
+Examples:
+
+- clicking the deck still draws through the visual `Hand` facade
+- playing selected cards still mutates visual hand/meld state
+- discard is still a placeholder
+
+### Proposed Direction
+
+Introduce a small action interface:
+
+```java
+GameController.apply(GameAction action)
+```
+
+and route one action at a time through the controller.
