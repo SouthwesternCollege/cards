@@ -29,6 +29,7 @@ public class CardApplication extends GameApplication {
     private FullPlayAreaView fullPlayAreaView;
     private DebugHandOverlay debugHandOverlay;
     private DebugDrawer debugDrawer;
+    private PassDeviceOverlay passDeviceOverlay;
     private GameController gameController;
     private GameActionPresentationAdapter actionPresentationAdapter;
     private boolean prototypeGameStarted = false;
@@ -123,6 +124,7 @@ public class CardApplication extends GameApplication {
 
         fullPlayAreaView = new FullPlayAreaView(WIDTH, HEIGHT);
         debugHandOverlay = new DebugHandOverlay(WIDTH, HEIGHT, gameController);
+        passDeviceOverlay = new PassDeviceOverlay(WIDTH, HEIGHT);
         debugDrawer = new DebugDrawer(
                 WIDTH,
                 HEIGHT,
@@ -170,7 +172,8 @@ public class CardApplication extends GameApplication {
                 hand,
                 gameHudController,
                 deckDiscardPanel,
-                debugHandOverlay
+                debugHandOverlay,
+                passDeviceOverlay
         );
     }
 

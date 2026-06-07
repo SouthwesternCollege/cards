@@ -18,6 +18,7 @@ public final class GameActionPresentationAdapter {
     private final GameHudController gameHudController;
     private final DeckDiscardPanel deckDiscardPanel;
     private final DebugHandOverlay debugHandOverlay;
+    private final PassDeviceOverlay passDeviceOverlay;
 
     private PlayerId renderedPlayerId;
 
@@ -26,7 +27,8 @@ public final class GameActionPresentationAdapter {
             Hand hand,
             GameHudController gameHudController,
             DeckDiscardPanel deckDiscardPanel,
-            DebugHandOverlay debugHandOverlay
+            DebugHandOverlay debugHandOverlay,
+            PassDeviceOverlay passDeviceOverlay
     ) {
         if (gameController == null) {
             throw new IllegalArgumentException("Game controller cannot be null.");
@@ -48,11 +50,16 @@ public final class GameActionPresentationAdapter {
             throw new IllegalArgumentException("Debug hand overlay cannot be null.");
         }
 
+        if (passDeviceOverlay == null) {
+            throw new IllegalArgumentException("Pass-device overlay cannot be null.");
+        }
+
         this.gameController = gameController;
         this.hand = hand;
         this.gameHudController = gameHudController;
         this.deckDiscardPanel = deckDiscardPanel;
         this.debugHandOverlay = debugHandOverlay;
+        this.passDeviceOverlay = passDeviceOverlay;
         this.renderedPlayerId = gameController.state().roundState().activePlayerId();
     }
 
@@ -130,8 +137,18 @@ public final class GameActionPresentationAdapter {
 
     private void handleActivePlayerChanged(ActivePlayerChangedEvent event) {
         FXGL.runOnce(
-                () -> renderActivePlayerHand(event.newPlayerId()),
+                () -> showPassDeviceScreen(event.newPlayerId()),
                 Duration.seconds(AnimationSettings.PLAYED_CARD_MOVE_SECONDS + 0.05)
+        );
+    }
+
+    private void showPassDeviceScreen(PlayerId nextPlayerId) {
+        hand.clearVisibleHand();
+        refreshViews();
+
+        passDeviceOverlay.show(
+                nextPlayerId,
+                () -> renderActivePlayerHand(nextPlayerId)
         );
     }
 
