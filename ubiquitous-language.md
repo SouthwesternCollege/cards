@@ -1310,3 +1310,27 @@ Current behavior:
 - the default visible opponent is the next player after the active player
 
 This is a presentation concept, not a turn-rule concept.
+
+### Action Failure Code
+
+A machine-readable reason an action failed.
+
+Current examples:
+
+- `NOT_ACTIVE_PLAYER`
+- `WRONG_TURN_PHASE`
+- `CARD_NOT_IN_HAND`
+- `INVALID_MELD`
+- `INVALID_HAND_ORDER`
+
+The user-facing explanation remains in `ActionResult.message()`.
+
+### Turn Rules
+
+Shared rules for whether an action may occur in the current turn context.
+
+Milestone 6A introduces `TurnRules` for active-player and phase checks.
+
+### Turn Rules Foundation
+
+The first Milestone 6 slice. It centralizes simple turn legality before adding more complex rules such as opening requirements and castigo timing.

@@ -63,7 +63,7 @@ public final class GameController {
 
     public ActionResult apply(GameAction action) {
         if (action == null) {
-            return ActionResult.failure("Action cannot be null.");
+            return ActionResult.failure(ActionFailureCode.NULL_ACTION, "Action cannot be null.");
         }
 
         if (action instanceof DrawFromDeckAction drawAction) {
@@ -98,19 +98,24 @@ public final class GameController {
             return restoreCustomHandOrder(restoreAction);
         }
 
-        return ActionResult.failure("Unsupported action: " + action.getClass().getSimpleName());
+        return ActionResult.failure(
+                ActionFailureCode.UNSUPPORTED_ACTION,
+                "Unsupported action: " + action.getClass().getSimpleName()
+        );
     }
 
     private ActionResult drawFromDeck(DrawFromDeckAction action) {
         PlayerId playerId = action.playerId();
-        RoundState roundState = gameState.roundState();
 
-        if (!playerId.equals(roundState.activePlayerId())) {
-            return ActionResult.failure("Only the active player may draw.");
-        }
+        ActionResult turnCheck = TurnRules.requireActivePlayerInPhase(
+                gameState,
+                playerId,
+                TurnPhase.DRAW_OR_CASTIGO,
+                "draw from the deck"
+        );
 
-        if (roundState.turnPhase() != TurnPhase.DRAW_OR_CASTIGO) {
-            return ActionResult.failure("Cannot draw during phase: " + roundState.turnPhase());
+        if (turnCheck != null) {
+            return turnCheck;
         }
 
         if (gameState.deck().getCards().isEmpty()) {
@@ -120,64 +125,80 @@ public final class GameController {
         Card drawnCard = gameState.deck().drawCard();
         gameState.player(playerId).addCard(drawnCard);
 
-        TurnPhase previousPhase = roundState.turnPhase();
-        roundState.setTurnPhase(TurnPhase.MELD);
+        TurnPhaseChangedEvent phaseChangedEvent = advanceAfterDraw();
 
         return ActionResult.success(
                 new CardDrawnEvent(playerId, drawnCard),
-                new TurnPhaseChangedEvent(previousPhase, roundState.turnPhase())
+                phaseChangedEvent
         );
     }
 
 
     private ActionResult discard(DiscardAction action) {
         PlayerId playerId = action.playerId();
-        RoundState roundState = gameState.roundState();
 
-        if (!playerId.equals(roundState.activePlayerId())) {
-            return ActionResult.failure("Only the active player may discard.");
+        ActionResult turnCheck = TurnRules.requireActivePlayerInPhase(
+                gameState,
+                playerId,
+                TurnPhase.MELD,
+                "discard"
+        );
+
+        if (turnCheck != null) {
+            return turnCheck;
         }
 
-        if (roundState.turnPhase() != TurnPhase.MELD) {
-            return ActionResult.failure("Cannot discard during phase: " + roundState.turnPhase());
+        Card discardedCard;
+
+        try {
+            discardedCard = gameState.player(playerId).removeCard(action.cardId());
+        } catch (IllegalArgumentException exception) {
+            return ActionResult.failure(ActionFailureCode.CARD_NOT_IN_HAND, exception.getMessage());
         }
 
-        Card discardedCard = gameState.player(playerId).removeCard(action.cardId());
         gameState.discardPile().add(discardedCard);
 
-        TurnPhase previousPhase = roundState.turnPhase();
-        PlayerId previousActivePlayer = roundState.activePlayerId();
+        TurnPhase previousPhase = gameState.roundState().turnPhase();
+        PlayerId previousActivePlayer = gameState.roundState().activePlayerId();
         PlayerId nextActivePlayer = gameState.nextPlayerAfter(previousActivePlayer);
 
-        roundState.setActivePlayerId(nextActivePlayer);
-        roundState.setTurnPhase(TurnPhase.DRAW_OR_CASTIGO);
+        advanceAfterDiscard(nextActivePlayer);
 
         return ActionResult.success(
                 new CardDiscardedEvent(playerId, discardedCard),
                 new ActivePlayerChangedEvent(previousActivePlayer, nextActivePlayer),
-                new TurnPhaseChangedEvent(previousPhase, roundState.turnPhase())
+                new TurnPhaseChangedEvent(previousPhase, gameState.roundState().turnPhase())
         );
     }
 
 
     private ActionResult createMeld(CreateMeldAction action) {
         PlayerId playerId = action.playerId();
-        RoundState roundState = gameState.roundState();
 
-        if (!playerId.equals(roundState.activePlayerId())) {
-            return ActionResult.failure("Only the active player may create a meld.");
-        }
+        ActionResult turnCheck = TurnRules.requireActivePlayerInPhase(
+                gameState,
+                playerId,
+                TurnPhase.MELD,
+                "create a meld"
+        );
 
-        if (roundState.turnPhase() != TurnPhase.MELD) {
-            return ActionResult.failure("Cannot create a meld during phase: " + roundState.turnPhase());
+        if (turnCheck != null) {
+            return turnCheck;
         }
 
         PlayerState player = gameState.player(playerId);
-        List<Card> selectedCards = player.cardsByIdInOrder(action.cardIds());
+        List<Card> selectedCards;
+
+        try {
+            selectedCards = player.cardsByIdInOrder(action.cardIds());
+        } catch (IllegalArgumentException exception) {
+            return ActionResult.failure(ActionFailureCode.CARD_NOT_IN_HAND, exception.getMessage());
+        }
+
         MeldValidationResult validationResult = meldValidator.validate(selectedCards);
 
         if (!validationResult.valid()) {
-            return ActionResult.failure(validationResult.displayText());
+            return ActionResult.failure(ActionFailureCode.INVALID_MELD, validationResult.displayText());
         }
 
         List<Card> cardsForMeld = validationResult.normalizedCards();
@@ -196,8 +217,10 @@ public final class GameController {
     private ActionResult sortHandByRank(SortHandByRankAction action) {
         PlayerId playerId = action.playerId();
 
-        if (!playerId.equals(gameState.roundState().activePlayerId())) {
-            return ActionResult.failure("Only the active player may sort their hand.");
+        ActionResult activePlayerCheck = TurnRules.requireActivePlayer(gameState, playerId, "sort their hand");
+
+        if (activePlayerCheck != null) {
+            return activePlayerCheck;
         }
 
         PlayerState player = gameState.player(playerId);
@@ -208,8 +231,10 @@ public final class GameController {
     private ActionResult sortHandBySuit(SortHandBySuitAction action) {
         PlayerId playerId = action.playerId();
 
-        if (!playerId.equals(gameState.roundState().activePlayerId())) {
-            return ActionResult.failure("Only the active player may sort their hand.");
+        ActionResult activePlayerCheck = TurnRules.requireActivePlayer(gameState, playerId, "sort their hand");
+
+        if (activePlayerCheck != null) {
+            return activePlayerCheck;
         }
 
         PlayerState player = gameState.player(playerId);
@@ -220,20 +245,30 @@ public final class GameController {
     private ActionResult reorderHand(ReorderHandAction action) {
         PlayerId playerId = action.playerId();
 
-        if (!playerId.equals(gameState.roundState().activePlayerId())) {
-            return ActionResult.failure("Only the active player may reorder their hand.");
+        ActionResult activePlayerCheck = TurnRules.requireActivePlayer(gameState, playerId, "reorder their hand");
+
+        if (activePlayerCheck != null) {
+            return activePlayerCheck;
         }
 
         PlayerState player = gameState.player(playerId);
-        player.reorderHand(action.orderedCardIds());
+
+        try {
+            player.reorderHand(action.orderedCardIds());
+        } catch (IllegalArgumentException exception) {
+            return ActionResult.failure(ActionFailureCode.INVALID_HAND_ORDER, exception.getMessage());
+        }
+
         return ActionResult.success(new HandOrderChangedEvent(playerId, player.hand()));
     }
 
     private ActionResult saveCustomHandOrder(SaveCustomHandOrderAction action) {
         PlayerId playerId = action.playerId();
 
-        if (!playerId.equals(gameState.roundState().activePlayerId())) {
-            return ActionResult.failure("Only the active player may save their custom hand order.");
+        ActionResult activePlayerCheck = TurnRules.requireActivePlayer(gameState, playerId, "save their custom hand order");
+
+        if (activePlayerCheck != null) {
+            return activePlayerCheck;
         }
 
         PlayerState player = gameState.player(playerId);
@@ -244,13 +279,28 @@ public final class GameController {
     private ActionResult restoreCustomHandOrder(RestoreCustomHandOrderAction action) {
         PlayerId playerId = action.playerId();
 
-        if (!playerId.equals(gameState.roundState().activePlayerId())) {
-            return ActionResult.failure("Only the active player may restore their custom hand order.");
+        ActionResult activePlayerCheck = TurnRules.requireActivePlayer(gameState, playerId, "restore their custom hand order");
+
+        if (activePlayerCheck != null) {
+            return activePlayerCheck;
         }
 
         PlayerState player = gameState.player(playerId);
         player.restoreCustomHandOrder();
         return ActionResult.success(new HandOrderChangedEvent(playerId, player.hand()));
+    }
+
+    private TurnPhaseChangedEvent advanceAfterDraw() {
+        RoundState roundState = gameState.roundState();
+        TurnPhase previousPhase = roundState.turnPhase();
+        roundState.setTurnPhase(TurnPhase.MELD);
+        return new TurnPhaseChangedEvent(previousPhase, roundState.turnPhase());
+    }
+
+    private void advanceAfterDiscard(PlayerId nextActivePlayer) {
+        RoundState roundState = gameState.roundState();
+        roundState.setActivePlayerId(nextActivePlayer);
+        roundState.setTurnPhase(TurnPhase.DRAW_OR_CASTIGO);
     }
 
     public GameState state() {

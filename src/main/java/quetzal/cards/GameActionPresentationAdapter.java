@@ -73,7 +73,7 @@ public final class GameActionPresentationAdapter {
         }
 
         if (!result.success()) {
-            System.out.println("Action failed: " + result.message());
+            System.out.println("Action failed [" + result.failureCode() + "]: " + result.message());
             return;
         }
 

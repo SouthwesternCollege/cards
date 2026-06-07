@@ -2293,3 +2293,73 @@ A later save/load milestone should add:
 - JSON serialization
 - migration strategy for old saves
 - file picker or fixed prototype save slot
+
+---
+
+## ISS-083: Add turn rules foundation
+
+Status: Done  
+Priority: P1  
+Area: Turn Rules / GameController
+
+### Problem
+
+Turn legality checks were repeated directly inside `GameController`, and failed actions only had free-form messages.
+
+### Decision
+
+Add a small turn rules foundation before implementing castigo, opening requirements, and other complex turn behavior.
+
+### Result
+
+Milestone 6A added:
+
+- `ActionFailureCode`
+- typed failure codes in `ActionResult`
+- `TurnRules`
+- centralized active-player validation
+- centralized phase validation
+- centralized draw/discard transitions
+
+Current normal turn skeleton:
+
+```text
+DRAW_OR_CASTIGO
+→ draw
+→ MELD
+→ create zero or more melds
+→ discard
+→ next player's DRAW_OR_CASTIGO
+```
+
+### Remaining Work
+
+- Opening requirements.
+- Castigo actions.
+- Out-of-turn castigo window.
+- Stolen joker obligation.
+- Round-end detection.
+- Scoring.
+
+---
+
+## ISS-084: Add visible action failure feedback
+
+Status: Open  
+Priority: P2  
+Area: UX / Rule Feedback
+
+### Problem
+
+Failed actions currently print failure code and message to the console.
+
+### Proposed Direction
+
+Add a lightweight in-game message/toast area for failed rule actions.
+
+Examples:
+
+- wrong phase
+- not active player
+- invalid meld
+- card not in hand

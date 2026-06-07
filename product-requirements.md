@@ -1631,21 +1631,111 @@ Out of scope:
 - Cloud saves.
 
 
-### Milestone 6: Implement Round and Turn Rules
+### Milestone 6: Turn Rules and Round Legality
 
-Status: not started.
+Milestone 6 turns the controller-driven prototype into a rules-enforcing La Kika turn system.
 
-Scope:
+#### Milestone 6A: Turn Rules Foundation
 
-- Deal 13 cards.
-- Rotate dealer.
-- Enforce turn phases.
-- Enforce castigo.
-- Enforce per-player castigo limit.
-- Handle deck exhaustion by adding a new shuffled standard deck with jokers.
-- Enforce opening requirements.
-- Enforce stolen-joker obligations.
-- End round on final discard.
+Status: implemented.
+
+Scope completed:
+
+- Added `ActionFailureCode`.
+- Added typed failure codes to `ActionResult`.
+- Added `TurnRules` helper for shared action legality checks.
+- Centralized active-player validation.
+- Centralized phase validation.
+- Centralized draw transition:
+  - `DRAW_OR_CASTIGO -> MELD`
+- Centralized discard transition:
+  - current player discards
+  - active player advances
+  - phase resets to `DRAW_OR_CASTIGO`
+- Converted draw, meld creation, and discard to use the same turn-rule validation pattern.
+- Added safer failed-action handling for:
+  - wrong active player
+  - wrong phase
+  - selected card not in hand
+  - invalid meld
+  - invalid hand order
+- Failed actions now print failure code plus message for debugging.
+
+Out of scope:
+
+- Castigo resolution.
+- Opening requirements.
+- Out-of-turn castigo timing.
+- Stolen joker obligations.
+- Round-end detection.
+- Scoring.
+
+#### Milestone 6B: Opening Requirements
+
+Status: planned.
+
+Recommended scope:
+
+- Add `OpeningRequirement`.
+- Add round-specific opening rules.
+- Track opened/closed status through `PlayerState`.
+- Enforce opening requirement before a closed player may freely play melds.
+- Mark player as opened after satisfying the round requirement.
+
+#### Milestone 6C: Castigo Count and Basic Castigo Action
+
+Status: planned.
+
+Recommended scope:
+
+- Enforce 10 castigos per player per game.
+- Add `TakeCastigoAction`.
+- Reduce castigos remaining when a castigo is taken.
+- Make HUD reflect the updated remaining castigos.
+- Start with active-player castigo only before out-of-turn behavior.
+
+#### Milestone 6D: Out-of-Turn Castigo Window
+
+Status: planned.
+
+Recommended scope:
+
+- Add pending castigo decision state.
+- Add `PassCastigoAction`.
+- Add 5-second castigo decision timer.
+- Handle one eligible out-of-turn player at a time.
+- Expire/pass automatically when time runs out.
+
+#### Milestone 6E: Stolen Joker Obligation
+
+Status: planned.
+
+Recommended scope:
+
+- Track stolen joker obligation.
+- Enforce that closed players who steal a joker must play it that same turn.
+- Return the joker if the obligation is not satisfied.
+
+#### Milestone 6F: Round-End Detection
+
+Status: planned.
+
+Recommended scope:
+
+- Detect when a player empties their hand legally.
+- End the round.
+- Prepare scoring flow.
+
+#### Milestone 6G: Round Scoring
+
+Status: planned.
+
+Recommended scope:
+
+- Score remaining cards in each player's hand.
+- Add scores to cumulative totals.
+- Prepare transition to next round.
+
 
 ### Milestone 7: Scoring and Game End
 

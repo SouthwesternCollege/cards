@@ -482,3 +482,38 @@ eventual network synchronization
 ```
 
 Milestone 5J intentionally does not implement persistence. It proves that the live domain state can become plain data and be reconstructed.
+
+
+## Milestone 6A Turn Rules Foundation
+
+Turn legality now has an explicit foundation.
+
+New elements:
+
+```text
+ActionFailureCode
+ActionResult.failureCode()
+TurnRules
+```
+
+Current simple turn skeleton:
+
+```text
+DRAW_OR_CASTIGO
+→ DrawFromDeckAction
+→ MELD
+→ CreateMeldAction zero or more times
+→ DiscardAction
+→ next player's DRAW_OR_CASTIGO
+```
+
+Design boundary:
+
+```text
+GameController applies actions.
+TurnRules answers shared legality questions.
+ActionResult carries success/failure plus events.
+Presentation reports failures but does not decide legality.
+```
+
+This prepares Milestone 6B and later slices to add more complex rules without burying all checks directly inside action methods.
