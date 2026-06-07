@@ -1803,3 +1803,54 @@ Examples:
 ### Proposed Direction
 
 Show failed-action messages in the HUD or a lightweight toast/message overlay.
+
+---
+
+## ISS-067: Debug hand overlay used mock hands after GameState existed
+
+Status: Done  
+Priority: P2  
+Area: Debug Tools / GameState Integration
+
+### Problem
+
+`DebugHandOverlay` still displayed mock hands even after `GameState` began owning real player hands.
+
+This made the overlay misleading as a development tool.
+
+### Decision
+
+Make `DebugHandOverlay` read from `GameController.state().players()`.
+
+### Result
+
+The overlay now displays real `PlayerState.hand` data for all players and refreshes after successful game actions.
+
+### Note
+
+The overlay remains strictly development-only and is not a gameplay feature.
+
+---
+
+## ISS-068: Keep architecture overview updated after major milestones
+
+Status: Open  
+Priority: P2  
+Area: Documentation / Architecture
+
+### Problem
+
+The architecture overview document fell behind the implementation during Milestone 5.
+
+### Decision
+
+Update `architecture-overview.md` at the end of each major milestone when the architecture changes.
+
+### Maintenance Rule
+
+After major architecture milestones, update:
+
+- `architecture-overview.md`
+- `product-requirements.md`
+- `issues.md`
+- `ubiquitous-language.md`, if new terms were introduced

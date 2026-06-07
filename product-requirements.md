@@ -1649,3 +1649,17 @@ Current limitation:
 - Failed-action feedback is still console-only.
 - The adapter still knows concrete views directly.
 - A future cleanup may introduce a thinner `GameActionDispatcher` or controller-facing facade.
+
+---
+
+### ARCH-07: Debug Views Must Read GameState Once GameState Exists
+
+Debug views may begin as mock views before domain state exists.
+
+Once the relevant domain state exists, debug views should read from `GameState` instead of maintaining mock state.
+
+Applied example:
+
+- `DebugHandOverlay` began as a mock hand viewer in Milestone 4H.
+- After Milestone 5A introduced real player hands, the overlay became stale.
+- It is now corrected to render real `PlayerState.hand` data from `GameState`.

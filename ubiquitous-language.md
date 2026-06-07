@@ -615,6 +615,8 @@ Rules/UX direction:
 
 ### Debug Hand Overlay
 
+The overlay now reads from real `GameState` player hands. It no longer uses mock hand data.
+
 A development-only overlay that can reveal hidden player hands for debugging.
 
 This should not be part of normal gameplay and should not affect domain rules.
