@@ -11,7 +11,6 @@ import javafx.geometry.Point2D;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
-import javafx.util.Duration;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -30,7 +29,7 @@ public class CardApplication extends GameApplication {
     private FullPlayAreaView fullPlayAreaView;
     private DebugHandOverlay debugHandOverlay;
     private GameController gameController;
-    private PlayerId renderedPlayerId;
+    private GameActionPresentationAdapter actionPresentationAdapter;
     private boolean prototypeGameStarted = false;
 
     public static void main(String[] args) {
@@ -101,8 +100,7 @@ public class CardApplication extends GameApplication {
         gameHudController.refresh();
 
         Rectangle2D playerHandArea = gameLayout.getPlayerHandArea();
-        renderedPlayerId = gameController.state().roundState().activePlayerId();
-        PlayerId localPlayerId = renderedPlayerId;
+        PlayerId localPlayerId = gameController.state().roundState().activePlayerId();
 
         SelectionFeedback selectionFeedback = new HudMeldSelectionFeedback(
                 new LaKikaMeldValidator(),
@@ -129,8 +127,7 @@ public class CardApplication extends GameApplication {
             @Override
             public void drawFromDeck(Point2D sourcePosition) {
                 ActionResult result = gameController.apply(new DrawFromDeckAction(gameController.state().roundState().activePlayerId()));
-                handleActionResult(result, sourcePosition);
-                deckDiscardPanel.refresh();
+                actionPresentationAdapter.handleActionResult(result, sourcePosition);
             }
 
             @Override
@@ -144,6 +141,13 @@ public class CardApplication extends GameApplication {
                 // Prototype placeholder for out-of-turn castigo prompts.
             }
         });
+
+        actionPresentationAdapter = new GameActionPresentationAdapter(
+                gameController,
+                hand,
+                gameHudController,
+                deckDiscardPanel
+        );
     }
 
 
@@ -166,7 +170,7 @@ public class CardApplication extends GameApplication {
                 selectedCardIds
         ));
 
-        handleActionResult(result, null);
+        actionPresentationAdapter.handleActionResult(result, null);
     }
 
     private void discardSelectedCard() {
@@ -183,64 +187,11 @@ public class CardApplication extends GameApplication {
                 cardToDiscard.id()
         ));
 
-        handleActionResult(result, discardPilePosition());
-        deckDiscardPanel.refresh();
+        actionPresentationAdapter.handleActionResult(result, discardPilePosition());
     }
 
     private Point2D discardPilePosition() {
         return deckDiscardPanel.discardTopLeft();
-    }
-
-    private void handleActionResult(ActionResult result, Point2D sourcePosition) {
-        if (result == null) {
-            return;
-        }
-
-        if (!result.success()) {
-            System.out.println("Action failed: " + result.message());
-            return;
-        }
-
-        for (GameEvent event : result.events()) {
-            handleGameEvent(event, sourcePosition);
-        }
-
-        gameHudController.refreshFromGameState(gameController.state());
-    }
-
-    private void handleGameEvent(GameEvent event, Point2D sourcePosition) {
-        if (event instanceof CardDrawnEvent cardDrawnEvent) {
-            if (cardDrawnEvent.playerId().equals(renderedPlayerId)) {
-                hand.addCardFromSource(cardDrawnEvent.card(), sourcePosition);
-            }
-        }
-
-        if (event instanceof CardDiscardedEvent cardDiscardedEvent) {
-            if (cardDiscardedEvent.playerId().equals(renderedPlayerId)) {
-                hand.discardSelectedCardVisual(cardDiscardedEvent.card(), sourcePosition);
-            }
-
-            deckDiscardPanel.setTopDiscardCard(cardDiscardedEvent.card());
-        }
-
-        if (event instanceof MeldCreatedEvent meldCreatedEvent) {
-            if (meldCreatedEvent.playerId().equals(renderedPlayerId)) {
-                hand.displayCreatedMeld(meldCreatedEvent.playerId(), meldCreatedEvent.meld().cards());
-            }
-        }
-
-        if (event instanceof ActivePlayerChangedEvent activePlayerChangedEvent) {
-            FXGL.runOnce(
-                    () -> renderActivePlayerHand(activePlayerChangedEvent.newPlayerId()),
-                    Duration.seconds(AnimationSettings.PLAYED_CARD_MOVE_SECONDS + 0.05)
-            );
-        }
-    }
-
-    private void renderActivePlayerHand(PlayerId playerId) {
-        renderedPlayerId = playerId;
-        hand.renderHand(gameController.handFor(playerId));
-        gameHudController.refreshFromGameState(gameController.state());
     }
 
     private void addLayoutDebugOverlay() {

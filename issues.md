@@ -1747,3 +1747,59 @@ Meld creation is now rules-level, but opening requirements are not yet enforced.
 ### Proposed Direction
 
 Before a player has opened, `GameController` should reject meld creation unless the submitted melds satisfy that round's opening requirement.
+
+---
+
+## ISS-065: Extract game event presentation adapter
+
+Status: Done  
+Priority: P2  
+Area: Architecture / Presentation
+
+### Problem
+
+`CardApplication` was accumulating detailed action-result and game-event handling logic.
+
+### Decision
+
+Extract `GameActionPresentationAdapter`.
+
+### Result
+
+Milestone 5F moved the following out of `CardApplication`:
+
+- `ActionResult` success/failure handling
+- `GameEvent` dispatch
+- card draw presentation handling
+- discard presentation handling
+- meld creation presentation handling
+- active-player hand switching
+- HUD/deck-discard refresh after successful actions
+
+### Remaining Work
+
+- Add visible failed-action feedback instead of console messages.
+- Consider moving action construction out of `CardApplication`.
+- Keep separating presentation adapters from rules-level domain code.
+
+---
+
+## ISS-066: Add visible failed-action feedback
+
+Status: Open  
+Priority: P2  
+Area: UX / Action Feedback
+
+### Problem
+
+Failed actions currently print to the console.
+
+Examples:
+
+- drawing during the wrong phase
+- discarding without exactly one selected card
+- creating an invalid meld
+
+### Proposed Direction
+
+Show failed-action messages in the HUD or a lightweight toast/message overlay.

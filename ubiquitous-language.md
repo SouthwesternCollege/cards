@@ -1218,3 +1218,18 @@ A request for the active player to create a new meld from selected cards.
 ### MeldCreatedEvent
 
 An event emitted after a valid meld is added to the rules-level `PlayArea`.
+
+
+### GameActionPresentationAdapter
+
+A presentation-layer adapter that translates `ActionResult` and `GameEvent` objects into UI updates and animations.
+
+Current responsibilities:
+
+- animate drawn cards into the visible hand
+- animate discarded cards into the discard pile
+- animate created melds into the played area
+- switch visible hand after active player changes
+- refresh HUD and deck/discard panel after successful actions
+
+This class does not validate rules. Rule validation belongs to `GameController`.

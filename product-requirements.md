@@ -1093,6 +1093,29 @@ PlayArea owns what melds exist.
 VisualMeldStore is only a presentation cache.
 ```
 
+
+### ARCH-06: Presentation Adapter for Game Events
+
+`CardApplication` should not contain the detailed event-to-animation mapping.
+
+Current flow:
+
+```text
+CardApplication creates GameAction
+→ GameController.apply(action)
+→ ActionResult
+→ GameActionPresentationAdapter handles events
+→ views animate/refresh
+```
+
+Design rule:
+
+```text
+GameController mutates rules-level state.
+GameActionPresentationAdapter translates GameEvents into presentation updates.
+CardApplication wires major objects together.
+```
+
 ## Non-Functional Requirements
 
 ### NFR-1: Testability
@@ -1602,3 +1625,27 @@ Current limitation:
 - Opening requirements are not enforced yet.
 - Round-end detection is not implemented yet.
 - The normal played-meld view still uses `VisualMeldStore` as a presentation cache fed by events.
+
+
+#### Milestone 5F: Event-to-UI Presentation Adapter
+
+Status: implemented.
+
+Scope completed:
+
+- Added `GameActionPresentationAdapter`.
+- Moved `ActionResult` handling out of `CardApplication`.
+- Moved `GameEvent` dispatch out of `CardApplication`.
+- Centralized UI reactions for:
+  - `CardDrawnEvent`
+  - `CardDiscardedEvent`
+  - `MeldCreatedEvent`
+  - `ActivePlayerChangedEvent`
+- Centralized HUD refresh and deck/discard panel refresh after successful actions.
+
+Current limitation:
+
+- `CardApplication` still creates actions from button callbacks.
+- Failed-action feedback is still console-only.
+- The adapter still knows concrete views directly.
+- A future cleanup may introduce a thinner `GameActionDispatcher` or controller-facing facade.
