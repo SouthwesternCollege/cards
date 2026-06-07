@@ -31,6 +31,7 @@ public final class DeckDiscardPanel {
     private final DeckDiscardActions actions;
     private final Rectangle2D hudArea;
     private final CardBackViewFactory cardBackViewFactory = new CardBackViewFactory();
+    private final CardViewFactory cardViewFactory = new CardViewFactory();
 
     private final Group root = new Group();
     private final Group deckGroup = new Group();
@@ -39,6 +40,7 @@ public final class DeckDiscardPanel {
     private final Text discardStatusText = new Text();
 
     private boolean castigoAvailable = false;
+    private Card topDiscardCard;
 
     public DeckDiscardPanel(GameLayout gameLayout, Deck deck, DeckDiscardActions actions) {
         if (gameLayout == null) {
@@ -129,6 +131,11 @@ public final class DeckDiscardPanel {
         refresh();
     }
 
+    public void setTopDiscardCard(Card topDiscardCard) {
+        this.topDiscardCard = topDiscardCard;
+        refresh();
+    }
+
     private void rebuildDeckStack() {
         deckGroup.getChildren().clear();
 
@@ -163,20 +170,23 @@ public final class DeckDiscardPanel {
     private void rebuildDiscardPile() {
         discardGroup.getChildren().clear();
 
-        if (!castigoAvailable) {
+        if (topDiscardCard == null) {
             Group empty = emptyPileSlot("DISCARD");
             empty.setOpacity(0.42);
             discardGroup.getChildren().add(empty);
             return;
         }
 
-        Node back = cardBackViewFactory.createCardBackView();
-        discardGroup.getChildren().add(back);
+        Node discardCard = cardViewFactory.createView(topDiscardCard);
+        discardCard.setOpacity(castigoAvailable ? 1.0 : 0.45);
+        discardGroup.getChildren().add(discardCard);
 
-        Text overlay = overlayText("CASTIGO", 15);
-        overlay.setTranslateX(12);
-        overlay.setTranslateY(CardViewMetrics.renderedHeight() / 2.0 + 8);
-        discardGroup.getChildren().add(overlay);
+        if (castigoAvailable) {
+            Text overlay = overlayText("CASTIGO", 15);
+            overlay.setTranslateX(12);
+            overlay.setTranslateY(CardViewMetrics.renderedHeight() / 2.0 + 8);
+            discardGroup.getChildren().add(overlay);
+        }
     }
 
     private ColorAdjust deckDepthEffect(int stackIndex, int visibleBacks) {
@@ -277,7 +287,7 @@ public final class DeckDiscardPanel {
         );
     }
 
-    private Point2D discardTopLeft() {
+    public Point2D discardTopLeft() {
         return new Point2D(
                 root.getTranslateX() + discardGroup.getTranslateX(),
                 root.getTranslateY() + discardGroup.getTranslateY()

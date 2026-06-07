@@ -1020,6 +1020,30 @@ GameController owns validation and mutation.
 UI reacts to events.
 ```
 
+
+### ARCH-03: Rules-Level Discard Pile
+
+The discard pile is now rules-level state, not only a visual placeholder.
+
+Current action flow:
+
+```text
+Discard button clicked
+→ UI checks exactly one selected card
+→ DiscardAction
+→ GameController.apply(...)
+→ CardDiscardedEvent
+→ UI animates card to discard pile
+→ discard panel shows real top discarded card
+```
+
+Design rule:
+
+```text
+The discard pile belongs to GameState.
+The discard pile view displays GameState.
+```
+
 ## Non-Functional Requirements
 
 ### NFR-1: Testability
@@ -1455,3 +1479,29 @@ Current limitation:
 - Discard, castigo, and meld creation still use prototype paths.
 - The failed-action display is currently only a console message.
 - Event handling is still inside `CardApplication` and should later move to a dedicated presentation adapter.
+
+
+#### Milestone 5C: Rules-Level Discard Pile and Discard Action
+
+Status: implemented.
+
+Scope completed:
+
+- Added `DiscardPile`.
+- Added `DiscardAction`.
+- Added `CardDiscardedEvent`.
+- Added rules-level discard pile ownership to `GameState`.
+- Routed the Discard button through `GameController`.
+- Enforced exactly one selected card at the UI boundary.
+- Enforced active-player discard in `GameController`.
+- Enforced discard only after draw for the current prototype path.
+- Moved discarded card from `PlayerState.hand` to `DiscardPile`.
+- Animated discarded visible card to the discard pile.
+- Made the discard pile display the real top discarded card.
+
+Current limitation:
+
+- The turn phase transition after discard is temporary.
+- The active player does not advance yet.
+- Castigo still uses prototype behavior.
+- Discard failure feedback is still console-only.

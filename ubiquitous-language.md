@@ -1146,3 +1146,27 @@ Current rules:
 ### CardDrawnEvent
 
 An event emitted after a card has been drawn into a player's rules-level hand.
+
+
+### DiscardPile
+
+The rules-level pile of discarded cards.
+
+Current important behavior:
+
+- The top card is the only card currently relevant for castigo.
+- The discard pile belongs to `GameState`.
+
+### DiscardAction
+
+A request for the active player to discard one card by `CardId`.
+
+Current prototype rules:
+
+- The active player must be the one discarding.
+- Discard currently succeeds only after the player has drawn.
+- UI requires exactly one selected card before submitting the action.
+
+### CardDiscardedEvent
+
+An event emitted after a card moves from a player's rules-level hand to the rules-level discard pile.

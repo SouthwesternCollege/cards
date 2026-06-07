@@ -1575,3 +1575,60 @@ The UI animates the result using `CardDrawnEvent`.
 - Route discard through `GameController`.
 - Route meld creation through `GameController`.
 - Add castigo actions later.
+
+---
+
+## ISS-059: Add rules-level discard pile and discard action
+
+Status: Done  
+Priority: P1  
+Area: Domain Architecture / UI Integration
+
+### Problem
+
+The discard pile was still only a visual placeholder, and the Discard button did not route through `GameController`.
+
+### Decision
+
+Add a rules-level `DiscardPile` to `GameState` and route discard through the action pipeline.
+
+### Result
+
+Milestone 5C added:
+
+- `DiscardPile`
+- `DiscardAction`
+- `CardDiscardedEvent`
+
+The Discard button now submits a `DiscardAction`.
+
+`GameController` removes the card from the active player's rules-level hand, adds it to the discard pile, and emits `CardDiscardedEvent`.
+
+The UI animates the visible card to the discard pile and displays the real top discarded card.
+
+### Remaining Work
+
+- Advance to the next player after discard.
+- Implement real turn phase progression.
+- Add visible failed-action feedback.
+- Implement real castigo behavior.
+
+---
+
+## ISS-060: Advance active player after discard
+
+Status: Open  
+Priority: P1  
+Area: Turn Flow
+
+### Problem
+
+After a successful discard, the prototype does not yet advance to the next active player.
+
+### Proposed Direction
+
+Milestone 5D should implement normal phase progression:
+
+```text
+DRAW_OR_CASTIGO → MELD → DISCARD → next player's DRAW_OR_CASTIGO
+```

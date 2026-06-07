@@ -48,7 +48,7 @@ public final class GameController {
                 TurnPhase.DRAW_OR_CASTIGO
         );
 
-        GameState state = new GameState(players, deck, roundState);
+        GameState state = new GameState(players, deck, new DiscardPile(), roundState);
         GameController controller = new GameController(state);
         controller.dealInitialHands(DEFAULT_HAND_SIZE);
 
@@ -63,6 +63,10 @@ public final class GameController {
 
         if (action instanceof DrawFromDeckAction drawAction) {
             return drawFromDeck(drawAction);
+        }
+
+        if (action instanceof DiscardAction discardAction) {
+            return discard(discardAction);
         }
 
         return ActionResult.failure("Unsupported action: " + action.getClass().getSimpleName());
@@ -92,6 +96,31 @@ public final class GameController {
 
         return ActionResult.success(
                 new CardDrawnEvent(playerId, drawnCard),
+                new TurnPhaseChangedEvent(previousPhase, roundState.turnPhase())
+        );
+    }
+
+
+    private ActionResult discard(DiscardAction action) {
+        PlayerId playerId = action.playerId();
+        RoundState roundState = gameState.roundState();
+
+        if (!playerId.equals(roundState.activePlayerId())) {
+            return ActionResult.failure("Only the active player may discard.");
+        }
+
+        if (roundState.turnPhase() != TurnPhase.MELD) {
+            return ActionResult.failure("Cannot discard during phase: " + roundState.turnPhase());
+        }
+
+        Card discardedCard = gameState.player(playerId).removeCard(action.cardId());
+        gameState.discardPile().add(discardedCard);
+
+        TurnPhase previousPhase = roundState.turnPhase();
+        roundState.setTurnPhase(TurnPhase.DISCARD);
+
+        return ActionResult.success(
+                new CardDiscardedEvent(playerId, discardedCard),
                 new TurnPhaseChangedEvent(previousPhase, roundState.turnPhase())
         );
     }

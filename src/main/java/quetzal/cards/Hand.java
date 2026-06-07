@@ -172,6 +172,37 @@ public class Hand {
         addCardFromSource(deck.drawCard(), sourcePosition);
     }
 
+
+    public void discardSelectedCardVisual(Card discardedCard, Point2D discardPosition) {
+        if (discardedCard == null) {
+            throw new IllegalArgumentException("Discarded card cannot be null.");
+        }
+
+        if (discardPosition == null) {
+            throw new IllegalArgumentException("Discard position cannot be null.");
+        }
+
+        Entity cardEntity = getEntityFor(discardedCard);
+        model.removeSelected(discardedCard);
+        model.removeCard(discardedCard);
+        entityRegistry.remove(discardedCard);
+
+        FXGL.animationBuilder()
+                .duration(Duration.seconds(AnimationSettings.PLAYED_CARD_MOVE_SECONDS))
+                .interpolator(Interpolators.SMOOTH.EASE_OUT())
+                .translate(cardEntity)
+                .to(discardPosition)
+                .buildAndPlay();
+
+        FXGL.runOnce(() -> {
+            cardEntity.removeFromWorld();
+            organizeCardEntities();
+        }, Duration.seconds(AnimationSettings.PLAYED_CARD_MOVE_SECONDS));
+
+        selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
+        notifyHandSizeChanged();
+    }
+
     public void addCard(Card card) {
         model.addCard(card);
         notifyHandSizeChanged();

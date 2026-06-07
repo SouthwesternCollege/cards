@@ -21,11 +21,13 @@ public class GameControls {
     private final HBox buttonBar;
     private final Runnable onTableView;
     private final Runnable onDebugHands;
+    private final Runnable onDiscard;
 
-    public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView, Runnable onDebugHands) {
+    public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView, Runnable onDebugHands, Runnable onDiscard) {
         this.hand = hand;
         this.onTableView = onTableView == null ? () -> { } : onTableView;
         this.onDebugHands = onDebugHands == null ? () -> { } : onDebugHands;
+        this.onDiscard = onDiscard == null ? () -> { } : onDiscard;
         this.buttonArea = gameLayout.getButtonArea();
         this.buttonBar = createButtonBar();
 
@@ -34,12 +36,16 @@ public class GameControls {
         FXGL.getGameScene().addUINode(buttonBar);
     }
 
+    public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView, Runnable onDebugHands) {
+        this(gameLayout, hand, onTableView, onDebugHands, null);
+    }
+
     public GameControls(GameLayout gameLayout, Hand hand, Runnable onTableView) {
-        this(gameLayout, hand, onTableView, null);
+        this(gameLayout, hand, onTableView, null, null);
     }
 
     public GameControls(GameLayout gameLayout, Hand hand) {
-        this(gameLayout, hand, null, null);
+        this(gameLayout, hand, null, null, null);
     }
 
     private HBox createButtonBar() {
@@ -47,6 +53,7 @@ public class GameControls {
         playButton.setOnAction(event -> hand.playSelectedCards());
 
         Button discardButton = gameButton(new Text("Discard"), Color.color(0, 0.3, 0.9));
+        discardButton.setOnAction(event -> onDiscard.run());
 
         Button sortRankButton = gameButton(new Text("Rank"), Color.color(0.8, 0.7, 0));
         sortRankButton.setOnAction(event -> hand.sortByRank());

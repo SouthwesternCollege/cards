@@ -13,9 +13,10 @@ public final class GameState {
 
     private final List<PlayerState> players;
     private final Deck deck;
+    private final DiscardPile discardPile;
     private final RoundState roundState;
 
-    public GameState(List<PlayerState> players, Deck deck, RoundState roundState) {
+    public GameState(List<PlayerState> players, Deck deck, DiscardPile discardPile, RoundState roundState) {
         if (players == null || players.isEmpty()) {
             throw new IllegalArgumentException("Players cannot be empty.");
         }
@@ -24,12 +25,17 @@ public final class GameState {
             throw new IllegalArgumentException("Deck cannot be null.");
         }
 
+        if (discardPile == null) {
+            throw new IllegalArgumentException("Discard pile cannot be null.");
+        }
+
         if (roundState == null) {
             throw new IllegalArgumentException("Round state cannot be null.");
         }
 
         this.players = new ArrayList<>(players);
         this.deck = deck;
+        this.discardPile = discardPile;
         this.roundState = roundState;
     }
 
@@ -49,6 +55,10 @@ public final class GameState {
 
     public Deck deck() {
         return deck;
+    }
+
+    public DiscardPile discardPile() {
+        return discardPile;
     }
 
     public RoundState roundState() {

@@ -13,6 +13,8 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
+
 public class CardApplication extends GameApplication {
     private static final int WIDTH = 1920;
     private static final int HEIGHT = 1080;
@@ -118,7 +120,7 @@ public class CardApplication extends GameApplication {
 
         fullPlayAreaView = new FullPlayAreaView(WIDTH, HEIGHT);
         debugHandOverlay = new DebugHandOverlay(WIDTH, HEIGHT);
-        gameControls = new GameControls(gameLayout, hand, fullPlayAreaView::toggle, debugHandOverlay::toggle);
+        gameControls = new GameControls(gameLayout, hand, fullPlayAreaView::toggle, debugHandOverlay::toggle, this::discardSelectedCard);
 
         deckDiscardPanel = new DeckDiscardPanel(gameLayout, deck, new DeckDiscardActions() {
             @Override
@@ -141,6 +143,29 @@ public class CardApplication extends GameApplication {
         });
     }
 
+
+
+    private void discardSelectedCard() {
+        List<Card> selectedCards = hand.getSelectedCards();
+
+        if (selectedCards.size() != 1) {
+            System.out.println("Select exactly one card to discard.");
+            return;
+        }
+
+        Card cardToDiscard = selectedCards.get(0);
+        ActionResult result = gameController.apply(new DiscardAction(
+                gameController.state().roundState().activePlayerId(),
+                cardToDiscard.id()
+        ));
+
+        handleActionResult(result, discardPilePosition());
+        deckDiscardPanel.refresh();
+    }
+
+    private Point2D discardPilePosition() {
+        return deckDiscardPanel.discardTopLeft();
+    }
 
     private void handleActionResult(ActionResult result, Point2D sourcePosition) {
         if (result == null) {
@@ -166,6 +191,16 @@ public class CardApplication extends GameApplication {
             if (cardDrawnEvent.playerId().equals(visiblePlayerId)) {
                 hand.addCardFromSource(cardDrawnEvent.card(), sourcePosition);
             }
+        }
+
+        if (event instanceof CardDiscardedEvent cardDiscardedEvent) {
+            PlayerId visiblePlayerId = gameController.state().roundState().activePlayerId();
+
+            if (cardDiscardedEvent.playerId().equals(visiblePlayerId)) {
+                hand.discardSelectedCardVisual(cardDiscardedEvent.card(), sourcePosition);
+            }
+
+            deckDiscardPanel.setTopDiscardCard(cardDiscardedEvent.card());
         }
     }
 

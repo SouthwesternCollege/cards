@@ -79,6 +79,18 @@ public final class PlayerState {
         return hand.remove(card);
     }
 
+    public Card removeCard(CardId cardId) {
+        for (int i = 0; i < hand.size(); i++) {
+            Card card = hand.get(i);
+
+            if (card.id().equals(cardId)) {
+                return hand.remove(i);
+            }
+        }
+
+        throw new IllegalArgumentException("Card is not in player's hand: " + cardId.value());
+    }
+
     public void setOpened(boolean opened) {
         this.opened = opened;
     }
