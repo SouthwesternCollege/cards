@@ -11,6 +11,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -19,31 +20,37 @@ import java.util.Map;
  *
  * This deliberately violates hot-seat privacy and must not be exposed as normal
  * gameplay. The real player-facing privacy solution will be a pass-device
- * screen after turn flow exists.
+ * screen.
+ *
+ * This overlay is now driven by GameState, not mock data.
  */
 public final class DebugHandOverlay {
 
     private static final double OUTER_PADDING = 34.0;
     private static final double ROW_GAP = 18.0;
-    private static final double ROW_LABEL_WIDTH = 170.0;
-    private static final int PLAYER_COUNT = 4;
-    private static final int MOCK_HAND_SIZE = 13;
+    private static final double ROW_LABEL_WIDTH = 190.0;
 
     private final double sceneWidth;
     private final double sceneHeight;
+    private final GameController gameController;
     private final CardViewFactory cardViewFactory = new CardViewFactory();
-    private final MockHandFactory mockHandFactory = new MockHandFactory();
 
     private Group root;
     private boolean visible = false;
 
-    public DebugHandOverlay(double sceneWidth, double sceneHeight) {
+    public DebugHandOverlay(double sceneWidth, double sceneHeight, GameController gameController) {
+        if (gameController == null) {
+            throw new IllegalArgumentException("Game controller cannot be null.");
+        }
+
         this.sceneWidth = sceneWidth;
         this.sceneHeight = sceneHeight;
+        this.gameController = gameController;
     }
 
     public void show() {
         if (visible) {
+            refresh();
             return;
         }
 
@@ -73,6 +80,19 @@ public final class DebugHandOverlay {
         }
     }
 
+    public void refresh() {
+        if (!visible) {
+            return;
+        }
+
+        if (root != null) {
+            FXGL.getGameScene().removeUINode(root);
+        }
+
+        root = buildRoot();
+        FXGL.getGameScene().addUINode(root);
+    }
+
     private Group buildRoot() {
         Group group = new Group();
 
@@ -88,7 +108,7 @@ public final class DebugHandOverlay {
         title.setTranslateX(OUTER_PADDING);
         title.setTranslateY(58);
 
-        Text subtitle = new Text("Development-only: all hands visible. Not gameplay.");
+        Text subtitle = new Text("Development-only: real GameState hands visible. Not gameplay.");
         subtitle.setFont(loadFont(18));
         subtitle.setFill(Color.color(0.82, 0.82, 0.82));
         subtitle.setEffect(dropShadow(Color.BLACK, 2));
@@ -102,10 +122,19 @@ public final class DebugHandOverlay {
 
         group.getChildren().addAll(background, title, subtitle, closeButton);
 
-        Map<PlayerId, List<Card>> mockHands = mockHandFactory.createMockHands(PLAYER_COUNT, MOCK_HAND_SIZE);
-        addHandRows(group, mockHands);
+        addHandRows(group, currentHands());
 
         return group;
+    }
+
+    private Map<PlayerId, List<Card>> currentHands() {
+        Map<PlayerId, List<Card>> hands = new LinkedHashMap<>();
+
+        for (PlayerState player : gameController.state().players()) {
+            hands.put(player.playerId(), player.hand());
+        }
+
+        return hands;
     }
 
     private void addHandRows(Group group, Map<PlayerId, List<Card>> hands) {
@@ -114,9 +143,12 @@ public final class DebugHandOverlay {
         double rowHeight = (availableHeight - ROW_GAP * (hands.size() - 1)) / hands.size();
         double rowWidth = sceneWidth - OUTER_PADDING * 2;
 
-        for (int i = 1; i <= hands.size(); i++) {
-            PlayerId playerId = new PlayerId(i);
-            double rowY = top + (i - 1) * (rowHeight + ROW_GAP);
+        int rowIndex = 0;
+
+        for (Map.Entry<PlayerId, List<Card>> entry : hands.entrySet()) {
+            PlayerId playerId = entry.getKey();
+            List<Card> cards = entry.getValue();
+            double rowY = top + rowIndex * (rowHeight + ROW_GAP);
 
             Rectangle rowBackground = new Rectangle(rowWidth, rowHeight);
             rowBackground.setArcWidth(18);
@@ -128,16 +160,20 @@ public final class DebugHandOverlay {
             rowBackground.setStrokeWidth(2);
             rowBackground.setEffect(dropShadow(Color.BLACK, 4));
 
-            Text label = new Text("Player " + i);
+            Text label = new Text("Player " + playerId.value());
             label.setFont(loadFont(26));
             label.setFill(PlayerColorPalette.colorFor(playerId));
             label.setEffect(dropShadow(Color.BLACK, 3));
             label.setTranslateX(OUTER_PADDING + 28);
             label.setTranslateY(rowY + 48);
 
-            Text warning = new Text("DEBUG");
+            String turnText = playerId.equals(gameController.state().roundState().activePlayerId())
+                    ? "ACTIVE"
+                    : "DEBUG";
+
+            Text warning = new Text(turnText + " / " + cards.size() + " cards");
             warning.setFont(loadFont(16));
-            warning.setFill(Color.GOLD);
+            warning.setFill(playerId.equals(gameController.state().roundState().activePlayerId()) ? Color.WHITE : Color.GOLD);
             warning.setEffect(dropShadow(Color.BLACK, 2));
             warning.setTranslateX(OUTER_PADDING + 28);
             warning.setTranslateY(rowY + 78);
@@ -151,7 +187,8 @@ public final class DebugHandOverlay {
                     rowHeight - 24
             );
 
-            addHandCards(group, hands.get(playerId), contentArea);
+            addHandCards(group, cards, contentArea);
+            rowIndex++;
         }
     }
 

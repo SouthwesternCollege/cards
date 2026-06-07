@@ -17,6 +17,7 @@ public final class GameActionPresentationAdapter {
     private final Hand hand;
     private final GameHudController gameHudController;
     private final DeckDiscardPanel deckDiscardPanel;
+    private final DebugHandOverlay debugHandOverlay;
 
     private PlayerId renderedPlayerId;
 
@@ -24,7 +25,8 @@ public final class GameActionPresentationAdapter {
             GameController gameController,
             Hand hand,
             GameHudController gameHudController,
-            DeckDiscardPanel deckDiscardPanel
+            DeckDiscardPanel deckDiscardPanel,
+            DebugHandOverlay debugHandOverlay
     ) {
         if (gameController == null) {
             throw new IllegalArgumentException("Game controller cannot be null.");
@@ -42,10 +44,15 @@ public final class GameActionPresentationAdapter {
             throw new IllegalArgumentException("Deck/discard panel cannot be null.");
         }
 
+        if (debugHandOverlay == null) {
+            throw new IllegalArgumentException("Debug hand overlay cannot be null.");
+        }
+
         this.gameController = gameController;
         this.hand = hand;
         this.gameHudController = gameHudController;
         this.deckDiscardPanel = deckDiscardPanel;
+        this.debugHandOverlay = debugHandOverlay;
         this.renderedPlayerId = gameController.state().roundState().activePlayerId();
     }
 
@@ -127,5 +134,6 @@ public final class GameActionPresentationAdapter {
     private void refreshViews() {
         gameHudController.refreshFromGameState(gameController.state());
         deckDiscardPanel.refresh();
+        debugHandOverlay.refresh();
     }
 }

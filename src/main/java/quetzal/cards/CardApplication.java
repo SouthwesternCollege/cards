@@ -120,7 +120,7 @@ public class CardApplication extends GameApplication {
         hand.populateHand(gameController.handFor(localPlayerId));
 
         fullPlayAreaView = new FullPlayAreaView(WIDTH, HEIGHT);
-        debugHandOverlay = new DebugHandOverlay(WIDTH, HEIGHT);
+        debugHandOverlay = new DebugHandOverlay(WIDTH, HEIGHT, gameController);
         gameControls = new GameControls(gameLayout, hand, fullPlayAreaView::toggle, debugHandOverlay::toggle, this::discardSelectedCard, this::playSelectedMeld);
 
         deckDiscardPanel = new DeckDiscardPanel(gameLayout, deck, new DeckDiscardActions() {
@@ -146,7 +146,8 @@ public class CardApplication extends GameApplication {
                 gameController,
                 hand,
                 gameHudController,
-                deckDiscardPanel
+                deckDiscardPanel,
+                debugHandOverlay
         );
     }
 
