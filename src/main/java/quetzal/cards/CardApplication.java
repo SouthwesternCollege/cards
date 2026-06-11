@@ -159,8 +159,8 @@ public class CardApplication extends GameApplication {
 
             @Override
             public void takeCastigo(Point2D sourcePosition) {
-                // Prototype placeholder. Real castigo resolution belongs to GameState / TurnController.
-                hand.drawOneCardFromDeck(sourcePosition);
+                ActionResult result = gameController.apply(new TakeCastigoAction(gameController.state().roundState().activePlayerId()));
+                actionPresentationAdapter.handleActionResult(result, sourcePosition);
             }
 
             @Override

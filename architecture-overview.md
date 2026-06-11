@@ -517,3 +517,93 @@ Presentation reports failures but does not decide legality.
 ```
 
 This prepares Milestone 6B and later slices to add more complex rules without burying all checks directly inside action methods.
+
+
+## Milestone 6B Opening Requirements
+
+Opening requirements are now rules-level objects.
+
+Current flow:
+
+```text
+CreateMeldAction
+→ validate turn phase
+→ validate meld structure
+→ if player is closed, validate meld against OpeningRequirement
+→ add MeldState to PlayArea
+→ if player's created melds satisfy OpeningRequirement, mark opened
+→ emit PlayerOpenedEvent
+```
+
+Important design choice:
+
+```text
+Multi-meld openings can be built one meld at a time.
+```
+
+Reason:
+
+```text
+The current UI creates one meld per CreateMeldAction.
+Round 2 and Round 4 require two opening melds.
+```
+
+Closed players are restricted to opening-contributing melds until opened. After opening, they may freely create valid melds during the same turn.
+
+
+## Milestone 6C Active-Player Castigo
+
+Castigo now has a first rules-level action.
+
+Current flow:
+
+```text
+TakeCastigoAction
+→ require active player
+→ require DRAW_OR_CASTIGO phase
+→ require discard pile is not empty
+→ require player has castigos remaining
+→ consume one castigo
+→ remove top discard card
+→ draw four deck cards
+→ add five total cards to player hand
+→ advance phase to MELD
+→ emit CastigoTakenEvent
+```
+
+Design boundary:
+
+```text
+6C implements active-player castigo only.
+6D will implement out-of-turn castigo windows and timers.
+```
+
+Current prototype assumption:
+
+```text
+active-player castigo = 5 total cards
+discard top card + 4 deck cards
+
+future out-of-turn castigo = 4 total cards
+discard top card + 3 deck cards
+```
+
+## Castigo House Rule Counts
+
+Current default constants:
+
+```text
+ACTIVE_CASTIGO_DECK_CARDS = 4
+OUT_OF_TURN_CASTIGO_DECK_CARDS = 3
+```
+
+These are intentionally explicit constants instead of implicit totals.
+
+Reason:
+
+```text
+The discard top card is always part of castigo.
+The house-rule variation concerns how many additional deck cards are drawn.
+```
+
+Future settings work should move these into configurable house-rule state.

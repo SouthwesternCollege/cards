@@ -95,6 +95,11 @@ public final class GameActionPresentationAdapter {
             return;
         }
 
+        if (event instanceof CastigoTakenEvent castigoTakenEvent) {
+            handleCastigoTaken(castigoTakenEvent, sourcePosition);
+            return;
+        }
+
         if (event instanceof MeldCreatedEvent meldCreatedEvent) {
             handleMeldCreated(meldCreatedEvent);
             return;
@@ -127,6 +132,16 @@ public final class GameActionPresentationAdapter {
         }
 
         deckDiscardPanel.setTopDiscardCard(event.card());
+    }
+
+    private void handleCastigoTaken(CastigoTakenEvent event, Point2D sourcePosition) {
+        if (event.playerId().equals(renderedPlayerId)) {
+            for (Card card : event.allCards()) {
+                hand.addCardFromSource(card, sourcePosition);
+            }
+        }
+
+        deckDiscardPanel.setTopDiscardCard(gameController.state().discardPile().topCard().orElse(null));
     }
 
     private void handleMeldCreated(MeldCreatedEvent event) {
@@ -173,7 +188,17 @@ public final class GameActionPresentationAdapter {
 
     private void refreshViews() {
         gameHudController.refreshFromGameState(gameController.state());
+        deckDiscardPanel.setTopDiscardCard(gameController.state().discardPile().topCard().orElse(null));
+        deckDiscardPanel.setCastigoAvailable(isActivePlayerCastigoAvailable());
         deckDiscardPanel.refresh();
         debugHandOverlay.refresh();
+    }
+
+    private boolean isActivePlayerCastigoAvailable() {
+        PlayerState activePlayer = gameController.state().player(gameController.state().roundState().activePlayerId());
+
+        return gameController.state().roundState().turnPhase() == TurnPhase.DRAW_OR_CASTIGO
+                && !gameController.state().discardPile().isEmpty()
+                && activePlayer.castigosRemaining() > 0;
     }
 }

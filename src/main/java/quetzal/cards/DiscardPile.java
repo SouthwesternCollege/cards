@@ -29,6 +29,14 @@ public final class DiscardPile {
         return Optional.of(cards.get(cards.size() - 1));
     }
 
+    public Card removeTopCard() {
+        if (cards.isEmpty()) {
+            throw new IllegalStateException("Cannot remove from an empty discard pile.");
+        }
+
+        return cards.remove(cards.size() - 1);
+    }
+
     public List<Card> cards() {
         return List.copyOf(cards);
     }

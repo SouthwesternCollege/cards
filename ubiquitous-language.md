@@ -1334,3 +1334,46 @@ Milestone 6A introduces `TurnRules` for active-player and phase checks.
 ### Turn Rules Foundation
 
 The first Milestone 6 slice. It centralizes simple turn legality before adding more complex rules such as opening requirements and castigo timing.
+
+### PlayerOpenedEvent
+
+A game event emitted when a closed player satisfies the current round opening requirement.
+
+Current implementation:
+
+- emitted after `CreateMeldAction` causes the player's created melds to satisfy `OpeningRequirement`
+- HUD refresh already reflects opened/closed status
+- special visual feedback is not implemented yet
+
+### TakeCastigoAction
+
+A request for the active player to take the available castigo.
+
+Milestone 6C implementation:
+
+- active-player only
+- allowed during `DRAW_OR_CASTIGO`
+- requires a non-empty discard pile
+- requires the player to have castigos remaining
+- consumes one castigo
+- gives the active player the discard top card plus four deck cards
+- advances the phase to `MELD`
+
+### CastigoTakenEvent
+
+A game event emitted when castigo is successfully taken.
+
+Current fields:
+
+- player id
+- discard card taken
+- deck cards drawn
+
+### Castigo Card Counts
+
+Current default rules:
+
+- Active-player castigo: discard top card plus 4 deck cards.
+- Out-of-turn castigo: discard top card plus 3 deck cards.
+
+These values are house-rule candidates and may later become configurable.

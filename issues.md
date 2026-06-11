@@ -317,7 +317,7 @@ Track castigos remaining in player/game state, not in meld validation.
 
 ## ISS-014: Implement opening requirements
 
-Status: Open  
+Status: Done for CreateMeldAction  
 Priority: P1  
 Area: Game Rules
 
@@ -1736,7 +1736,7 @@ The UI uses `MeldCreatedEvent` to animate the cards into the played area.
 
 ## ISS-064: Enforce opening requirements
 
-Status: Open  
+Status: Done for CreateMeldAction  
 Priority: P1  
 Area: Meld Rules / Round Rules
 
@@ -2363,3 +2363,128 @@ Examples:
 - not active player
 - invalid meld
 - card not in hand
+
+---
+
+## ISS-085: Implement opening requirements for meld creation
+
+Status: Done  
+Priority: P1  
+Area: Round Rules / Opening
+
+### Problem
+
+Closed players could create any valid meld, even before satisfying the round opening requirement.
+
+### Decision
+
+Add `OpeningRequirement` and enforce it in `CreateMeldAction`.
+
+### Result
+
+Milestone 6B added:
+
+- `OpeningRequirement`
+- `OPENING_REQUIREMENT_NOT_MET`
+- `PlayerOpenedEvent`
+
+Closed players may now create only melds that contribute to the current round's opening requirement.
+
+Round requirements:
+
+```text
+Round 1: one 3-of-a-kind
+Round 2: two 3-of-a-kind melds
+Round 3: one 4-of-a-kind
+Round 4: two 4-of-a-kind melds
+Round 5: one 5-of-a-kind
+Round 6: one straight flush of at least 8 cards
+```
+
+Multi-meld openings can be built one meld at a time because the current UI creates one meld per action.
+
+### Remaining Work
+
+- Add visible opening feedback.
+- Integrate opening with future meld mutation.
+- Integrate closed-player joker stealing obligation.
+
+---
+
+## ISS-086: Implement active-player castigo action
+
+Status: Done  
+Priority: P1  
+Area: Castigo / Turn Rules
+
+### Problem
+
+Castigo UI still used prototype draw behavior and did not mutate rules-level discard pile, castigo count, or turn phase.
+
+### Decision
+
+Add active-player castigo first, leaving out-of-turn castigo timing for Milestone 6D.
+
+### Result
+
+Milestone 6C added:
+
+- `TakeCastigoAction`
+- `CastigoTakenEvent`
+- `NO_CASTIGO_AVAILABLE`
+- `NO_CASTIGOS_REMAINING`
+
+Current active-player castigo behavior:
+
+```text
+active player clicks castigo during DRAW_OR_CASTIGO
+→ consumes one castigo
+→ takes discard top card
+→ draws four deck cards
+→ receives five total cards
+→ phase advances to MELD
+```
+
+### Remaining Work
+
+- Out-of-turn castigo window.
+- 5-second decision timer.
+- Pass castigo action.
+- House-rule configuration for castigo card counts.
+- Out-of-turn castigo card count: discard top card plus 3 deck cards.
+- Better split-source animations for discard card vs deck cards.
+
+---
+
+## ISS-087: Correct active-player castigo card count
+
+Status: Done  
+Priority: P1  
+Area: Castigo / House Rules
+
+### Problem
+
+Milestone 6C initially implemented active-player castigo as discard top card plus two deck cards.
+
+### Clarified Rule
+
+Current default rules:
+
+```text
+Active-player castigo:
+discard top card + 4 deck cards = 5 total cards
+
+Out-of-turn castigo:
+discard top card + 3 deck cards = 4 total cards
+```
+
+These values may later become configurable house rules.
+
+### Result
+
+`GameController` now uses explicit constants:
+
+```java
+ACTIVE_CASTIGO_DECK_CARDS = 4
+OUT_OF_TURN_CASTIGO_DECK_CARDS = 3
+```

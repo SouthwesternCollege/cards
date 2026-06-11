@@ -14,6 +14,8 @@ public final class GameController {
     private static final int DEFAULT_PLAYER_COUNT = 4;
     private static final int DEFAULT_HAND_SIZE = 13;
     private static final int DEFAULT_CASTIGOS_PER_GAME = 10;
+    private static final int ACTIVE_CASTIGO_DECK_CARDS = 4;
+    private static final int OUT_OF_TURN_CASTIGO_DECK_CARDS = 3;
 
     private final GameState gameState;
     private final MeldValidator meldValidator = new LaKikaMeldValidator();
@@ -72,6 +74,10 @@ public final class GameController {
 
         if (action instanceof DiscardAction discardAction) {
             return discard(discardAction);
+        }
+
+        if (action instanceof TakeCastigoAction takeCastigoAction) {
+            return takeCastigo(takeCastigoAction);
         }
 
         if (action instanceof CreateMeldAction createMeldAction) {
@@ -169,6 +175,70 @@ public final class GameController {
                 new ActivePlayerChangedEvent(previousActivePlayer, nextActivePlayer),
                 new TurnPhaseChangedEvent(previousPhase, gameState.roundState().turnPhase())
         );
+    }
+
+
+    private ActionResult takeCastigo(TakeCastigoAction action) {
+        PlayerId playerId = action.playerId();
+
+        ActionResult turnCheck = TurnRules.requireActivePlayerInPhase(
+                gameState,
+                playerId,
+                TurnPhase.DRAW_OR_CASTIGO,
+                "take castigo"
+        );
+
+        if (turnCheck != null) {
+            return turnCheck;
+        }
+
+        if (gameState.discardPile().isEmpty()) {
+            return ActionResult.failure(
+                    ActionFailureCode.NO_CASTIGO_AVAILABLE,
+                    "No castigo is available because the discard pile is empty."
+            );
+        }
+
+        PlayerState player = gameState.player(playerId);
+
+        if (player.castigosRemaining() <= 0) {
+            return ActionResult.failure(
+                    ActionFailureCode.NO_CASTIGOS_REMAINING,
+                    "Player has no castigos remaining."
+            );
+        }
+
+        player.consumeCastigo();
+
+        Card discardCard = gameState.discardPile().removeTopCard();
+        player.addCard(discardCard);
+
+        List<Card> drawnCards = drawCastigoDeckCards(ACTIVE_CASTIGO_DECK_CARDS);
+
+        for (Card drawnCard : drawnCards) {
+            player.addCard(drawnCard);
+        }
+
+        TurnPhaseChangedEvent phaseChangedEvent = advanceAfterDraw();
+
+        return ActionResult.success(
+                new CastigoTakenEvent(playerId, discardCard, drawnCards),
+                phaseChangedEvent
+        );
+    }
+
+    private List<Card> drawCastigoDeckCards(int deckCardCount) {
+        List<Card> drawnCards = new ArrayList<>();
+
+        for (int i = 0; i < deckCardCount; i++) {
+            if (gameState.deck().getCards().isEmpty()) {
+                gameState.deck().addShuffledStandardDeckWithJokers();
+            }
+
+            drawnCards.add(gameState.deck().drawCard());
+        }
+
+        return drawnCards;
     }
 
 

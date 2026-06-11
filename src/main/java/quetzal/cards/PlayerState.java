@@ -209,6 +209,14 @@ public final class PlayerState {
         this.castigosRemaining = castigosRemaining;
     }
 
+    public void consumeCastigo() {
+        if (castigosRemaining <= 0) {
+            throw new IllegalStateException("No castigos remaining.");
+        }
+
+        castigosRemaining--;
+    }
+
     public PlayerStateSnapshot toSnapshot() {
         return new PlayerStateSnapshot(
                 playerId.value(),

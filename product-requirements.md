@@ -339,7 +339,7 @@ Rules:
 - Declining a castigo does not consume one.
 - Castigos reset between games, but not between rounds.
 
-Status: not yet implemented.
+Status: partially implemented in Milestone 6C for active-player castigo. Out-of-turn castigo window and house-rule configurability remain future work.
 
 ### FR-13: Round Opening Requirements
 
@@ -363,7 +363,7 @@ Rules:
 - Round 6's eight-card straight flush may include jokers if the meld is legal.
 - If a closed player steals a joker, they must open that same turn.
 
-Status: not yet implemented.
+Status: implemented for meld creation in Milestone 6B. Meld mutation and joker stealing interactions remain future work.
 
 ### FR-14: Round End
 
@@ -1672,27 +1672,57 @@ Out of scope:
 
 #### Milestone 6B: Opening Requirements
 
-Status: planned.
+Status: implemented.
 
-Recommended scope:
+Scope completed:
 
-- Add `OpeningRequirement`.
-- Add round-specific opening rules.
-- Track opened/closed status through `PlayerState`.
-- Enforce opening requirement before a closed player may freely play melds.
-- Mark player as opened after satisfying the round requirement.
+- Added `OpeningRequirement`.
+- Added round-specific opening rules:
+  - Round 1: one 3-of-a-kind.
+  - Round 2: two 3-of-a-kind melds.
+  - Round 3: one 4-of-a-kind.
+  - Round 4: two 4-of-a-kind melds.
+  - Round 5: one 5-of-a-kind.
+  - Round 6: one straight flush of at least 8 cards.
+- Added `OPENING_REQUIREMENT_NOT_MET` failure code.
+- Added `PlayerOpenedEvent`.
+- Closed players may only create melds that contribute to the current opening requirement.
+- Multi-meld openings can be built one meld at a time during the meld phase.
+- A player is marked opened when their created melds satisfy the current round requirement.
+- Rejected opening attempts leave the player's hand unchanged.
+
+Current limitation:
+
+- There is no special visual celebration/message for opening yet.
+- Meld mutation is still not implemented.
+- Closed-player joker stealing obligation is still deferred to Milestone 6E.
 
 #### Milestone 6C: Castigo Count and Basic Castigo Action
 
-Status: planned.
+Status: implemented.
 
-Recommended scope:
+Scope completed:
 
-- Enforce 10 castigos per player per game.
-- Add `TakeCastigoAction`.
-- Reduce castigos remaining when a castigo is taken.
-- Make HUD reflect the updated remaining castigos.
-- Start with active-player castigo only before out-of-turn behavior.
+- Added `TakeCastigoAction`.
+- Added `CastigoTakenEvent`.
+- Added `NO_CASTIGO_AVAILABLE` failure code.
+- Added `NO_CASTIGOS_REMAINING` failure code.
+- Added `DiscardPile.removeTopCard()`.
+- Added `PlayerState.consumeCastigo()`.
+- Active player may take castigo during `DRAW_OR_CASTIGO`.
+- Taking active-player castigo consumes one castigo.
+- Active-player castigo takes the discard top card plus 4 deck cards, for 5 total cards.
+- Future out-of-turn castigo should take the discard top card plus 3 deck cards, for 4 total cards.
+- These castigo counts are house-rule candidates and should later become configurable.
+- Taking castigo advances the phase to `MELD`.
+- HUD refresh shows updated castigos remaining.
+- Discard pile view updates after castigo is taken.
+
+Current limitation:
+
+- Out-of-turn castigo timing is not implemented.
+- Castigo cards currently animate from the discard pile source position.
+- House-rule configurability for castigo card counts is not implemented yet.
 
 #### Milestone 6D: Out-of-Turn Castigo Window
 
