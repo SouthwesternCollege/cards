@@ -202,17 +202,51 @@ public final class GameController {
         }
 
         List<Card> cardsForMeld = validationResult.normalizedCards();
+        MeldState meld = new MeldState(playerId, validationResult.meldType(), cardsForMeld);
+        ActionResult openingCheck = validateOpeningPermission(player, meld);
+
+        if (openingCheck != null) {
+            return openingCheck;
+        }
 
         for (Card card : cardsForMeld) {
             player.removeCard(card.id());
         }
 
-        MeldState meld = new MeldState(playerId, validationResult.meldType(), cardsForMeld);
         gameState.playArea().addMeld(meld);
+
+        if (!player.opened() && openingRequirement().isSatisfiedBy(gameState.playArea().meldsCreatedBy(playerId))) {
+            player.setOpened(true);
+            return ActionResult.success(
+                    new MeldCreatedEvent(playerId, meld),
+                    new PlayerOpenedEvent(playerId)
+            );
+        }
 
         return ActionResult.success(new MeldCreatedEvent(playerId, meld));
     }
 
+
+    private ActionResult validateOpeningPermission(PlayerState player, MeldState candidateMeld) {
+        if (player.opened()) {
+            return null;
+        }
+
+        OpeningRequirement requirement = openingRequirement();
+
+        if (!requirement.acceptsAsOpeningMeld(candidateMeld)) {
+            return ActionResult.failure(
+                    ActionFailureCode.OPENING_REQUIREMENT_NOT_MET,
+                    "Closed player must satisfy opening requirement before playing freely. " + requirement.displayText()
+            );
+        }
+
+        return null;
+    }
+
+    private OpeningRequirement openingRequirement() {
+        return OpeningRequirement.forRound(gameState.roundState().roundNumber());
+    }
 
     private ActionResult sortHandByRank(SortHandByRankAction action) {
         PlayerId playerId = action.playerId();
