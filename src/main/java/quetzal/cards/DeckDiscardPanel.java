@@ -1,6 +1,9 @@
 package quetzal.cards;
 
 import com.almasb.fxgl.dsl.FXGL;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.geometry.Point2D;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Group;
@@ -11,21 +14,23 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
+import javafx.util.Duration;
 
 /**
- * Prototype HUD panel for deck/discard interactions.
+ * HUD panel for deck/discard interactions.
  *
- * Milestone 4D scope:
- * - Show deck to the left of discard.
- * - Show a Balatro-style deck stack using small offsets.
- * - Provide clickable text overlays for prototype draw/castigo actions.
- * - Keep real turn legality out of this class.
+ * Milestone 6D removes card overlays and uses dedicated controls below the
+ * deck/discard piles. The Take Castigo button doubles as the visible
+ * five-second decision timer.
  */
 public final class DeckDiscardPanel {
 
     private static final double CARD_OFFSET = 2.0;
     private static final int MAX_VISIBLE_DECK_BACKS = 5;
     private static final double PILE_GAP = 28.0;
+    private static final double BUTTON_WIDTH = 142.0;
+    private static final double BUTTON_HEIGHT = 38.0;
+    private static final double DECISION_SECONDS = 5.0;
 
     private final Deck deck;
     private final DeckDiscardActions actions;
@@ -36,10 +41,16 @@ public final class DeckDiscardPanel {
     private final Group root = new Group();
     private final Group deckGroup = new Group();
     private final Group discardGroup = new Group();
+    private final Group drawButton = new Group();
+    private final Group takeCastigoButton = new Group();
+    private final Group passButton = new Group();
+    private final Rectangle takeCastigoTimerFill = new Rectangle(0, BUTTON_HEIGHT);
     private final Text deckCountText = new Text();
     private final Text discardStatusText = new Text();
 
+    private Timeline takeCastigoTimeline;
     private boolean castigoAvailable = false;
+    private boolean activePlayerDecisionMode = true;
     private Card topDiscardCard;
 
     public DeckDiscardPanel(GameLayout gameLayout, Deck deck, DeckDiscardActions actions) {
@@ -61,6 +72,7 @@ public final class DeckDiscardPanel {
 
         build();
         position();
+        showActivePlayerControls(false);
         refresh();
 
         FXGL.getGameScene().addUINode(root);
@@ -83,18 +95,84 @@ public final class DeckDiscardPanel {
         discardStatusText.setEffect(dropShadow(Color.BLACK, 2));
 
         deckGroup.setOnMouseClicked(event -> {
-            actions.drawFromDeck(deckTopLeft());
-            refresh();
+            if (drawButton.isVisible()) {
+                stopTakeCastigoTimer();
+                actions.drawFromDeck(deckTopLeft());
+                refresh();
+            }
         });
 
         discardGroup.setOnMouseClicked(event -> {
-            if (castigoAvailable) {
+            if (takeCastigoButton.isVisible() && castigoAvailable) {
+                stopTakeCastigoTimer();
                 actions.takeCastigo(discardTopLeft());
+                refresh();
             }
-            refresh();
         });
 
-        root.getChildren().addAll(title, deckGroup, discardGroup, deckCountText, discardStatusText);
+        buildDrawButton();
+        buildTakeCastigoButton();
+        buildPassButton();
+
+        root.getChildren().addAll(
+                title,
+                deckGroup,
+                discardGroup,
+                deckCountText,
+                discardStatusText,
+                drawButton,
+                takeCastigoButton,
+                passButton
+        );
+    }
+
+    private void buildDrawButton() {
+        drawButton.getChildren().addAll(buttonBackground(Color.color(0.10, 0.25, 0.46)), buttonText("DRAW", 16));
+        drawButton.setOnMouseClicked(event -> {
+            stopTakeCastigoTimer();
+            actions.drawFromDeck(deckTopLeft());
+        });
+    }
+
+    private void buildTakeCastigoButton() {
+        Rectangle background = buttonBackground(Color.color(0.48, 0.18, 0.10));
+        takeCastigoTimerFill.setFill(Color.color(0.42, 0.42, 0.42, 0.68));
+        takeCastigoTimerFill.setMouseTransparent(true);
+
+        Text text = buttonText("CASTIGO", 15);
+        takeCastigoButton.getChildren().addAll(background, takeCastigoTimerFill, text);
+        takeCastigoButton.setOnMouseClicked(event -> {
+            if (castigoAvailable) {
+                stopTakeCastigoTimer();
+                actions.takeCastigo(discardTopLeft());
+            }
+        });
+    }
+
+    private void buildPassButton() {
+        passButton.getChildren().addAll(buttonBackground(Color.color(0.18, 0.18, 0.18)), buttonText("PASS", 16));
+        passButton.setOnMouseClicked(event -> {
+            stopTakeCastigoTimer();
+            actions.passCastigo();
+        });
+    }
+
+    private Rectangle buttonBackground(Color color) {
+        Rectangle background = new Rectangle(BUTTON_WIDTH, BUTTON_HEIGHT);
+        background.setArcWidth(10);
+        background.setArcHeight(10);
+        background.setFill(color);
+        background.setStroke(Color.color(1, 1, 1, 0.22));
+        background.setEffect(dropShadow(Color.BLACK, 3));
+        return background;
+    }
+
+    private Text buttonText(String value, double fontSize) {
+        Text text = overlayText(value, fontSize);
+        text.setTranslateX((BUTTON_WIDTH - value.length() * fontSize * 0.55) / 2.0);
+        text.setTranslateY(25);
+        text.setMouseTransparent(true);
+        return text;
     }
 
     private void position() {
@@ -105,7 +183,6 @@ public final class DeckDiscardPanel {
         root.setTranslateX(x);
         root.setTranslateY(y);
 
-        // Deck is left; discard is right.
         deckGroup.setTranslateX(0);
         deckGroup.setTranslateY(30);
 
@@ -115,25 +192,98 @@ public final class DeckDiscardPanel {
         deckCountText.setTranslateX(deckGroup.getTranslateX() + 18);
         deckCountText.setTranslateY(deckGroup.getTranslateY() + CardViewMetrics.renderedHeight() - 18);
 
-        discardStatusText.setTranslateX(discardGroup.getTranslateX() + 10);
+        discardStatusText.setTranslateX(discardGroup.getTranslateX() + 8);
         discardStatusText.setTranslateY(discardGroup.getTranslateY() + CardViewMetrics.renderedHeight() + 24);
+
+        drawButton.setTranslateX(deckGroup.getTranslateX() - 10);
+        drawButton.setTranslateY(deckGroup.getTranslateY() + CardViewMetrics.renderedHeight() + 42);
+
+        takeCastigoButton.setTranslateX(discardGroup.getTranslateX() - 10);
+        takeCastigoButton.setTranslateY(discardGroup.getTranslateY() + CardViewMetrics.renderedHeight() + 42);
+
+        passButton.setTranslateX(discardGroup.getTranslateX() - 10);
+        passButton.setTranslateY(discardGroup.getTranslateY() + CardViewMetrics.renderedHeight() + 88);
     }
 
     public void refresh() {
         rebuildDeckStack();
         rebuildDiscardPile();
         deckCountText.setText("Deck: " + deck.getCards().size());
-        discardStatusText.setText(castigoAvailable ? "CASTIGO" : "No castigo");
+        discardStatusText.setText(castigoAvailable ? "Castigo available" : "No castigo");
     }
 
     public void setCastigoAvailable(boolean castigoAvailable) {
         this.castigoAvailable = castigoAvailable;
+        updateTakeCastigoOpacity();
+
+        if (castigoAvailable && takeCastigoButton.isVisible()) {
+            startTakeCastigoTimer();
+        } else {
+            stopTakeCastigoTimer();
+        }
+
         refresh();
     }
 
     public void setTopDiscardCard(Card topDiscardCard) {
         this.topDiscardCard = topDiscardCard;
         refresh();
+    }
+
+    public void showActivePlayerControls(boolean castigoAvailable) {
+        activePlayerDecisionMode = true;
+        drawButton.setVisible(true);
+        takeCastigoButton.setVisible(castigoAvailable);
+        passButton.setVisible(false);
+        setCastigoAvailable(castigoAvailable);
+    }
+
+    public void showOutOfTurnCastigoControls(boolean castigoAvailable) {
+        activePlayerDecisionMode = false;
+        drawButton.setVisible(false);
+        takeCastigoButton.setVisible(castigoAvailable);
+        passButton.setVisible(true);
+        setCastigoAvailable(castigoAvailable);
+    }
+
+    public void hideDecisionControls() {
+        drawButton.setVisible(false);
+        takeCastigoButton.setVisible(false);
+        passButton.setVisible(false);
+        stopTakeCastigoTimer();
+    }
+
+    private void updateTakeCastigoOpacity() {
+        takeCastigoButton.setOpacity(castigoAvailable ? 1.0 : 0.42);
+    }
+
+    private void startTakeCastigoTimer() {
+        stopTakeCastigoTimer();
+
+        takeCastigoTimerFill.setWidth(0);
+
+        takeCastigoTimeline = new Timeline(
+                new KeyFrame(Duration.ZERO, new KeyValue(takeCastigoTimerFill.widthProperty(), 0)),
+                new KeyFrame(Duration.seconds(DECISION_SECONDS), new KeyValue(takeCastigoTimerFill.widthProperty(), BUTTON_WIDTH))
+        );
+
+        takeCastigoTimeline.setOnFinished(event -> {
+            if (activePlayerDecisionMode) {
+                actions.drawFromDeck(deckTopLeft());
+            } else {
+                actions.passCastigo();
+            }
+        });
+        takeCastigoTimeline.play();
+    }
+
+    private void stopTakeCastigoTimer() {
+        if (takeCastigoTimeline != null) {
+            takeCastigoTimeline.stop();
+            takeCastigoTimeline = null;
+        }
+
+        takeCastigoTimerFill.setWidth(0);
     }
 
     private void rebuildDeckStack() {
@@ -149,8 +299,6 @@ public final class DeckDiscardPanel {
             return;
         }
 
-        // Bottom card is centered over the empty slot. Subsequent cards grow
-        // upward and to the right.
         for (int i = 0; i < visibleBacks; i++) {
             Node back = cardBackViewFactory.createCardBackView();
             back.setTranslateX(i * CARD_OFFSET);
@@ -163,8 +311,6 @@ public final class DeckDiscardPanel {
 
             deckGroup.getChildren().add(back);
         }
-
-        deckGroup.getChildren().add(drawButtonOverlay());
     }
 
     private void rebuildDiscardPile() {
@@ -180,13 +326,6 @@ public final class DeckDiscardPanel {
         Node discardCard = cardViewFactory.createView(topDiscardCard);
         discardCard.setOpacity(castigoAvailable ? 1.0 : 0.45);
         discardGroup.getChildren().add(discardCard);
-
-        if (castigoAvailable) {
-            Text overlay = overlayText("CASTIGO", 15);
-            overlay.setTranslateX(12);
-            overlay.setTranslateY(CardViewMetrics.renderedHeight() / 2.0 + 8);
-            discardGroup.getChildren().add(overlay);
-        }
     }
 
     private ColorAdjust deckDepthEffect(int stackIndex, int visibleBacks) {
@@ -197,29 +336,6 @@ public final class DeckDiscardPanel {
         adjust.setBrightness(brightness);
         adjust.setSaturation(-0.08);
         return adjust;
-    }
-
-    private Group drawButtonOverlay() {
-        Group button = new Group();
-
-        double buttonWidth = 86;
-        double buttonHeight = 34;
-
-        Rectangle background = new Rectangle(buttonWidth, buttonHeight);
-        background.setArcWidth(10);
-        background.setArcHeight(10);
-        background.setFill(Color.color(0.0, 0.0, 0.0, 0.5));
-        background.setStroke(Color.color(1, 1, 1, 0.22));
-        Text text = overlayText("DRAW", 16);
-        text.setTranslateX(15);
-        text.setTranslateY(24);
-
-        button.getChildren().addAll(background, text);
-        double topCardOffset = (visibleDeckBackCount() - 1) * CARD_OFFSET;
-        button.setTranslateX(topCardOffset + (CardViewMetrics.renderedWidth() - buttonWidth) / 2.0);
-        button.setTranslateY(-topCardOffset + (CardViewMetrics.renderedHeight() - buttonHeight) / 2.0);
-
-        return button;
     }
 
     private int visibleDeckBackCount() {

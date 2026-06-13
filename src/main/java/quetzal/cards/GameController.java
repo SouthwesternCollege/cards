@@ -180,16 +180,25 @@ public final class GameController {
 
     private ActionResult takeCastigo(TakeCastigoAction action) {
         PlayerId playerId = action.playerId();
+        PlayerId activePlayerId = gameState.roundState().activePlayerId();
+        boolean activePlayerTakingCastigo = playerId.equals(activePlayerId);
 
-        ActionResult turnCheck = TurnRules.requireActivePlayerInPhase(
-                gameState,
-                playerId,
-                TurnPhase.DRAW_OR_CASTIGO,
-                "take castigo"
-        );
+        if (activePlayerTakingCastigo) {
+            ActionResult turnCheck = TurnRules.requireActivePlayerInPhase(
+                    gameState,
+                    playerId,
+                    TurnPhase.DRAW_OR_CASTIGO,
+                    "take castigo"
+            );
 
-        if (turnCheck != null) {
-            return turnCheck;
+            if (turnCheck != null) {
+                return turnCheck;
+            }
+        } else if (gameState.roundState().turnPhase() != TurnPhase.MELD) {
+            return ActionResult.failure(
+                    ActionFailureCode.WRONG_TURN_PHASE,
+                    "Out-of-turn castigo may only be taken after the active player has drawn and entered the MELD phase."
+            );
         }
 
         if (gameState.discardPile().isEmpty()) {
@@ -213,13 +222,24 @@ public final class GameController {
         Card discardCard = gameState.discardPile().removeTopCard();
         player.addCard(discardCard);
 
-        List<Card> drawnCards = drawCastigoDeckCards(ACTIVE_CASTIGO_DECK_CARDS);
+        int deckCardCount = activePlayerTakingCastigo
+                ? ACTIVE_CASTIGO_DECK_CARDS
+                : OUT_OF_TURN_CASTIGO_DECK_CARDS;
+        List<Card> drawnCards = drawCastigoDeckCards(deckCardCount);
 
         for (Card drawnCard : drawnCards) {
             player.addCard(drawnCard);
         }
 
-        TurnPhaseChangedEvent phaseChangedEvent = advanceAfterDraw();
+        TurnPhaseChangedEvent phaseChangedEvent = null;
+
+        if (activePlayerTakingCastigo) {
+            phaseChangedEvent = advanceAfterDraw();
+        }
+
+        if (phaseChangedEvent == null) {
+            return ActionResult.success(new CastigoTakenEvent(playerId, discardCard, drawnCards));
+        }
 
         return ActionResult.success(
                 new CastigoTakenEvent(playerId, discardCard, drawnCards),

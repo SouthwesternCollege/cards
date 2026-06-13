@@ -179,7 +179,7 @@ public final class GameActionPresentationAdapter {
         }
     }
 
-    private void renderActivePlayerHand(PlayerId playerId) {
+    public void renderActivePlayerHand(PlayerId playerId) {
         renderedPlayerId = playerId;
         hand.setPlayAreaPerspective(playerId, gameController.state().nextPlayerAfter(playerId));
         hand.renderHand(gameController.handFor(playerId));
@@ -189,7 +189,14 @@ public final class GameActionPresentationAdapter {
     private void refreshViews() {
         gameHudController.refreshFromGameState(gameController.state());
         deckDiscardPanel.setTopDiscardCard(gameController.state().discardPile().topCard().orElse(null));
-        deckDiscardPanel.setCastigoAvailable(isActivePlayerCastigoAvailable());
+
+        if (gameController.state().roundState().turnPhase() == TurnPhase.DRAW_OR_CASTIGO) {
+            deckDiscardPanel.showActivePlayerControls(isActivePlayerCastigoAvailable());
+        } else {
+            deckDiscardPanel.hideDecisionControls();
+            deckDiscardPanel.setCastigoAvailable(false);
+        }
+
         deckDiscardPanel.refresh();
         debugHandOverlay.refresh();
     }
@@ -197,8 +204,7 @@ public final class GameActionPresentationAdapter {
     private boolean isActivePlayerCastigoAvailable() {
         PlayerState activePlayer = gameController.state().player(gameController.state().roundState().activePlayerId());
 
-        return gameController.state().roundState().turnPhase() == TurnPhase.DRAW_OR_CASTIGO
-                && !gameController.state().discardPile().isEmpty()
+        return !gameController.state().discardPile().isEmpty()
                 && activePlayer.castigosRemaining() > 0;
     }
 }

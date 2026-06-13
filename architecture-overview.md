@@ -607,3 +607,44 @@ The house-rule variation concerns how many additional deck cards are drawn.
 ```
 
 Future settings work should move these into configurable house-rule state.
+
+
+## Milestone 6C.1 Real Play-Area Views and Opponent Carousel
+
+The full-table view now reads real `GameState.playArea()` data instead of mock melds.
+
+Current full-table flow:
+
+```text
+FullPlayAreaView
+→ GameController.state()
+→ GameState.playArea()
+→ PlayArea.meldsCreatedBy(playerId)
+→ read-only card views
+```
+
+The opponent meld area now has carousel controls:
+
+```text
+< previous opponent
+> next opponent
+```
+
+Manual carousel cycling uses horizontal slide animation.
+
+Important dependency for future meld mutation:
+
+```text
+Opponent carousel
+→ choose which opponent's melds are visible
+→ later select a specific MeldState
+→ later mutate meld / steal joker
+```
+
+Current limitation:
+
+```text
+VisualMeldStore is still the interactive played-meld presentation cache.
+Full-table view reads real PlayArea directly.
+A later milestone should converge these views around real MeldState identity.
+```

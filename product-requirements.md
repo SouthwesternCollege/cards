@@ -1724,6 +1724,31 @@ Current limitation:
 - Castigo cards currently animate from the discard pile source position.
 - House-rule configurability for castigo card counts is not implemented yet.
 
+#### Milestone 6C.1: Real Play-Area Views and Opponent Carousel
+
+Status: implemented.
+
+Scope completed:
+
+- Full-table view now renders real melds from `GameState.playArea()`.
+- Full-table view no longer uses `MockPlayAreaFactory`.
+- `FullPlayAreaView` receives `GameController` and reads live players/play area when opened.
+- Added opponent meld carousel controls to the opponent played area:
+  - `<` cycles to the previous opponent.
+  - `>` cycles to the next opponent.
+- Carousel arrows use the same font/text styling family as the rest of the UI.
+- Manual carousel cycling uses horizontal slide animation:
+  - `>` slides current opponent melds left/out and next opponent melds in from the right.
+  - `<` slides current opponent melds right/out and previous opponent melds in from the left.
+- Opponent label indicates the currently visible opponent.
+
+Current limitation:
+
+- Turn-transition animation is still basic because the pass-device privacy overlay currently hides the table during active-player changes.
+- Full-table view is read-only.
+- Meld mutation is still not implemented.
+
+
 #### Milestone 6D: Out-of-Turn Castigo Window
 
 Status: planned.

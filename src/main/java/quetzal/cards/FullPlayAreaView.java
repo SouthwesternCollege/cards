@@ -11,15 +11,12 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Read-only full table view for inspecting every player's played melds.
  *
- * Milestone 4G intentionally uses mock data because real multiplayer GameState
- * and PlayArea state do not exist yet.
+ * Milestone 6C.1 renders real GameState / PlayArea melds.
  */
 public final class FullPlayAreaView {
 
@@ -30,14 +27,19 @@ public final class FullPlayAreaView {
     private final double sceneWidth;
     private final double sceneHeight;
     private final CardViewFactory cardViewFactory = new CardViewFactory();
-    private final MockPlayAreaFactory mockPlayAreaFactory = new MockPlayAreaFactory();
+    private final GameController gameController;
 
     private Group root;
     private boolean visible = false;
 
-    public FullPlayAreaView(double sceneWidth, double sceneHeight) {
+    public FullPlayAreaView(double sceneWidth, double sceneHeight, GameController gameController) {
+        if (gameController == null) {
+            throw new IllegalArgumentException("Game controller cannot be null.");
+        }
+
         this.sceneWidth = sceneWidth;
         this.sceneHeight = sceneHeight;
+        this.gameController = gameController;
     }
 
     public void show() {
@@ -86,7 +88,7 @@ public final class FullPlayAreaView {
         title.setTranslateX(OUTER_PADDING);
         title.setTranslateY(58);
 
-        Text subtitle = new Text("Read-only mock play area");
+        Text subtitle = new Text("Read-only real play area");
         subtitle.setFont(loadFont(18));
         subtitle.setFill(Color.color(0.72, 0.72, 0.72));
         subtitle.setEffect(dropShadow(Color.BLACK, 2));
@@ -100,22 +102,23 @@ public final class FullPlayAreaView {
 
         group.getChildren().addAll(background, title, subtitle, closeButton);
 
-        Map<PlayerId, List<VisualMeld>> mockMelds = mockPlayAreaFactory.createMockMelds(4);
-        addPlayerRows(group, mockMelds);
+        addPlayerRows(group);
 
         return group;
     }
 
-    private void addPlayerRows(Group group, Map<PlayerId, List<VisualMeld>> mockMelds) {
-        int playerCount = mockMelds.size();
+    private void addPlayerRows(Group group) {
+        List<PlayerState> players = gameController.state().players();
+        int playerCount = players.size();
         double top = 125.0;
         double availableHeight = sceneHeight - top - OUTER_PADDING;
         double rowHeight = (availableHeight - ROW_GAP * (playerCount - 1)) / playerCount;
         double rowWidth = sceneWidth - OUTER_PADDING * 2;
 
-        for (int i = 1; i <= playerCount; i++) {
-            PlayerId playerId = new PlayerId(i);
-            double rowY = top + (i - 1) * (rowHeight + ROW_GAP);
+        for (int i = 0; i < playerCount; i++) {
+            PlayerState player = players.get(i);
+            PlayerId playerId = player.playerId();
+            double rowY = top + i * (rowHeight + ROW_GAP);
 
             Rectangle rowBackground = new Rectangle(rowWidth, rowHeight);
             rowBackground.setArcWidth(18);
@@ -127,7 +130,7 @@ public final class FullPlayAreaView {
             rowBackground.setStrokeWidth(2);
             rowBackground.setEffect(dropShadow(Color.BLACK, 4));
 
-            Text label = new Text("Player " + i);
+            Text label = new Text(player.displayName());
             label.setFont(loadFont(26));
             label.setFill(PlayerColorPalette.colorFor(playerId));
             label.setEffect(dropShadow(Color.BLACK, 3));
@@ -143,8 +146,14 @@ public final class FullPlayAreaView {
                     rowHeight - 20
             );
 
-            addMelds(group, mockMelds.get(playerId), contentArea);
+            addMelds(group, visualMeldsFor(playerId), contentArea);
         }
+    }
+
+    private List<VisualMeld> visualMeldsFor(PlayerId playerId) {
+        return gameController.state().playArea().meldsCreatedBy(playerId).stream()
+                .map(meld -> new VisualMeld(meld.createdBy(), meld.cards()))
+                .toList();
     }
 
     private void addMelds(Group group, List<VisualMeld> melds, Rectangle2D area) {

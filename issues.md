@@ -2488,3 +2488,56 @@ These values may later become configurable house rules.
 ACTIVE_CASTIGO_DECK_CARDS = 4
 OUT_OF_TURN_CASTIGO_DECK_CARDS = 3
 ```
+
+---
+
+## ISS-088: Implement opponent meld carousel
+
+Status: Done  
+Priority: P1  
+Area: Play Area / Opponent Melds
+
+### Problem
+
+The opponent meld area only showed the next player's melds. This made it difficult to inspect or eventually mutate melds belonging to other opponents.
+
+### Decision
+
+Add lightweight carousel controls to the opponent meld area.
+
+### Result
+
+Milestone 6C.1 added:
+
+- `<` and `>` text-arrow controls.
+- Manual cycling through opponent players.
+- Horizontal slide animation when cycling.
+- Opponent label showing which player's melds are currently visible.
+
+### Remaining Work
+
+- Selection of individual meld identities.
+- Meld mutation actions.
+- More polished turn-transition animation.
+
+---
+
+## ISS-089: Make full-table view use real PlayArea
+
+Status: Done  
+Priority: P1  
+Area: Full Table View / Play Area
+
+### Problem
+
+The full-table view used mock melds, so it did not accurately reflect actual played melds.
+
+### Decision
+
+Make `FullPlayAreaView` read from `GameState.playArea()`.
+
+### Result
+
+`FullPlayAreaView` now receives `GameController` and renders each player's real created melds.
+
+`MockPlayAreaFactory` remains in the source tree as historical/dev mock utility, but the full-table view no longer depends on it.

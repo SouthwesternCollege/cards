@@ -1377,3 +1377,19 @@ Current default rules:
 - Out-of-turn castigo: discard top card plus 3 deck cards.
 
 These values are house-rule candidates and may later become configurable.
+
+### Opponent Meld Carousel
+
+A presentation control in the opponent played area that shows one opponent's melds at a time.
+
+Controls:
+
+- `<` cycles to the previous opponent.
+- `>` cycles to the next opponent.
+
+Manual cycling animation:
+
+- `>`: current opponent slides left/out, next opponent slides in from the right.
+- `<`: current opponent slides right/out, previous opponent slides in from the left.
+
+The active player's own melds remain in the current-player meld area.

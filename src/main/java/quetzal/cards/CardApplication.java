@@ -11,8 +11,10 @@ import javafx.geometry.Point2D;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.util.Duration;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class CardApplication extends GameApplication {
@@ -32,6 +34,8 @@ public class CardApplication extends GameApplication {
     private PassDeviceOverlay passDeviceOverlay;
     private GameController gameController;
     private GameActionPresentationAdapter actionPresentationAdapter;
+    private List<PlayerId> pendingCastigoOfferPlayers = List.of();
+    private int pendingCastigoOfferIndex = 0;
     private boolean prototypeGameStarted = false;
 
     public static void main(String[] args) {
@@ -121,10 +125,13 @@ public class CardApplication extends GameApplication {
                 this::reorderActiveHand
         );
 
+        hand.setPlayerIds(gameController.state().players().stream()
+                .map(PlayerState::playerId)
+                .toList());
         hand.setPlayAreaPerspective(localPlayerId, gameController.state().nextPlayerAfter(localPlayerId));
         hand.populateHand(gameController.handFor(localPlayerId));
 
-        fullPlayAreaView = new FullPlayAreaView(WIDTH, HEIGHT);
+        fullPlayAreaView = new FullPlayAreaView(WIDTH, HEIGHT, gameController);
         debugHandOverlay = new DebugHandOverlay(WIDTH, HEIGHT, gameController);
         passDeviceOverlay = new PassDeviceOverlay(WIDTH, HEIGHT);
         debugDrawer = new DebugDrawer(
@@ -153,8 +160,13 @@ public class CardApplication extends GameApplication {
         deckDiscardPanel = new DeckDiscardPanel(gameLayout, deck, new DeckDiscardActions() {
             @Override
             public void drawFromDeck(Point2D sourcePosition) {
-                ActionResult result = gameController.apply(new DrawFromDeckAction(gameController.state().roundState().activePlayerId()));
+                PlayerId activePlayerId = gameController.state().roundState().activePlayerId();
+                ActionResult result = gameController.apply(new DrawFromDeckAction(activePlayerId));
                 actionPresentationAdapter.handleActionResult(result, sourcePosition);
+
+                if (result.success()) {
+                    startOutOfTurnCastigoOffersAfterActiveDraw(activePlayerId);
+                }
             }
 
             @Override
@@ -165,7 +177,7 @@ public class CardApplication extends GameApplication {
 
             @Override
             public void passCastigo() {
-                // Prototype placeholder for out-of-turn castigo prompts.
+                passCurrentOutOfTurnCastigoOffer();
             }
         });
 
@@ -181,6 +193,109 @@ public class CardApplication extends GameApplication {
 
 
 
+
+
+    private void startOutOfTurnCastigoOffersAfterActiveDraw(PlayerId activePlayerId) {
+        if (gameController.state().discardPile().isEmpty()) {
+            return;
+        }
+
+        pendingCastigoOfferPlayers = eligibleOutOfTurnCastigoPlayers(activePlayerId);
+        pendingCastigoOfferIndex = 0;
+
+        if (pendingCastigoOfferPlayers.isEmpty()) {
+            return;
+        }
+
+        deckDiscardPanel.hideDecisionControls();
+
+        FXGL.runOnce(() -> {
+            hand.clearVisibleHand();
+            showNextOutOfTurnCastigoOffer(activePlayerId);
+        }, Duration.seconds(AnimationSettings.PLAYED_CARD_MOVE_SECONDS + 0.05));
+    }
+
+    private List<PlayerId> eligibleOutOfTurnCastigoPlayers(PlayerId activePlayerId) {
+        List<PlayerId> result = new ArrayList<>();
+        PlayerId current = gameController.state().nextPlayerAfter(activePlayerId);
+
+        while (!current.equals(activePlayerId)) {
+            PlayerState player = gameController.state().player(current);
+
+            if (player.castigosRemaining() > 0) {
+                result.add(current);
+            }
+
+            current = gameController.state().nextPlayerAfter(current);
+        }
+
+        return result;
+    }
+
+    private void showNextOutOfTurnCastigoOffer(PlayerId activePlayerId) {
+        if (gameController.state().discardPile().isEmpty()) {
+            returnToActivePlayerAfterCastigoOffers(activePlayerId);
+            return;
+        }
+
+        if (pendingCastigoOfferIndex >= pendingCastigoOfferPlayers.size()) {
+            returnToActivePlayerAfterCastigoOffers(activePlayerId);
+            return;
+        }
+
+        PlayerId offerPlayerId = pendingCastigoOfferPlayers.get(pendingCastigoOfferIndex);
+        Card discardCard = gameController.state().discardPile().topCard().orElse(null);
+
+        if (discardCard == null) {
+            returnToActivePlayerAfterCastigoOffers(activePlayerId);
+            return;
+        }
+
+        passDeviceOverlay.show(
+                offerPlayerId,
+                () -> passDeviceOverlay.showCastigoDecision(
+                        offerPlayerId,
+                        discardCard,
+                        () -> takeOutOfTurnCastigo(offerPlayerId, activePlayerId),
+                        () -> passCurrentOutOfTurnCastigoOffer(activePlayerId)
+                )
+        );
+    }
+
+    private void takeOutOfTurnCastigo(PlayerId offerPlayerId, PlayerId activePlayerId) {
+        ActionResult result = gameController.apply(new TakeCastigoAction(offerPlayerId));
+        actionPresentationAdapter.handleActionResult(result, discardPilePosition());
+
+        if (result.success()) {
+            returnToActivePlayerAfterCastigoOffers(activePlayerId);
+            return;
+        }
+
+        pendingCastigoOfferIndex++;
+        showNextOutOfTurnCastigoOffer(activePlayerId);
+    }
+
+    private void passCurrentOutOfTurnCastigoOffer() {
+        passCurrentOutOfTurnCastigoOffer(gameController.state().roundState().activePlayerId());
+    }
+
+    private void passCurrentOutOfTurnCastigoOffer(PlayerId activePlayerId) {
+        pendingCastigoOfferIndex++;
+        showNextOutOfTurnCastigoOffer(activePlayerId);
+    }
+
+    private void returnToActivePlayerAfterCastigoOffers(PlayerId activePlayerId) {
+        pendingCastigoOfferPlayers = List.of();
+        pendingCastigoOfferIndex = 0;
+
+        passDeviceOverlay.show(
+                activePlayerId,
+                () -> {
+                    actionPresentationAdapter.renderActivePlayerHand(activePlayerId);
+                    deckDiscardPanel.hideDecisionControls();
+                }
+        );
+    }
 
 
     private void sortActiveHandByRank() {

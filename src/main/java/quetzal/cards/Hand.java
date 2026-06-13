@@ -7,6 +7,12 @@ import com.almasb.fxgl.entity.SpawnData;
 import javafx.animation.PauseTransition;
 import javafx.geometry.Point2D;
 import javafx.geometry.Rectangle2D;
+import javafx.scene.Group;
+import javafx.scene.effect.DropShadow;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
+import javafx.scene.text.Text;
 import javafx.util.Duration;
 
 import java.util.ArrayList;
@@ -39,6 +45,8 @@ public class Hand {
     private final HandOrderChangeListener handOrderChangeListener;
     private PlayerId perspectivePlayerId = new PlayerId(1);
     private PlayerId visibleOpponentPlayerId = new PlayerId(2);
+    private final List<PlayerId> playerIds = new ArrayList<>();
+    private Text opponentMeldLabel;
     private int nextDebugCardId = 10_000;
 
     public Hand(Rectangle2D handArea, Rectangle2D playerPlayedArea, Deck deck) {
@@ -79,6 +87,8 @@ public class Hand {
         this.selectionFeedback = selectionFeedback == null ? new NoOpSelectionFeedback() : selectionFeedback;
         this.handChangeListener = handChangeListener == null ? new NoOpHandChangeListener() : handChangeListener;
         this.handOrderChangeListener = handOrderChangeListener == null ? orderedCards -> { } : handOrderChangeListener;
+
+        buildOpponentCarouselControls();
     }
 
     /**
@@ -98,6 +108,16 @@ public class Hand {
         );
     }
 
+    public void setPlayerIds(List<PlayerId> playerIds) {
+        if (playerIds == null || playerIds.isEmpty()) {
+            throw new IllegalArgumentException("Player ids cannot be empty.");
+        }
+
+        this.playerIds.clear();
+        this.playerIds.addAll(playerIds);
+        updateOpponentMeldLabel();
+    }
+
     public void setPlayAreaPerspective(PlayerId perspectivePlayerId, PlayerId visibleOpponentPlayerId) {
         if (perspectivePlayerId == null) {
             throw new IllegalArgumentException("Perspective player cannot be null.");
@@ -110,9 +130,162 @@ public class Hand {
         this.perspectivePlayerId = perspectivePlayerId;
         this.visibleOpponentPlayerId = visibleOpponentPlayerId;
         reflowVisiblePlayedMelds();
+        updateOpponentMeldLabel();
+    }
+
+    private void buildOpponentCarouselControls() {
+        Group leftArrow = carouselArrowButton("<", () -> cycleVisibleOpponent(-1));
+        leftArrow.setTranslateX(opponentPlayedArea.getMinX() + 6);
+        leftArrow.setTranslateY(opponentPlayedArea.getMinY() + opponentPlayedArea.getHeight() / 2.0 - 42);
+
+        Group rightArrow = carouselArrowButton(">", () -> cycleVisibleOpponent(1));
+        rightArrow.setTranslateX(opponentPlayedArea.getMaxX() - 58);
+        rightArrow.setTranslateY(opponentPlayedArea.getMinY() + opponentPlayedArea.getHeight() / 2.0 - 42);
+
+        opponentMeldLabel = carouselLabel();
+        opponentMeldLabel.setTranslateX(opponentPlayedArea.getMinX() + 72);
+        opponentMeldLabel.setTranslateY(opponentPlayedArea.getMinY() + 34);
+
+        FXGL.getGameScene().addUINode(leftArrow);
+        FXGL.getGameScene().addUINode(rightArrow);
+        FXGL.getGameScene().addUINode(opponentMeldLabel);
+        updateOpponentMeldLabel();
+    }
+
+    private Group carouselArrowButton(String value, Runnable action) {
+        Group group = new Group();
+
+        Rectangle hitBox = new Rectangle(52, 84);
+        hitBox.setFill(Color.color(1, 1, 1, 0.01));
+        hitBox.setStroke(Color.TRANSPARENT);
+
+        Text text = new Text(value);
+        text.setFont(loadFont(34));
+        text.setFill(Color.WHITE);
+        text.setEffect(dropShadow(Color.BLACK, 3));
+        text.setMouseTransparent(true);
+        text.setTranslateX(18);
+        text.setTranslateY(54);
+
+        group.getChildren().addAll(hitBox, text);
+        group.setOnMouseClicked(event -> action.run());
+        return group;
+    }
+
+    private Text carouselLabel() {
+        Text text = new Text();
+        text.setFont(loadFont(15));
+        text.setFill(Color.color(0.78, 0.78, 0.78));
+        text.setEffect(dropShadow(Color.BLACK, 2));
+        return text;
+    }
+
+    private Font loadFont(double size) {
+        return Font.loadFont(getClass().getResourceAsStream("/DePixelHalbfett.ttf"), size);
+    }
+
+    private DropShadow dropShadow(Color color, double offsetY) {
+        DropShadow shadow = new DropShadow();
+        shadow.setRadius(1);
+        shadow.setOffsetY(offsetY);
+        shadow.setColor(color);
+        return shadow;
     }
 
 
+
+    private void cycleVisibleOpponent(int direction) {
+        List<PlayerId> opponents = opponentPlayerIds();
+
+        if (opponents.isEmpty()) {
+            return;
+        }
+
+        PlayerId previousOpponent = visibleOpponentPlayerId;
+        int currentIndex = Math.max(0, opponents.indexOf(visibleOpponentPlayerId));
+        int nextIndex = Math.floorMod(currentIndex + direction, opponents.size());
+        visibleOpponentPlayerId = opponents.get(nextIndex);
+
+        reflowPlayedMeldsFor(perspectivePlayerId, playerPlayedArea);
+        animateOpponentCarousel(previousOpponent, visibleOpponentPlayerId, direction);
+        updateOpponentMeldLabel();
+    }
+
+    private List<PlayerId> opponentPlayerIds() {
+        List<PlayerId> opponents = new ArrayList<>();
+
+        for (PlayerId playerId : playerIds) {
+            if (!playerId.equals(perspectivePlayerId)) {
+                opponents.add(playerId);
+            }
+        }
+
+        return opponents;
+    }
+
+    private void updateOpponentMeldLabel() {
+        if (opponentMeldLabel != null) {
+            opponentMeldLabel.setText("Opponent: Player " + visibleOpponentPlayerId.value());
+        }
+    }
+
+    private void animateOpponentCarousel(PlayerId previousOpponent, PlayerId nextOpponent, int direction) {
+        hidePlayedMeldsExcept(perspectivePlayerId, previousOpponent, nextOpponent);
+
+        double outgoingOffset = direction > 0 ? -opponentPlayedArea.getWidth() : opponentPlayedArea.getWidth();
+        double incomingOffset = direction > 0 ? opponentPlayedArea.getWidth() : -opponentPlayedArea.getWidth();
+
+        animateOpponentOut(previousOpponent, outgoingOffset);
+        animateOpponentIn(nextOpponent, incomingOffset);
+    }
+
+    private void animateOpponentOut(PlayerId opponentId, double outgoingOffset) {
+        List<MeldLayoutSlot> slots = meldLayout.slots(visualMeldStore.meldsFor(opponentId), opponentPlayedArea);
+
+        for (MeldLayoutSlot slot : slots) {
+            Entity cardEntity = getEntityFor(slot.card());
+
+            if (cardEntity == null) {
+                continue;
+            }
+
+            cardEntity.setVisible(true);
+            Point2D target = new Point2D(slot.position().getX() + outgoingOffset, slot.position().getY());
+
+            FXGL.animationBuilder()
+                    .duration(Duration.seconds(AnimationSettings.PLAYED_CARD_MOVE_SECONDS))
+                    .interpolator(Interpolators.SMOOTH.EASE_OUT())
+                    .translate(cardEntity)
+                    .to(target)
+                    .buildAndPlay();
+
+            FXGL.runOnce(() -> cardEntity.setVisible(false), Duration.seconds(AnimationSettings.PLAYED_CARD_MOVE_SECONDS));
+        }
+    }
+
+    private void animateOpponentIn(PlayerId opponentId, double incomingOffset) {
+        List<MeldLayoutSlot> slots = meldLayout.slots(visualMeldStore.meldsFor(opponentId), opponentPlayedArea);
+
+        for (MeldLayoutSlot slot : slots) {
+            Entity cardEntity = getEntityFor(slot.card());
+
+            if (cardEntity == null) {
+                continue;
+            }
+
+            Point2D target = slot.position();
+            cardEntity.setPosition(target.getX() + incomingOffset, target.getY());
+            cardEntity.setVisible(true);
+            cardEntity.setZIndex(100 + slot.zIndex());
+
+            FXGL.animationBuilder()
+                    .duration(Duration.seconds(AnimationSettings.PLAYED_CARD_MOVE_SECONDS))
+                    .interpolator(Interpolators.SMOOTH.EASE_OUT())
+                    .translate(cardEntity)
+                    .to(target)
+                    .buildAndPlay();
+        }
+    }
 
     public void renderHand(List<Card> cards) {
         clearVisibleHand();
@@ -469,6 +642,24 @@ public class Hand {
 
     private void hideAllPlayedMelds() {
         for (VisualMeld meld : visualMeldStore.all()) {
+            for (Card card : meld.cards()) {
+                Entity entity = getEntityFor(card);
+
+                if (entity != null) {
+                    entity.setVisible(false);
+                }
+            }
+        }
+    }
+
+    private void hidePlayedMeldsExcept(PlayerId... visiblePlayerIds) {
+        Set<PlayerId> visiblePlayers = new HashSet<>(List.of(visiblePlayerIds));
+
+        for (VisualMeld meld : visualMeldStore.all()) {
+            if (visiblePlayers.contains(meld.createdBy())) {
+                continue;
+            }
+
             for (Card card : meld.cards()) {
                 Entity entity = getEntityFor(card);
 
