@@ -40,6 +40,7 @@ public final class StraightFlushMeldValidator implements MeldValidator {
 
         int cardCount = cards.size();
         int maxStart = HIGHEST_SEQUENCE_VALUE - cardCount + 1;
+        boolean foundOnlyConsecutiveJokerCandidate = false;
 
         for (int start = LOWEST_SEQUENCE_VALUE; start <= maxStart; start++) {
             int end = start + cardCount - 1;
@@ -57,12 +58,17 @@ public final class StraightFlushMeldValidator implements MeldValidator {
             List<JokerAssignment> jokerAssignments = assignJokers(cards, missingRankValues, suit);
 
             if (JokerRules.hasConsecutiveJokerAssignments(jokerAssignments)) {
-                return MeldValidationResult.invalid(MeldValidationError.CONSECUTIVE_JOKERS);
+                foundOnlyConsecutiveJokerCandidate = true;
+                continue;
             }
 
             List<Card> normalizedCards = normalizeStraightFlushCards(cards, start, end, jokerAssignments);
 
             return MeldValidationResult.valid(MeldType.STRAIGHT_FLUSH, normalizedCards, jokerAssignments);
+        }
+
+        if (foundOnlyConsecutiveJokerCandidate) {
+            return MeldValidationResult.invalid(MeldValidationError.CONSECUTIVE_JOKERS);
         }
 
         return MeldValidationResult.invalid(MeldValidationError.NO_CONSECUTIVE_SEQUENCE);

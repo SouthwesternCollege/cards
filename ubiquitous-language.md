@@ -1393,3 +1393,50 @@ Manual cycling animation:
 - `<`: current opponent slides right/out, previous opponent slides in from the left.
 
 The active player's own melds remain in the current-player meld area.
+
+### Castigo Decision Flow
+
+The decision sequence that begins when a discard top card is available during `DRAW_OR_CASTIGO`.
+
+Current Milestone 6D flow:
+
+- Active player chooses Draw or Castigo.
+- Active player has no Pass button.
+- Draw means the active player declines the castigo and draws from deck.
+- After active Draw, out-of-turn players are offered the castigo in turn order.
+- Out-of-turn players choose Take Castigo or Pass.
+- Timer expiration counts as Draw for active player and Pass for out-of-turn players.
+
+### Castigo Decision Timer
+
+A five-second visual timer shown through the Castigo decision button.
+
+Current behavior:
+
+- timer grays the button from left to right
+- active-player timeout triggers Draw
+- out-of-turn timeout triggers Pass
+
+### Castigo Window Domain Promotion
+
+A planned follow-up milestone that moves the pending castigo offer sequence from presentation coordination into rules-level domain state.
+
+Milestone 6D made the flow playable. Milestone 6D.1 should make the window explicit and save/replay/network ready.
+
+### Straight Flush Joker Interpretation
+
+When a straight flush contains jokers, the validator should test all possible consecutive sequences that include the natural cards.
+
+If one interpretation has consecutive jokers but another legal interpretation exists, the meld is valid.
+
+Example:
+
+```text
+Joker, 3H, 4H, 5H, Joker
+```
+
+Valid interpretation:
+
+```text
+2H, 3H, 4H, 5H, 6H
+```

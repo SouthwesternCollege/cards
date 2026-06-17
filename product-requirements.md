@@ -1749,17 +1749,58 @@ Current limitation:
 - Meld mutation is still not implemented.
 
 
-#### Milestone 6D: Out-of-Turn Castigo Window
+#### Milestone 6D: Castigo Decision Flow and HUD Cleanup
+
+Status: implemented.
+
+Scope completed:
+
+- Added larger invisible hit boxes for opponent carousel arrows.
+- Removed `DRAW` overlay from the deck pile.
+- Removed `CASTIGO` overlay from the discard pile.
+- Added dedicated Draw and Castigo controls below the deck/discard panel.
+- Active player sees only:
+  - Draw
+  - Castigo, when available
+- Active player does not see a Pass button.
+- The Castigo control acts as a 5-second visual timer.
+- If the active player's castigo timer expires, the active player draws from the deck.
+- If the active player clicks Draw, that counts as declining castigo and starts out-of-turn offers.
+- Out-of-turn players receive a hot-seat privacy decision screen.
+- Out-of-turn players see:
+  - Take Castigo
+  - Pass
+- Out-of-turn decision timer expires as Pass.
+- Out-of-turn castigo uses discard top card plus 3 deck cards.
+- Active-player castigo still uses discard top card plus 4 deck cards.
+- Device returns to the active player after an opponent takes the castigo or all eligible opponents pass.
+
+Current limitation:
+
+- Out-of-turn castigo offer flow is coordinated by the application/presentation layer while the card transfer is rules-level.
+- The timer is visual/presentation-driven and calls the same actions as a player click.
+- Dedicated settings/house-rule configuration is still future work.
+- Follow-up patch removed the `Deck / Discard` label and tightened button spacing.
+- Follow-up patch fixed straight-flush joker interpretation so valid non-consecutive joker assignments are accepted.
+
+#### Milestone 6D.1: Castigo Window Domain Promotion
 
 Status: planned.
 
 Recommended scope:
 
-- Add pending castigo decision state.
-- Add `PassCastigoAction`.
-- Add 5-second castigo decision timer.
-- Handle one eligible out-of-turn player at a time.
-- Expire/pass automatically when time runs out.
+- Move pending castigo offer sequence out of `CardApplication`.
+- Add explicit domain state for the castigo window.
+- Represent current decision player, eligible players, declined players, and source discard card.
+- Add or formalize `PassCastigoAction`.
+- Make timer expiration call the same rules-level action as a manual pass.
+- Keep hot-seat privacy UI as presentation only.
+
+Reason:
+
+- Milestone 6D made the flow playable.
+- The castigo window itself should become rules-level before scoring, replay, save/load, and network synchronization depend on it.
+
 
 #### Milestone 6E: Stolen Joker Obligation
 

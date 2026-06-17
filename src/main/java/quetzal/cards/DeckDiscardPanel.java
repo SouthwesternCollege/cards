@@ -79,13 +79,6 @@ public final class DeckDiscardPanel {
     }
 
     private void build() {
-        Text title = new Text("Deck / Discard");
-        title.setFont(loadFont(18));
-        title.setFill(Color.color(0.78, 0.78, 0.78));
-        title.setEffect(dropShadow(Color.BLACK, 2));
-        title.setTranslateX(0);
-        title.setTranslateY(0);
-
         deckCountText.setFont(loadFont(14));
         deckCountText.setFill(Color.WHITE);
         deckCountText.setEffect(dropShadow(Color.BLACK, 2));
@@ -115,7 +108,6 @@ public final class DeckDiscardPanel {
         buildPassButton();
 
         root.getChildren().addAll(
-                title,
                 deckGroup,
                 discardGroup,
                 deckCountText,
@@ -184,10 +176,10 @@ public final class DeckDiscardPanel {
         root.setTranslateY(y);
 
         deckGroup.setTranslateX(0);
-        deckGroup.setTranslateY(30);
+        deckGroup.setTranslateY(0);
 
         discardGroup.setTranslateX(CardViewMetrics.renderedWidth() + PILE_GAP);
-        discardGroup.setTranslateY(30);
+        discardGroup.setTranslateY(0);
 
         deckCountText.setTranslateX(deckGroup.getTranslateX() + 18);
         deckCountText.setTranslateY(deckGroup.getTranslateY() + CardViewMetrics.renderedHeight() - 18);
@@ -195,14 +187,16 @@ public final class DeckDiscardPanel {
         discardStatusText.setTranslateX(discardGroup.getTranslateX() + 8);
         discardStatusText.setTranslateY(discardGroup.getTranslateY() + CardViewMetrics.renderedHeight() + 24);
 
-        drawButton.setTranslateX(deckGroup.getTranslateX() - 10);
-        drawButton.setTranslateY(deckGroup.getTranslateY() + CardViewMetrics.renderedHeight() + 42);
+        double centeredButtonOffset = (CardViewMetrics.renderedWidth() - BUTTON_WIDTH) / 2.0;
 
-        takeCastigoButton.setTranslateX(discardGroup.getTranslateX() - 10);
-        takeCastigoButton.setTranslateY(discardGroup.getTranslateY() + CardViewMetrics.renderedHeight() + 42);
+        drawButton.setTranslateX(deckGroup.getTranslateX() + centeredButtonOffset);
+        drawButton.setTranslateY(deckGroup.getTranslateY() + CardViewMetrics.renderedHeight() + 18);
 
-        passButton.setTranslateX(discardGroup.getTranslateX() - 10);
-        passButton.setTranslateY(discardGroup.getTranslateY() + CardViewMetrics.renderedHeight() + 88);
+        takeCastigoButton.setTranslateX(discardGroup.getTranslateX() + centeredButtonOffset);
+        takeCastigoButton.setTranslateY(discardGroup.getTranslateY() + CardViewMetrics.renderedHeight() + 18);
+
+        passButton.setTranslateX(discardGroup.getTranslateX() + centeredButtonOffset);
+        passButton.setTranslateY(discardGroup.getTranslateY() + CardViewMetrics.renderedHeight() + 64);
     }
 
     public void refresh() {

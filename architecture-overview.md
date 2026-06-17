@@ -648,3 +648,83 @@ VisualMeldStore is still the interactive played-meld presentation cache.
 Full-table view reads real PlayArea directly.
 A later milestone should converge these views around real MeldState identity.
 ```
+
+
+## Milestone 6D Castigo Decision Flow
+
+The deck/discard HUD now separates piles from decisions.
+
+Before:
+
+```text
+deck card carried DRAW overlay
+discard card carried CASTIGO overlay
+```
+
+After:
+
+```text
+deck pile
+discard pile
+dedicated Draw / Castigo controls below
+```
+
+Active-player flow:
+
+```text
+DRAW_OR_CASTIGO
+→ active player chooses Draw or Castigo
+→ Draw means decline castigo and draw one deck card
+→ after Draw, out-of-turn castigo offers begin
+→ Castigo means take discard top + 4 deck cards
+```
+
+Out-of-turn flow:
+
+```text
+active player has drawn
+→ active hand hidden
+→ next eligible player gets hot-seat privacy screen
+→ Take Castigo or Pass
+→ timer expiration is Pass
+→ first player to accept gets discard top + 3 deck cards
+→ device returns to active player
+```
+
+Current implementation boundary:
+
+```text
+GameController owns card transfer and castigo counts.
+CardApplication coordinates the hot-seat offer sequence.
+PassDeviceOverlay owns privacy-screen decision UI.
+DeckDiscardPanel owns active-player decision controls.
+```
+
+Future cleanup should promote the pending castigo offer sequence into explicit domain state.
+
+## Follow-up: Castigo Window Promotion Plan
+
+Milestone 6D intentionally left castigo-offer sequencing in `CardApplication`.
+
+Next architectural step:
+
+```text
+Milestone 6D.1
+→ add explicit castigo window domain state
+→ move current decision player / eligible players / declined players into GameState or a child value object
+→ make PassCastigoAction rules-level
+```
+
+This should happen before save/load, replay, scoring edge cases, or networked play depend on castigo state.
+
+## Follow-up: Straight Flush Joker Search
+
+The straight-flush validator now continues searching after an invalid consecutive-joker assignment.
+
+This preserves the rule:
+
+```text
+jokers cannot be consecutive in the chosen straight flush interpretation
+```
+
+without incorrectly rejecting a hand that has another legal interpretation.

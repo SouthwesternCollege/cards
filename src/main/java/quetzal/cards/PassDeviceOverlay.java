@@ -30,6 +30,7 @@ public final class PassDeviceOverlay {
     private final CardViewFactory cardViewFactory = new CardViewFactory();
 
     private Group root;
+    private Timeline activeDecisionTimeline;
     private boolean visible = false;
 
     public PassDeviceOverlay(double sceneWidth, double sceneHeight) {
@@ -42,17 +43,7 @@ public final class PassDeviceOverlay {
             throw new IllegalArgumentException("Next player id cannot be null.");
         }
 
-        hideImmediately();
-
-        visible = true;
-        root = buildRoot(nextPlayerId, onReady == null ? () -> { } : onReady);
-        root.setOpacity(0.0);
-
-        FXGL.getGameScene().addUINode(root);
-
-        FadeTransition fadeIn = new FadeTransition(Duration.seconds(0.18), root);
-        fadeIn.setToValue(1.0);
-        fadeIn.play();
+        showOrReplaceRoot(buildRoot(nextPlayerId, onReady == null ? () -> { } : onReady));
     }
 
 
@@ -65,15 +56,23 @@ public final class PassDeviceOverlay {
             throw new IllegalArgumentException("Discard card cannot be null.");
         }
 
-        hideImmediately();
-
-        visible = true;
-        root = buildCastigoDecisionRoot(
+        showOrReplaceRoot(buildCastigoDecisionRoot(
                 playerId,
                 discardCard,
                 onTakeCastigo == null ? () -> { } : onTakeCastigo,
                 onPass == null ? () -> { } : onPass
-        );
+        ));
+    }
+
+    private void showOrReplaceRoot(Group newRoot) {
+        if (visible && root != null) {
+            root.getChildren().setAll(newRoot.getChildren());
+            root.setOpacity(1.0);
+            return;
+        }
+
+        visible = true;
+        root = newRoot;
         root.setOpacity(0.0);
 
         FXGL.getGameScene().addUINode(root);
@@ -84,6 +83,8 @@ public final class PassDeviceOverlay {
     }
 
     public void hideImmediately() {
+        stopActiveDecisionTimer();
+
         if (!visible && root == null) {
             return;
         }
@@ -179,7 +180,7 @@ public final class PassDeviceOverlay {
         passButton.setTranslateX(sceneWidth / 2.0 + 30);
         passButton.setTranslateY(sceneHeight * 0.70);
         passButton.setOnAction(event -> {
-            hideImmediately();
+            stopActiveDecisionTimer();
             onPass.run();
         });
 
@@ -213,24 +214,30 @@ public final class PassDeviceOverlay {
         text.setTranslateX(16);
         text.setTranslateY(48);
 
-        Timeline timeline = new Timeline(
+        activeDecisionTimeline = new Timeline(
                 new KeyFrame(Duration.ZERO, new KeyValue(timerFill.widthProperty(), 0)),
                 new KeyFrame(Duration.seconds(5.0), new KeyValue(timerFill.widthProperty(), width))
         );
-        timeline.setOnFinished(event -> {
-            hideImmediately();
+        activeDecisionTimeline.setOnFinished(event -> {
+            activeDecisionTimeline = null;
             onTimeout.run();
         });
-        timeline.play();
+        activeDecisionTimeline.play();
 
         group.setOnMouseClicked(event -> {
-            timeline.stop();
-            hideImmediately();
+            stopActiveDecisionTimer();
             onTakeCastigo.run();
         });
 
         group.getChildren().addAll(background, timerFill, text);
         return group;
+    }
+
+    private void stopActiveDecisionTimer() {
+        if (activeDecisionTimeline != null) {
+            activeDecisionTimeline.stop();
+            activeDecisionTimeline = null;
+        }
     }
 
     private Button gameButton(String textValue, Color color) {

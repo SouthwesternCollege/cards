@@ -2541,3 +2541,132 @@ Make `FullPlayAreaView` read from `GameState.playArea()`.
 `FullPlayAreaView` now receives `GameController` and renders each player's real created melds.
 
 `MockPlayAreaFactory` remains in the source tree as historical/dev mock utility, but the full-table view no longer depends on it.
+
+---
+
+## ISS-090: Implement castigo decision flow and HUD cleanup
+
+Status: Done  
+Priority: P1  
+Area: Castigo / HUD / Hot Seat
+
+### Problem
+
+Castigo was partially rules-level, but the HUD still used card overlays and there was no out-of-turn hot-seat decision flow.
+
+### Decision
+
+Implement Milestone 6D as a combined castigo decision and HUD cleanup milestone.
+
+### Result
+
+Milestone 6D added:
+
+- dedicated Draw/Castigo controls under deck/discard
+- no active-player Pass button
+- Castigo button as 5-second visual timer
+- out-of-turn privacy screen with Take Castigo / Pass
+- out-of-turn castigo uses discard top card + 3 deck cards
+- active-player castigo uses discard top card + 4 deck cards
+
+### Remaining Work
+
+- Move more castigo-offer sequencing into explicit domain state.
+- Add house-rule settings for castigo card counts.
+- Add more polish to animations and decision feedback.
+
+---
+
+## ISS-091: Improve opponent carousel arrow hit boxes
+
+Status: Done  
+Priority: P2  
+Area: Opponent Carousel / UX
+
+### Problem
+
+The `<` and `>` carousel arrows required pixel-perfect clicking.
+
+### Result
+
+The arrows now sit inside transparent hit rectangles while preserving the same text-only visual style.
+
+---
+
+## ISS-092: Fix straight flush joker interpretation search
+
+Status: Done  
+Priority: P1  
+Area: Meld Validation / Jokers
+
+### Problem
+
+A valid straight flush could be rejected if the first possible joker assignment produced consecutive jokers.
+
+Example:
+
+```text
+Joker, 3 of Hearts, 4 of Hearts, 5 of Hearts, Joker
+```
+
+The validator tried `A,2,3,4,5` first, saw consecutive joker assignments on Ace and 2, and returned `CONSECUTIVE_JOKERS`.
+
+### Decision
+
+Continue searching other possible straight-flush interpretations before rejecting.
+
+### Result
+
+The same example now validates as:
+
+```text
+2H, 3H, 4H, 5H, 6H
+```
+
+with jokers assigned to 2H and 6H.
+
+---
+
+## ISS-093: Clean up deck/discard HUD spacing
+
+Status: Done  
+Priority: P2  
+Area: HUD / Deck Discard Panel
+
+### Result
+
+- Removed the `Deck / Discard` label above the deck and discard piles.
+- Moved deck/discard piles upward within their panel.
+- Moved Draw and Castigo buttons closer to their piles.
+- Moved Pass button accordingly.
+
+---
+
+## ISS-094: Promote castigo window to domain state
+
+Status: Open  
+Priority: P1  
+Area: Castigo / Domain State
+
+### Problem
+
+Milestone 6D made the hot-seat castigo offer flow playable, but the pending castigo offer sequence is still coordinated by `CardApplication`.
+
+### Proposed Direction
+
+Create explicit rules-level state for the pending castigo window.
+
+Candidate fields:
+
+```text
+source discard card
+active player
+current decision player
+eligible decision players
+declined players
+decision state
+```
+
+### Target Milestone
+
+Milestone 6D.1.
