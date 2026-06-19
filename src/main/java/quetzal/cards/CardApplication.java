@@ -151,6 +151,7 @@ public class CardApplication extends GameApplication {
                 debugDrawer::toggle,
                 this::discardSelectedCard,
                 this::playSelectedMeld,
+                this::addSelectedCardToTargetMeld,
                 this::sortActiveHandByRank,
                 this::sortActiveHandBySuit,
                 this::restoreCustomHandOrder,
@@ -218,11 +219,12 @@ public class CardApplication extends GameApplication {
     private List<PlayerId> eligibleOutOfTurnCastigoPlayers(PlayerId activePlayerId) {
         List<PlayerId> result = new ArrayList<>();
         PlayerId current = gameController.state().nextPlayerAfter(activePlayerId);
+        PlayerId topDiscardedBy = gameController.state().discardPile().topDiscardedBy().orElse(null);
 
         while (!current.equals(activePlayerId)) {
             PlayerState player = gameController.state().player(current);
 
-            if (player.castigosRemaining() > 0) {
+            if (player.castigosRemaining() > 0 && !current.equals(topDiscardedBy)) {
                 result.add(current);
             }
 
@@ -353,6 +355,30 @@ public class CardApplication extends GameApplication {
         ActionResult result = gameController.apply(new CreateMeldAction(
                 gameController.state().roundState().activePlayerId(),
                 selectedCardIds
+        ));
+
+        actionPresentationAdapter.handleActionResult(result, null);
+    }
+
+    private void addSelectedCardToTargetMeld() {
+        List<Card> selectedCards = hand.getSelectedCards();
+
+        if (selectedCards.size() != 1) {
+            System.out.println("Select exactly one card to add to a meld.");
+            return;
+        }
+
+        MeldId targetMeldId = hand.selectedTargetMeldId();
+
+        if (targetMeldId == null) {
+            System.out.println("Select a target meld first by clicking a played meld.");
+            return;
+        }
+
+        ActionResult result = gameController.apply(new AddCardToMeldAction(
+                gameController.state().roundState().activePlayerId(),
+                targetMeldId,
+                selectedCards.getFirst().id()
         ));
 
         actionPresentationAdapter.handleActionResult(result, null);

@@ -3,12 +3,17 @@ package quetzal.cards;
 import java.util.List;
 
 public record MeldStateSnapshot(
+        int meldId,
         int createdByPlayerId,
         String meldType,
         List<CardSnapshot> cards
 ) {
 
     public MeldStateSnapshot {
+        if (meldId <= 0) {
+            throw new IllegalArgumentException("Meld id must be positive.");
+        }
+
         if (createdByPlayerId <= 0) {
             throw new IllegalArgumentException("Created-by player id must be positive.");
         }
@@ -22,5 +27,9 @@ public record MeldStateSnapshot(
         }
 
         cards = List.copyOf(cards);
+    }
+
+    public MeldStateSnapshot(int createdByPlayerId, String meldType, List<CardSnapshot> cards) {
+        this(1, createdByPlayerId, meldType, cards);
     }
 }

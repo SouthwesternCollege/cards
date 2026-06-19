@@ -14,8 +14,8 @@ public final class GameController {
     private static final int DEFAULT_PLAYER_COUNT = 4;
     private static final int DEFAULT_HAND_SIZE = 13;
     private static final int DEFAULT_CASTIGOS_PER_GAME = 10;
-    private static final int ACTIVE_CASTIGO_DECK_CARDS = 4;
-    private static final int OUT_OF_TURN_CASTIGO_DECK_CARDS = 3;
+    private static final int ACTIVE_CASTIGO_DECK_CARDS = 3;
+    private static final int OUT_OF_TURN_CASTIGO_DECK_CARDS = 4;
 
     private final GameState gameState;
     private final MeldValidator meldValidator = new LaKikaMeldValidator();
@@ -78,6 +78,10 @@ public final class GameController {
 
         if (action instanceof TakeCastigoAction takeCastigoAction) {
             return takeCastigo(takeCastigoAction);
+        }
+
+        if (action instanceof AddCardToMeldAction addCardToMeldAction) {
+            return addCardToMeld(addCardToMeldAction);
         }
 
         if (action instanceof CreateMeldAction createMeldAction) {
@@ -162,7 +166,7 @@ public final class GameController {
             return ActionResult.failure(ActionFailureCode.CARD_NOT_IN_HAND, exception.getMessage());
         }
 
-        gameState.discardPile().add(discardedCard);
+        gameState.discardPile().add(discardedCard, playerId);
 
         TurnPhase previousPhase = gameState.roundState().turnPhase();
         PlayerId previousActivePlayer = gameState.roundState().activePlayerId();
@@ -205,6 +209,15 @@ public final class GameController {
             return ActionResult.failure(
                     ActionFailureCode.NO_CASTIGO_AVAILABLE,
                     "No castigo is available because the discard pile is empty."
+            );
+        }
+
+        if (gameState.discardPile().topDiscardedBy()
+                .map(playerId::equals)
+                .orElse(false)) {
+            return ActionResult.failure(
+                    ActionFailureCode.OWN_DISCARD_CASTIGO_NOT_ALLOWED,
+                    "A player cannot take their own discard as a castigo."
             );
         }
 
@@ -292,7 +305,7 @@ public final class GameController {
         }
 
         List<Card> cardsForMeld = validationResult.normalizedCards();
-        MeldState meld = new MeldState(playerId, validationResult.meldType(), cardsForMeld);
+        MeldState meld = new MeldState(gameState.playArea().nextMeldId(), playerId, validationResult.meldType(), cardsForMeld);
         ActionResult openingCheck = validateOpeningPermission(player, meld);
 
         if (openingCheck != null) {
@@ -316,6 +329,69 @@ public final class GameController {
         return ActionResult.success(new MeldCreatedEvent(playerId, meld));
     }
 
+
+
+    private ActionResult addCardToMeld(AddCardToMeldAction action) {
+        PlayerId playerId = action.playerId();
+
+        ActionResult turnCheck = TurnRules.requireActivePlayerInPhase(
+                gameState,
+                playerId,
+                TurnPhase.MELD,
+                "add a card to a meld"
+        );
+
+        if (turnCheck != null) {
+            return turnCheck;
+        }
+
+        PlayerState player = gameState.player(playerId);
+
+        if (!player.opened()) {
+            return ActionResult.failure(
+                    ActionFailureCode.PLAYER_NOT_OPENED,
+                    "Closed player must open before mutating existing melds."
+            );
+        }
+
+        MeldState targetMeld;
+
+        try {
+            targetMeld = gameState.playArea().meld(action.meldId());
+        } catch (IllegalArgumentException exception) {
+            return ActionResult.failure(ActionFailureCode.MELD_NOT_FOUND, exception.getMessage());
+        }
+
+        Card cardToAdd;
+
+        try {
+            cardToAdd = player.cardById(action.cardId());
+        } catch (IllegalArgumentException exception) {
+            return ActionResult.failure(ActionFailureCode.CARD_NOT_IN_HAND, exception.getMessage());
+        }
+
+        List<Card> candidateCards = new ArrayList<>(targetMeld.cards());
+        candidateCards.add(cardToAdd);
+
+        MeldValidationResult validationResult = meldValidator.validate(candidateCards);
+
+        if (!validationResult.valid() || validationResult.meldType() != targetMeld.meldType()) {
+            return ActionResult.failure(
+                    ActionFailureCode.INVALID_MELD_MUTATION,
+                    "Card cannot be legally added to this meld. " + validationResult.displayText()
+            );
+        }
+
+        List<Card> mutatedCards = targetMeld.meldType() == MeldType.STRAIGHT_FLUSH
+                ? validationResult.normalizedCards()
+                : candidateCards;
+
+        MeldState updatedMeld = targetMeld.withCards(mutatedCards);
+        player.removeCard(cardToAdd.id());
+        gameState.playArea().replaceMeld(updatedMeld);
+
+        return ActionResult.success(new CardAddedToMeldEvent(playerId, updatedMeld, cardToAdd));
+    }
 
     private ActionResult validateOpeningPermission(PlayerState player, MeldState candidateMeld) {
         if (player.opened()) {

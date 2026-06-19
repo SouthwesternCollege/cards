@@ -152,7 +152,7 @@ public final class FullPlayAreaView {
 
     private List<VisualMeld> visualMeldsFor(PlayerId playerId) {
         return gameController.state().playArea().meldsCreatedBy(playerId).stream()
-                .map(meld -> new VisualMeld(meld.createdBy(), meld.cards()))
+                .map(meld -> new VisualMeld(meld.id(), meld.createdBy(), meld.cards()))
                 .toList();
     }
 

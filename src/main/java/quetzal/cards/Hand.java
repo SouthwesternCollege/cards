@@ -13,6 +13,8 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.util.Duration;
 
 import java.util.ArrayList;
@@ -47,7 +49,10 @@ public class Hand {
     private PlayerId visibleOpponentPlayerId = new PlayerId(2);
     private final List<PlayerId> playerIds = new ArrayList<>();
     private Text opponentMeldLabel;
+    private Text selectedMeldLabel;
+    private MeldId selectedTargetMeldId;
     private int nextDebugCardId = 10_000;
+    private int nextDebugMeldId = 10_000;
 
     public Hand(Rectangle2D handArea, Rectangle2D playerPlayedArea, Deck deck) {
         this(handArea, defaultOpponentPlayedArea(handArea, playerPlayedArea), playerPlayedArea, deck, new NoOpSelectionFeedback(), new NoOpHandChangeListener(), orderedCards -> { });
@@ -89,6 +94,7 @@ public class Hand {
         this.handOrderChangeListener = handOrderChangeListener == null ? orderedCards -> { } : handOrderChangeListener;
 
         buildOpponentCarouselControls();
+        buildSelectedMeldLabel();
     }
 
     /**
@@ -129,8 +135,10 @@ public class Hand {
 
         this.perspectivePlayerId = perspectivePlayerId;
         this.visibleOpponentPlayerId = visibleOpponentPlayerId;
+        this.selectedTargetMeldId = null;
         reflowVisiblePlayedMelds();
         updateOpponentMeldLabel();
+        updateSelectedMeldLabel();
     }
 
     private void buildOpponentCarouselControls() {
@@ -150,6 +158,29 @@ public class Hand {
         FXGL.getGameScene().addUINode(rightArrow);
         FXGL.getGameScene().addUINode(opponentMeldLabel);
         updateOpponentMeldLabel();
+    }
+
+    private void buildSelectedMeldLabel() {
+        selectedMeldLabel = carouselLabel();
+        selectedMeldLabel.setTranslateX(playerPlayedArea.getMinX() + 72);
+        selectedMeldLabel.setTranslateY(playerPlayedArea.getMinY() + 34);
+        FXGL.getGameScene().addUINode(selectedMeldLabel);
+        updateSelectedMeldLabel();
+    }
+
+    private void selectTargetMeld(MeldId meldId) {
+        selectedTargetMeldId = meldId;
+        updateSelectedMeldLabel();
+    }
+
+    private void updateSelectedMeldLabel() {
+        if (selectedMeldLabel == null) {
+            return;
+        }
+
+        selectedMeldLabel.setText(selectedTargetMeldId == null
+                ? "Target meld: none"
+                : "Target meld: #" + selectedTargetMeldId.value());
     }
 
     private Group carouselArrowButton(String value, Runnable action) {
@@ -285,6 +316,10 @@ public class Hand {
                     .to(target)
                     .buildAndPlay();
         }
+    }
+
+    public MeldId selectedTargetMeldId() {
+        return selectedTargetMeldId;
     }
 
     public void renderHand(List<Card> cards) {
@@ -452,27 +487,76 @@ public class Hand {
     }
 
 
-    public void displayCreatedMeld(PlayerId createdBy, List<Card> cardsToPlay) {
-        if (createdBy == null) {
-            throw new IllegalArgumentException("Created-by player cannot be null.");
+    public void displayCreatedMeld(MeldState meld) {
+        if (meld == null) {
+            throw new IllegalArgumentException("Meld cannot be null.");
         }
 
-        if (cardsToPlay == null || cardsToPlay.isEmpty()) {
-            throw new IllegalArgumentException("Cards to play cannot be empty.");
-        }
+        VisualMeld visualMeld = new VisualMeld(meld.id(), meld.createdBy(), meld.cards());
+        visualMeldStore.add(visualMeld);
 
-        visualMeldStore.add(new VisualMeld(createdBy, cardsToPlay));
-
-        for (Card card : cardsToPlay) {
+        for (Card card : meld.cards()) {
             Entity cardEntity = getEntityFor(card);
             model.setSelectable(card, false);
             model.removeCard(card);
 
             if (cardEntity != null) {
                 disableHandInteraction(cardEntity);
+                registerMeldSelectionHandler(cardEntity, meld.id());
             }
         }
 
+        selectTargetMeld(meld.id());
+        reflowVisiblePlayedMelds();
+
+        model.clearSelected();
+        selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
+        notifyHandSizeChanged();
+
+        if (!model.getCards().isEmpty()) {
+            organizeCardEntities();
+        }
+    }
+
+    public void displayCreatedMeld(PlayerId createdBy, List<Card> cardsToPlay) {
+        displayCreatedMeld(new MeldState(new MeldId(nextDebugMeldId++), createdBy, meldValidator.validate(cardsToPlay).meldType(), cardsToPlay));
+    }
+
+    public void displayCardAddedToMeld(MeldState meld, Card addedCard, boolean addedByRenderedPlayer) {
+        if (meld == null) {
+            throw new IllegalArgumentException("Meld cannot be null.");
+        }
+
+        if (addedCard == null) {
+            throw new IllegalArgumentException("Added card cannot be null.");
+        }
+
+        Entity cardEntity = getEntityFor(addedCard);
+
+        if (addedByRenderedPlayer) {
+            model.setSelectable(addedCard, false);
+            model.removeSelected(addedCard);
+            model.removeCard(addedCard);
+        }
+
+        if (cardEntity == null) {
+            Point2D spawnPosition = new Point2D(
+                    playerPlayedArea.getMinX() + playerPlayedArea.getWidth() / 2.0 - CardViewMetrics.renderedWidth() / 2.0,
+                    playerPlayedArea.getMinY() + playerPlayedArea.getHeight() / 2.0 - CardViewMetrics.renderedHeight() / 2.0
+            );
+
+            cardEntity = FXGL.spawn("Card", new SpawnData(spawnPosition.getX(), spawnPosition.getY())
+                    .put("card", addedCard)
+                    .put("z-index", 300)
+                    .put("hand", this));
+            registerCardEntity(addedCard, cardEntity);
+        }
+
+        disableHandInteraction(cardEntity);
+        registerMeldSelectionHandler(cardEntity, meld.id());
+
+        visualMeldStore.replace(new VisualMeld(meld.id(), meld.createdBy(), meld.cards()));
+        selectTargetMeld(meld.id());
         reflowVisiblePlayedMelds();
 
         model.clearSelected();
@@ -498,7 +582,7 @@ public class Hand {
         }
 
         List<Card> cardsToPlay = orderedCardsForPlayedMeld(selectedSnapshot, validationResult);
-        visualMeldStore.add(new VisualMeld(perspectivePlayerId, cardsToPlay));
+        visualMeldStore.add(new VisualMeld(new MeldId(nextDebugMeldId++), perspectivePlayerId, cardsToPlay));
 
         for (Card card : cardsToPlay) {
             Entity cardEntity = getEntityFor(card);
@@ -627,7 +711,7 @@ public class Hand {
             disableHandInteraction(cardEntity);
         }
 
-        visualMeldStore.add(new VisualMeld(perspectivePlayerId, cards));
+        visualMeldStore.add(new VisualMeld(new MeldId(nextDebugMeldId++), perspectivePlayerId, cards));
 
         if (reflowAfterAdd) {
             reflowVisiblePlayedMelds();
@@ -683,6 +767,15 @@ public class Hand {
             cardEntity.setVisible(true);
             animatePlayedCard(cardEntity, slot);
         }
+    }
+
+    private void registerMeldSelectionHandler(Entity cardEntity, MeldId meldId) {
+        cardEntity.getViewComponent().addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
+            if (event.getButton() == MouseButton.PRIMARY) {
+                selectTargetMeld(meldId);
+                event.consume();
+            }
+        });
     }
 
     private CardId nextDebugCardId() {

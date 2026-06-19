@@ -12,13 +12,19 @@ import java.util.Optional;
 public final class DiscardPile {
 
     private final List<Card> cards = new ArrayList<>();
+    private PlayerId topDiscardedBy;
 
     public void add(Card card) {
+        add(card, null);
+    }
+
+    public void add(Card card, PlayerId discardedBy) {
         if (card == null) {
             throw new IllegalArgumentException("Card cannot be null.");
         }
 
         cards.add(card);
+        topDiscardedBy = discardedBy;
     }
 
     public Optional<Card> topCard() {
@@ -29,12 +35,22 @@ public final class DiscardPile {
         return Optional.of(cards.get(cards.size() - 1));
     }
 
+    public Optional<PlayerId> topDiscardedBy() {
+        return Optional.ofNullable(topDiscardedBy);
+    }
+
     public Card removeTopCard() {
         if (cards.isEmpty()) {
             throw new IllegalStateException("Cannot remove from an empty discard pile.");
         }
 
-        return cards.remove(cards.size() - 1);
+        Card removed = cards.remove(cards.size() - 1);
+
+        if (cards.isEmpty()) {
+            topDiscardedBy = null;
+        }
+
+        return removed;
     }
 
     public List<Card> cards() {

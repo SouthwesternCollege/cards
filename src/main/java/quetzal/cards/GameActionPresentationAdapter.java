@@ -105,6 +105,11 @@ public final class GameActionPresentationAdapter {
             return;
         }
 
+        if (event instanceof CardAddedToMeldEvent cardAddedToMeldEvent) {
+            handleCardAddedToMeld(cardAddedToMeldEvent);
+            return;
+        }
+
         if (event instanceof ActivePlayerChangedEvent activePlayerChangedEvent) {
             handleActivePlayerChanged(activePlayerChangedEvent);
             return;
@@ -146,8 +151,12 @@ public final class GameActionPresentationAdapter {
 
     private void handleMeldCreated(MeldCreatedEvent event) {
         if (event.playerId().equals(renderedPlayerId)) {
-            hand.displayCreatedMeld(event.playerId(), event.meld().cards());
+            hand.displayCreatedMeld(event.meld());
         }
+    }
+
+    private void handleCardAddedToMeld(CardAddedToMeldEvent event) {
+        hand.displayCardAddedToMeld(event.meld(), event.card(), event.addedBy().equals(renderedPlayerId));
     }
 
     private void handleActivePlayerChanged(ActivePlayerChangedEvent event) {

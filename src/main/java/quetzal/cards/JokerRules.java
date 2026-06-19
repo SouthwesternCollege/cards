@@ -23,7 +23,7 @@ public final class JokerRules {
         }
 
         int jokerCount = countJokers(cards);
-        return jokerCount <= cards.size() / 2;
+        return jokerCount * 2 < cards.size();
     }
 
     public static boolean hasAtLeastOneNaturalCard(List<Card> cards) {

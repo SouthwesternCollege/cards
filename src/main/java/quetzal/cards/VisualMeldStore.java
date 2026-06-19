@@ -3,12 +3,10 @@ package quetzal.cards;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Presentation-layer storage for visual meld groups.
- *
- * This keeps Milestone 4C from pretending that the full domain GameState exists
- * yet. Later, this should be fed by PlayArea/GameState rather than Hand.
  */
 public final class VisualMeldStore {
 
@@ -26,14 +24,30 @@ public final class VisualMeldStore {
         return Collections.unmodifiableList(melds);
     }
 
+    public Optional<VisualMeld> find(MeldId meldId) {
+        return melds.stream()
+                .filter(meld -> meld.id().equals(meldId))
+                .findFirst();
+    }
+
     public List<VisualMeld> meldsFor(PlayerId playerId) {
         return melds.stream()
                 .filter(meld -> meld.createdBy().equals(playerId))
                 .toList();
     }
 
+    public void replace(VisualMeld updatedMeld) {
+        for (int i = 0; i < melds.size(); i++) {
+            if (melds.get(i).id().equals(updatedMeld.id())) {
+                melds.set(i, updatedMeld);
+                return;
+            }
+        }
+
+        melds.add(updatedMeld);
+    }
+
     public void clear() {
         melds.clear();
     }
 }
-

@@ -4,16 +4,18 @@ import java.util.List;
 
 /**
  * Presentation-facing meld grouping.
- *
- * This is not the final domain Meld aggregate. It exists so the FXGL layer can
- * keep cards visually grouped by the player who originally created the meld.
  */
 public record VisualMeld(
+        MeldId id,
         PlayerId createdBy,
         List<Card> cards
 ) {
 
     public VisualMeld {
+        if (id == null) {
+            throw new IllegalArgumentException("Meld id cannot be null.");
+        }
+
         if (createdBy == null) {
             throw new IllegalArgumentException("Created-by player cannot be null.");
         }
@@ -23,5 +25,13 @@ public record VisualMeld(
         }
 
         cards = List.copyOf(cards);
+    }
+
+    public VisualMeld(PlayerId createdBy, List<Card> cards) {
+        this(new MeldId(1), createdBy, cards);
+    }
+
+    public VisualMeld withCards(List<Card> cards) {
+        return new VisualMeld(id, createdBy, cards);
     }
 }
