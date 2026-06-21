@@ -84,6 +84,10 @@ public final class GameController {
             return addCardToMeld(addCardToMeldAction);
         }
 
+        if (action instanceof ReplaceJokerInMeldAction replaceJokerInMeldAction) {
+            return replaceJokerInMeld(replaceJokerInMeldAction);
+        }
+
         if (action instanceof CreateMeldAction createMeldAction) {
             return createMeld(createMeldAction);
         }
@@ -158,10 +162,13 @@ public final class GameController {
             return turnCheck;
         }
 
+        PlayerState player = gameState.player(playerId);
+        List<GameEvent> obligationReturnEvents = returnUnresolvedStolenJokers(player);
+
         Card discardedCard;
 
         try {
-            discardedCard = gameState.player(playerId).removeCard(action.cardId());
+            discardedCard = player.removeCard(action.cardId());
         } catch (IllegalArgumentException exception) {
             return ActionResult.failure(ActionFailureCode.CARD_NOT_IN_HAND, exception.getMessage());
         }
@@ -174,11 +181,12 @@ public final class GameController {
 
         advanceAfterDiscard(nextActivePlayer);
 
-        return ActionResult.success(
-                new CardDiscardedEvent(playerId, discardedCard),
-                new ActivePlayerChangedEvent(previousActivePlayer, nextActivePlayer),
-                new TurnPhaseChangedEvent(previousPhase, gameState.roundState().turnPhase())
-        );
+        List<GameEvent> events = new ArrayList<>(obligationReturnEvents);
+        events.add(new CardDiscardedEvent(playerId, discardedCard));
+        events.add(new ActivePlayerChangedEvent(previousActivePlayer, nextActivePlayer));
+        events.add(new TurnPhaseChangedEvent(previousPhase, gameState.roundState().turnPhase()));
+
+        return ActionResult.success(events.toArray(new GameEvent[0]));
     }
 
 
@@ -317,9 +325,9 @@ public final class GameController {
         }
 
         gameState.playArea().addMeld(meld);
+        player.clearObligationsForCards(cardsForMeld);
 
-        if (!player.opened() && openingRequirement().isSatisfiedBy(gameState.playArea().meldsCreatedBy(playerId))) {
-            player.setOpened(true);
+        if (synchronizeOpenedState(player)) {
             return ActionResult.success(
                     new MeldCreatedEvent(playerId, meld),
                     new PlayerOpenedEvent(playerId)
@@ -346,6 +354,7 @@ public final class GameController {
         }
 
         PlayerState player = gameState.player(playerId);
+        synchronizeOpenedState(player);
 
         if (!player.opened()) {
             return ActionResult.failure(
@@ -391,6 +400,194 @@ public final class GameController {
         gameState.playArea().replaceMeld(updatedMeld);
 
         return ActionResult.success(new CardAddedToMeldEvent(playerId, updatedMeld, cardToAdd));
+    }
+
+
+    private ActionResult replaceJokerInMeld(ReplaceJokerInMeldAction action) {
+        PlayerId playerId = action.playerId();
+
+        ActionResult turnCheck = TurnRules.requireActivePlayerInPhase(
+                gameState,
+                playerId,
+                TurnPhase.MELD,
+                "replace a joker in a meld"
+        );
+
+        if (turnCheck != null) {
+            return turnCheck;
+        }
+
+        PlayerState player = gameState.player(playerId);
+        synchronizeOpenedState(player);
+        boolean closedAtReplacement = !player.opened();
+
+        MeldState targetMeld;
+
+        try {
+            targetMeld = gameState.playArea().meld(action.meldId());
+        } catch (IllegalArgumentException exception) {
+            return ActionResult.failure(ActionFailureCode.MELD_NOT_FOUND, exception.getMessage());
+        }
+
+        boolean hasJoker = targetMeld.cards().stream().anyMatch(Card::isJoker);
+
+        if (!hasJoker) {
+            return ActionResult.failure(
+                    ActionFailureCode.NO_JOKER_TO_REPLACE,
+                    "This meld does not contain a joker to replace."
+            );
+        }
+
+        Card replacementCard;
+
+        try {
+            replacementCard = player.cardById(action.replacementCardId());
+        } catch (IllegalArgumentException exception) {
+            return ActionResult.failure(ActionFailureCode.CARD_NOT_IN_HAND, exception.getMessage());
+        }
+
+        if (replacementCard.isJoker()) {
+            return ActionResult.failure(
+                    ActionFailureCode.INVALID_JOKER_REPLACEMENT,
+                    "A joker must be replaced with a natural card."
+            );
+        }
+
+        JokerReplacementCandidate replacementCandidate = findValidJokerReplacement(targetMeld, replacementCard);
+
+        if (replacementCandidate == null) {
+            return ActionResult.failure(
+                    ActionFailureCode.INVALID_JOKER_REPLACEMENT,
+                    "That card cannot legally replace a joker in this meld."
+            );
+        }
+
+        player.removeCard(replacementCard.id());
+        player.addCard(replacementCandidate.returnedJoker());
+        gameState.playArea().replaceMeld(replacementCandidate.updatedMeld());
+
+        if (closedAtReplacement) {
+            player.addStolenJokerObligation(new StolenJokerObligation(
+                    targetMeld.id(),
+                    replacementCandidate.returnedJoker(),
+                    replacementCard
+            ));
+        }
+
+        return ActionResult.success(new JokerReplacedInMeldEvent(
+                playerId,
+                replacementCandidate.updatedMeld(),
+                replacementCard,
+                replacementCandidate.returnedJoker()
+        ));
+    }
+
+    private JokerReplacementCandidate findValidJokerReplacement(MeldState targetMeld, Card replacementCard) {
+        List<Card> currentCards = targetMeld.cards();
+
+        for (int i = 0; i < currentCards.size(); i++) {
+            Card candidateJoker = currentCards.get(i);
+
+            if (!candidateJoker.isJoker()) {
+                continue;
+            }
+
+            List<Card> candidateCards = new ArrayList<>(currentCards);
+            candidateCards.set(i, replacementCard);
+
+            MeldValidationResult validationResult = validateReplacementCandidateForTargetType(targetMeld, candidateCards);
+
+            if (!validationResult.valid()) {
+                continue;
+            }
+
+            return new JokerReplacementCandidate(targetMeld.withCards(validationResult.normalizedCards()), candidateJoker);
+        }
+
+        return null;
+    }
+
+    private MeldValidationResult validateReplacementCandidateForTargetType(MeldState targetMeld, List<Card> candidateCards) {
+        if (targetMeld.meldType() == MeldType.KIND) {
+            return new KindMeldValidator().validate(candidateCards);
+        }
+
+        if (targetMeld.meldType() == MeldType.STRAIGHT_FLUSH) {
+            return new StraightFlushMeldValidator().validate(candidateCards);
+        }
+
+        return MeldValidationResult.invalid(MeldValidationError.NO_VALID_MELD_TYPE);
+    }
+
+    private record JokerReplacementCandidate(MeldState updatedMeld, Card returnedJoker) {
+    }
+
+    private List<GameEvent> returnUnresolvedStolenJokers(PlayerState player) {
+        if (!player.hasStolenJokerObligations()) {
+            return List.of();
+        }
+
+        List<GameEvent> events = new ArrayList<>();
+        List<StolenJokerObligation> obligations = player.stolenJokerObligations();
+
+        for (StolenJokerObligation obligation : obligations) {
+            Card jokerInHand;
+
+            try {
+                jokerInHand = player.cardById(obligation.joker().id());
+            } catch (IllegalArgumentException exception) {
+                continue;
+            }
+
+            MeldState targetMeld = gameState.playArea().meld(obligation.meldId());
+            List<Card> restoredCards = new ArrayList<>(targetMeld.cards());
+            boolean restored = false;
+
+            for (int i = 0; i < restoredCards.size(); i++) {
+                if (restoredCards.get(i).id().equals(obligation.replacementCard().id())) {
+                    restoredCards.set(i, jokerInHand);
+                    restored = true;
+                    break;
+                }
+            }
+
+            if (!restored) {
+                continue;
+            }
+
+            MeldValidationResult validationResult = validateReplacementCandidateForTargetType(targetMeld, restoredCards);
+            List<Card> cardsForMeld = validationResult.valid()
+                    ? validationResult.normalizedCards()
+                    : restoredCards;
+            MeldState restoredMeld = targetMeld.withCards(cardsForMeld);
+
+            player.removeCard(jokerInHand.id());
+            player.addCard(obligation.replacementCard());
+            gameState.playArea().replaceMeld(restoredMeld);
+
+            events.add(new StolenJokerReturnedEvent(
+                    player.playerId(),
+                    restoredMeld,
+                    jokerInHand,
+                    obligation.replacementCard()
+            ));
+        }
+
+        player.clearStolenJokerObligations();
+        return events;
+    }
+
+    private boolean synchronizeOpenedState(PlayerState player) {
+        if (player.opened()) {
+            return false;
+        }
+
+        if (openingRequirement().isSatisfiedBy(gameState.playArea().meldsCreatedBy(player.playerId()))) {
+            player.setOpened(true);
+            return true;
+        }
+
+        return false;
     }
 
     private ActionResult validateOpeningPermission(PlayerState player, MeldState candidateMeld) {

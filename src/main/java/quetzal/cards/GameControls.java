@@ -28,17 +28,19 @@ public class GameControls {
     private final Runnable onDiscard;
     private final Runnable onPlayMeld;
     private final Runnable onAddToMeld;
+    private final Runnable onReplaceJoker;
     private final Runnable onSortRank;
     private final Runnable onSortSuit;
     private final Runnable onRestoreCustomOrder;
     private final Runnable onSaveCustomOrder;
 
-    public GameControls(GameLayout gameLayout, Hand hand, Runnable onDebugDrawer, Runnable onDiscard, Runnable onPlayMeld, Runnable onAddToMeld, Runnable onSortRank, Runnable onSortSuit, Runnable onRestoreCustomOrder, Runnable onSaveCustomOrder) {
+    public GameControls(GameLayout gameLayout, Hand hand, Runnable onDebugDrawer, Runnable onDiscard, Runnable onPlayMeld, Runnable onAddToMeld, Runnable onReplaceJoker, Runnable onSortRank, Runnable onSortSuit, Runnable onRestoreCustomOrder, Runnable onSaveCustomOrder) {
         this.hand = hand;
         this.onDebugDrawer = onDebugDrawer == null ? () -> { } : onDebugDrawer;
         this.onDiscard = onDiscard == null ? () -> { } : onDiscard;
         this.onPlayMeld = onPlayMeld == null ? () -> { } : onPlayMeld;
         this.onAddToMeld = onAddToMeld == null ? () -> { } : onAddToMeld;
+        this.onReplaceJoker = onReplaceJoker == null ? () -> { } : onReplaceJoker;
         this.onSortRank = onSortRank == null ? () -> { } : onSortRank;
         this.onSortSuit = onSortSuit == null ? () -> { } : onSortSuit;
         this.onRestoreCustomOrder = onRestoreCustomOrder == null ? () -> { } : onRestoreCustomOrder;
@@ -52,15 +54,15 @@ public class GameControls {
     }
 
     public GameControls(GameLayout gameLayout, Hand hand, Runnable onDebugDrawer, Runnable onDiscard, Runnable onPlayMeld) {
-        this(gameLayout, hand, onDebugDrawer, onDiscard, onPlayMeld, null, null, null, null, null);
+        this(gameLayout, hand, onDebugDrawer, onDiscard, onPlayMeld, null, null, null, null, null, null);
     }
 
     public GameControls(GameLayout gameLayout, Hand hand, Runnable onDebugDrawer) {
-        this(gameLayout, hand, onDebugDrawer, null, null, null, null, null, null, null);
+        this(gameLayout, hand, onDebugDrawer, null, null, null, null, null, null, null, null);
     }
 
     public GameControls(GameLayout gameLayout, Hand hand) {
-        this(gameLayout, hand, null, null, null, null, null, null, null, null);
+        this(gameLayout, hand, null, null, null, null, null, null, null, null, null);
     }
 
     private HBox createButtonBar() {
@@ -69,6 +71,9 @@ public class GameControls {
 
         Button addToMeldButton = gameButton(new Text("Add Card"), Color.color(0.55, 0.22, 0.78));
         addToMeldButton.setOnAction(event -> onAddToMeld.run());
+
+        Button replaceJokerButton = gameButton(new Text("Replace Joker"), Color.color(0.28, 0.46, 0.64));
+        replaceJokerButton.setOnAction(event -> onReplaceJoker.run());
 
         Button discardButton = gameButton(new Text("Discard"), Color.color(0, 0.3, 0.9));
         discardButton.setOnAction(event -> onDiscard.run());
@@ -92,6 +97,7 @@ public class GameControls {
                 BUTTON_SPACING,
                 playButton,
                 addToMeldButton,
+                replaceJokerButton,
                 discardButton,
                 sortRankButton,
                 sortSuitButton,

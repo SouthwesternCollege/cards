@@ -18,6 +18,7 @@ public final class PlayerState {
     private final String displayName;
     private final List<Card> hand = new ArrayList<>();
     private List<CardId> customOrderCardIds = new ArrayList<>();
+    private final List<StolenJokerObligation> stolenJokerObligations = new ArrayList<>();
 
     private int cumulativeScore;
     private int castigosRemaining;
@@ -69,6 +70,47 @@ public final class PlayerState {
 
     public boolean opened() {
         return opened;
+    }
+
+    public List<StolenJokerObligation> stolenJokerObligations() {
+        return List.copyOf(stolenJokerObligations);
+    }
+
+    public boolean hasStolenJokerObligations() {
+        return !stolenJokerObligations.isEmpty();
+    }
+
+    public void addStolenJokerObligation(StolenJokerObligation obligation) {
+        if (obligation == null) {
+            throw new IllegalArgumentException("Obligation cannot be null.");
+        }
+
+        stolenJokerObligations.add(obligation);
+    }
+
+    public void clearStolenJokerObligations() {
+        stolenJokerObligations.clear();
+    }
+
+    public boolean hasObligationForJoker(CardId jokerId) {
+        for (StolenJokerObligation obligation : stolenJokerObligations) {
+            if (obligation.joker().id().equals(jokerId)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public void clearObligationsForCards(List<Card> cards) {
+        if (cards == null || cards.isEmpty()) {
+            return;
+        }
+
+        Set<CardId> cardIds = cards.stream()
+                .map(Card::id)
+                .collect(java.util.stream.Collectors.toSet());
+        stolenJokerObligations.removeIf(obligation -> cardIds.contains(obligation.joker().id()));
     }
 
     public void addCard(Card card) {

@@ -152,6 +152,7 @@ public class CardApplication extends GameApplication {
                 this::discardSelectedCard,
                 this::playSelectedMeld,
                 this::addSelectedCardToTargetMeld,
+                this::replaceJokerInTargetMeld,
                 this::sortActiveHandByRank,
                 this::sortActiveHandBySuit,
                 this::restoreCustomHandOrder,
@@ -382,6 +383,60 @@ public class CardApplication extends GameApplication {
         ));
 
         actionPresentationAdapter.handleActionResult(result, null);
+    }
+
+
+    private void replaceJokerInTargetMeld() {
+        List<Card> selectedCards = hand.getSelectedCards();
+        List<Card> naturalCandidates = selectedCards.stream()
+                .filter(card -> !card.isJoker())
+                .toList();
+
+        if (naturalCandidates.isEmpty()) {
+            System.out.println("Select a natural card to replace a joker. Selected cards: " + describeCards(selectedCards));
+            return;
+        }
+
+        MeldId targetMeldId = hand.selectedTargetMeldId();
+
+        if (targetMeldId == null) {
+            System.out.println("Select a target meld first by clicking a played meld.");
+            return;
+        }
+
+        ActionResult lastResult = null;
+
+        for (Card candidate : naturalCandidates) {
+            ActionResult result = gameController.apply(new ReplaceJokerInMeldAction(
+                    gameController.state().roundState().activePlayerId(),
+                    targetMeldId,
+                    candidate.id()
+            ));
+
+            if (result.success()) {
+                actionPresentationAdapter.handleActionResult(result, null);
+                return;
+            }
+
+            lastResult = result;
+        }
+
+        if (naturalCandidates.size() > 1) {
+            System.out.println("Tried " + naturalCandidates.size() + " selected natural cards, but none could replace a joker in the target meld. Selected cards: " + describeCards(selectedCards));
+        }
+
+        actionPresentationAdapter.handleActionResult(lastResult, null);
+    }
+
+    private String describeCards(List<Card> cards) {
+        if (cards == null || cards.isEmpty()) {
+            return "none";
+        }
+
+        return cards.stream()
+                .map(Card::toString)
+                .toList()
+                .toString();
     }
 
     private void discardSelectedCard() {

@@ -568,6 +568,151 @@ public class Hand {
         }
     }
 
+
+    public void displayJokerReplacedInMeld(MeldState meld, Card replacementCard, Card returnedJoker, boolean replacedByRenderedPlayer) {
+        if (meld == null) {
+            throw new IllegalArgumentException("Meld cannot be null.");
+        }
+
+        if (replacementCard == null) {
+            throw new IllegalArgumentException("Replacement card cannot be null.");
+        }
+
+        if (returnedJoker == null || !returnedJoker.isJoker()) {
+            throw new IllegalArgumentException("Returned card must be a joker.");
+        }
+
+        Entity replacementEntity = getEntityFor(replacementCard);
+        Entity jokerEntity = getEntityFor(returnedJoker);
+
+        if (replacedByRenderedPlayer) {
+            model.setSelectable(replacementCard, false);
+            model.removeSelected(replacementCard);
+            model.removeCard(replacementCard);
+        }
+
+        if (replacementEntity == null) {
+            Point2D spawnPosition = new Point2D(
+                    playerPlayedArea.getMinX() + playerPlayedArea.getWidth() / 2.0 - CardViewMetrics.renderedWidth() / 2.0,
+                    playerPlayedArea.getMinY() + playerPlayedArea.getHeight() / 2.0 - CardViewMetrics.renderedHeight() / 2.0
+            );
+
+            replacementEntity = FXGL.spawn("Card", new SpawnData(spawnPosition.getX(), spawnPosition.getY())
+                    .put("card", replacementCard)
+                    .put("z-index", 300)
+                    .put("hand", this));
+            registerCardEntity(replacementCard, replacementEntity);
+        }
+
+        disableHandInteraction(replacementEntity);
+        registerMeldSelectionHandler(replacementEntity, meld.id());
+
+        visualMeldStore.replace(new VisualMeld(meld.id(), meld.createdBy(), meld.cards()));
+        selectTargetMeld(meld.id());
+        reflowVisiblePlayedMelds();
+
+        if (replacedByRenderedPlayer) {
+            Point2D jokerSpawnPosition;
+
+            if (jokerEntity == null) {
+                jokerSpawnPosition = new Point2D(
+                        playerPlayedArea.getMinX() + playerPlayedArea.getWidth() / 2.0 - CardViewMetrics.renderedWidth() / 2.0,
+                        playerPlayedArea.getMinY() + playerPlayedArea.getHeight() / 2.0 - CardViewMetrics.renderedHeight() / 2.0
+                );
+            } else {
+                jokerSpawnPosition = jokerEntity.getPosition();
+                jokerEntity.removeFromWorld();
+                entityRegistry.remove(returnedJoker);
+            }
+
+            Entity newJokerEntity = FXGL.spawn("Card", new SpawnData(jokerSpawnPosition.getX(), jokerSpawnPosition.getY())
+                    .put("card", returnedJoker)
+                    .put("z-index", 300)
+                    .put("hand", this));
+            registerCardEntity(returnedJoker, newJokerEntity);
+            enableHandInteraction(newJokerEntity);
+            model.addCard(returnedJoker);
+            model.setSelectable(returnedJoker, true);
+        }
+
+        model.clearSelected();
+        selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
+        notifyHandSizeChanged();
+
+        if (!model.getCards().isEmpty()) {
+            organizeCardEntities();
+        }
+    }
+
+    public void displayStolenJokerReturned(MeldState meld, Card returnedJoker, Card restoredReplacementCard, boolean returnedByRenderedPlayer) {
+        if (meld == null) {
+            throw new IllegalArgumentException("Meld cannot be null.");
+        }
+
+        if (returnedJoker == null || !returnedJoker.isJoker()) {
+            throw new IllegalArgumentException("Returned card must be a joker.");
+        }
+
+        if (restoredReplacementCard == null || restoredReplacementCard.isJoker()) {
+            throw new IllegalArgumentException("Restored card must be natural.");
+        }
+
+        Entity returnedJokerEntity = getEntityFor(returnedJoker);
+        Entity restoredCardEntity = getEntityFor(restoredReplacementCard);
+        Point2D transferPosition = new Point2D(
+                playerPlayedArea.getMinX() + playerPlayedArea.getWidth() / 2.0 - CardViewMetrics.renderedWidth() / 2.0,
+                playerPlayedArea.getMinY() + playerPlayedArea.getHeight() / 2.0 - CardViewMetrics.renderedHeight() / 2.0
+        );
+
+        if (restoredCardEntity != null) {
+            transferPosition = restoredCardEntity.getPosition();
+            restoredCardEntity.removeFromWorld();
+            entityRegistry.remove(restoredReplacementCard);
+        }
+
+        if (returnedJokerEntity != null) {
+            transferPosition = returnedJokerEntity.getPosition();
+            returnedJokerEntity.removeFromWorld();
+            entityRegistry.remove(returnedJoker);
+        }
+
+        Entity meldJokerEntity = FXGL.spawn("Card", new SpawnData(transferPosition.getX(), transferPosition.getY())
+                .put("card", returnedJoker)
+                .put("z-index", 300)
+                .put("hand", this));
+        registerCardEntity(returnedJoker, meldJokerEntity);
+        disableHandInteraction(meldJokerEntity);
+        registerMeldSelectionHandler(meldJokerEntity, meld.id());
+
+        if (returnedByRenderedPlayer) {
+            model.setSelectable(returnedJoker, false);
+            model.removeSelected(returnedJoker);
+            model.removeCard(returnedJoker);
+
+            Entity restoredHandEntity = FXGL.spawn("Card", new SpawnData(transferPosition.getX(), transferPosition.getY())
+                    .put("card", restoredReplacementCard)
+                    .put("z-index", 300)
+                    .put("hand", this));
+            registerCardEntity(restoredReplacementCard, restoredHandEntity);
+            enableHandInteraction(restoredHandEntity);
+            model.addCard(restoredReplacementCard);
+            model.setSelectable(restoredReplacementCard, true);
+        }
+
+        visualMeldStore.replace(new VisualMeld(meld.id(), meld.createdBy(), meld.cards()));
+        selectTargetMeld(meld.id());
+        reflowVisiblePlayedMelds();
+
+        model.clearSelected();
+        selectionFeedback.selectionChanged(model.selectedCardsSnapshot());
+        notifyHandSizeChanged();
+
+        if (!model.getCards().isEmpty()) {
+            organizeCardEntities();
+        }
+    }
+
+
     public void playSelectedCards() {
         if (model.getSelectedCards().isEmpty()) {
             return;
@@ -827,6 +972,10 @@ public class Hand {
 
     private void disableHandInteraction(Entity cardEntity) {
         cardEntity.getComponent(CardAnimationComponent.class).setInteractionEnabled(false);
+    }
+
+    private void enableHandInteraction(Entity cardEntity) {
+        cardEntity.getComponent(CardAnimationComponent.class).setInteractionEnabled(true);
     }
 
     private List<Card> orderedCardsForPlayedMeld(List<Card> selectedSnapshot, MeldValidationResult validationResult) {

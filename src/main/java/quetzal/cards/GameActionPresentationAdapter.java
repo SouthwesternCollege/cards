@@ -110,6 +110,16 @@ public final class GameActionPresentationAdapter {
             return;
         }
 
+        if (event instanceof JokerReplacedInMeldEvent jokerReplacedInMeldEvent) {
+            handleJokerReplacedInMeld(jokerReplacedInMeldEvent);
+            return;
+        }
+
+        if (event instanceof StolenJokerReturnedEvent stolenJokerReturnedEvent) {
+            handleStolenJokerReturned(stolenJokerReturnedEvent);
+            return;
+        }
+
         if (event instanceof ActivePlayerChangedEvent activePlayerChangedEvent) {
             handleActivePlayerChanged(activePlayerChangedEvent);
             return;
@@ -157,6 +167,24 @@ public final class GameActionPresentationAdapter {
 
     private void handleCardAddedToMeld(CardAddedToMeldEvent event) {
         hand.displayCardAddedToMeld(event.meld(), event.card(), event.addedBy().equals(renderedPlayerId));
+    }
+
+    private void handleJokerReplacedInMeld(JokerReplacedInMeldEvent event) {
+        hand.displayJokerReplacedInMeld(
+                event.meld(),
+                event.replacementCard(),
+                event.returnedJoker(),
+                event.replacedBy().equals(renderedPlayerId)
+        );
+    }
+
+    private void handleStolenJokerReturned(StolenJokerReturnedEvent event) {
+        hand.displayStolenJokerReturned(
+                event.meld(),
+                event.returnedJoker(),
+                event.restoredReplacementCard(),
+                event.playerId().equals(renderedPlayerId)
+        );
     }
 
     private void handleActivePlayerChanged(ActivePlayerChangedEvent event) {
